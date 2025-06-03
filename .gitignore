@@ -1,0 +1,77 @@
+﻿# .NET 构建输出
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+*.csproj.user
+
+# Visual Studio / Rider 临时文件
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sln.iml
+
+# NuGet 包
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# Avalonia 特定文件
+*.axaml.cache
+*.axaml.ide
+*.axaml.cs
+# WebAssembly 输出（如果使用 Avalonia WebAssembly）
+wwwroot/
+dist/
+*.wasm
+
+# 测试和覆盖率输出
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# 日志文件
+*.log
+[Ll]og/
+[Ll]ogs/
+
+# Rider 特定文件
+.idea/
+*.DotSettings.user
+_ReSharper*/
+
+# 其他临时文件
+*~
+*.swp
+*.tmp
+*.cache
+*.bak
+
+# 数据库文件
+*.mdf
+*.ldf
+*.ndf
+
+# 发布输出
+publish/
+*.publishproj
+*.pubxml
+
+# 忽略 Visual Studio Code 相关文件
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
