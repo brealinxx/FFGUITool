@@ -28,6 +28,7 @@ x86/
 # Avalonia 特定文件
 *.axaml.cache
 *.axaml.ide
+
 # WebAssembly 输出（如果使用 Avalonia WebAssembly）
 wwwroot/
 dist/
