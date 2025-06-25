@@ -6,9 +6,12 @@
         <Nullable>enable</Nullable>
         <UseWPF>false</UseWPF>
         <UseWindowsForms>false</UseWindowsForms>
-        <ApplicationIcon>icon.ico</ApplicationIcon>
+        <ApplicationIcon>Resource\icon.ico</ApplicationIcon>
         <AssemblyTitle>FFmpeg视频压缩工具</AssemblyTitle>
         <AssemblyDescription>基于FFmpeg的跨平台视频压缩GUI工具</AssemblyDescription>
+        <LangVersion>latest</LangVersion>
+        <Version>0.0.1</Version>
+        <Authors>brealin</Authors>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,11 +22,9 @@
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.10" />
     </ItemGroup>
-
+    
     <ItemGroup>
-        <None Update="icon.ico">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
+        <AvaloniaResource Include="Resource\**" />
     </ItemGroup>
 
 </Project>

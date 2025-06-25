@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using FFGUITool.Services;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace FFGUITool
@@ -10,49 +11,44 @@ namespace FFGUITool
     public partial class SetupWindow : Window
     {
         private readonly FFmpegManager _ffmpegManager;
-        private bool _isProcessing = false;
-
-        public bool SetupCompleted { get; private set; } = false;
+        public bool SetupCompleted { get; private set; }
 
         public SetupWindow()
         {
             InitializeComponent();
             _ffmpegManager = new FFmpegManager();
-            Loaded += SetupWindow_Loaded;
+            SetupCompleted = false;
         }
 
-        private async void SetupWindow_Loaded(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        public SetupWindow(FFmpegManager ffmpegManager)
         {
-            await RefreshStatus();
+            InitializeComponent();
+            _ffmpegManager = ffmpegManager;
+            SetupCompleted = false;
         }
 
-        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private async void BrowseFFmpegButton_Click(object sender, RoutedEventArgs e)
         {
-            await RefreshStatus();
-        }
-
-        private async Task RefreshStatus()
-        {
-            StatusText.Text = "检测中...";
-            StatusText.Foreground = Avalonia.Media.Brushes.Orange;
-            
-            await _ffmpegManager.InitializeAsync();
-            
-            if (_ffmpegManager.IsFFmpegAvailable)
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                StatusText.Text = "已安装";
-                StatusText.Foreground = Avalonia.Media.Brushes.Green;
-                CurrentPathText.Text = _ffmpegManager.FFmpegPath;
-                VersionText.Text = await _ffmpegManager.GetFFmpegVersion();
-                FinishButton.IsEnabled = true;
-            }
-            else
+                Title = "选择FFmpeg可执行文件",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("可执行文件")
+                    {
+                        Patterns = new[] { "*.exe", "ffmpeg", "ffmpeg.exe" }
+                    },
+                    new FilePickerFileType("所有文件")
+                    {
+                        Patterns = new[] { "*.*" }
+                    }
+                }
+            });
+
+            if (files.Count > 0)
             {
-                StatusText.Text = "未安装";
-                StatusText.Foreground = Avalonia.Media.Brushes.Red;
-                CurrentPathText.Text = "无";
-                VersionText.Text = "无";
-                FinishButton.IsEnabled = false;
+                FFmpegPathTextBox.Text = files[0].Path.LocalPath;
             }
         }
 
@@ -66,7 +62,11 @@ namespace FFGUITool
                 {
                     new FilePickerFileType("压缩包文件")
                     {
-                        Patterns = new[] { "*.zip", "*.7z", "*.tar.gz" }
+                        Patterns = new[] { "*.zip", "*.7z", "*.tar.gz", "*.tar" }
+                    },
+                    new FilePickerFileType("所有文件")
+                    {
+                        Patterns = new[] { "*.*" }
                     }
                 }
             });
@@ -77,92 +77,124 @@ namespace FFGUITool
             }
         }
 
-        private async void BrowseExistingButton_Click(object sender, RoutedEventArgs e)
+        private async void SetCustomPathButton_Click(object sender, RoutedEventArgs e)
         {
-            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            var path = FFmpegPathTextBox.Text?.Trim();
+            if (string.IsNullOrEmpty(path))
             {
-                Title = "选择FFmpeg可执行文件",
-                AllowMultiple = false,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("可执行文件")
-                    {
-                        Patterns = new[] { "*.exe", "*" }
-                    }
-                }
-            });
-
-            if (files.Count > 0)
-            {
-                ExistingPathTextBox.Text = files[0].Path.LocalPath;
+                await ShowMessage("错误", "请先选择FFmpeg可执行文件路径");
+                return;
             }
+
+            await SetCustomPath(path);
         }
 
-        private async void InstallButton_Click(object sender, RoutedEventArgs e)
+        private async void InstallFromArchiveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_isProcessing) return;
+            var archivePath = ArchivePathTextBox.Text?.Trim();
+            if (string.IsNullOrEmpty(archivePath))
+            {
+                await ShowMessage("错误", "请先选择FFmpeg压缩包");
+                return;
+            }
 
-            _isProcessing = true;
-            InstallButton.IsEnabled = false;
-            ProgressBorder.IsVisible = true;
+            await InstallFromArchive(archivePath);
+        }
+
+        private async void ConfirmButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 检查是否有选择FFmpeg路径
+            var path = FFmpegPathTextBox.Text?.Trim();
+            if (!string.IsNullOrEmpty(path))
+            {
+                // 如果有路径，执行设置
+                await SetCustomPath(path);
+                return;
+            }
+
+            // 检查是否有选择压缩包
+            var archivePath = ArchivePathTextBox.Text?.Trim();
+            if (!string.IsNullOrEmpty(archivePath))
+            {
+                // 如果有压缩包，执行安装
+                await InstallFromArchive(archivePath);
+                return;
+            }
+
+            // 如果都没有选择，提示用户
+            await ShowMessage("提示", "请先选择FFmpeg路径或压缩包，或点击跳过继续使用程序");
+        }
+
+        private async Task SetCustomPath(string path)
+        {
+            if (!File.Exists(path))
+            {
+                await ShowMessage("错误", "指定的文件不存在");
+                return;
+            }
 
             try
             {
-                bool success = false;
-
-                if (InstallFromArchiveRadio.IsChecked == true)
-                {
-                    if (string.IsNullOrEmpty(ArchivePathTextBox.Text))
-                    {
-                        await ShowMessage("错误", "请选择FFmpeg压缩包文件");
-                        return;
-                    }
-
-                    ProgressText.Text = "正在安装FFmpeg...";
-                    success = await _ffmpegManager.InstallFFmpegFromArchive(ArchivePathTextBox.Text);
-                }
-                else if (UseExistingRadio.IsChecked == true)
-                {
-                    if (string.IsNullOrEmpty(ExistingPathTextBox.Text))
-                    {
-                        await ShowMessage("错误", "请指定FFmpeg可执行文件路径");
-                        return;
-                    }
-
-                    ProgressText.Text = "正在验证FFmpeg路径...";
-                    success = await _ffmpegManager.SetCustomPath(ExistingPathTextBox.Text);
-                }
-                else if (UseSystemRadio.IsChecked == true)
-                {
-                    ProgressText.Text = "正在检测系统FFmpeg...";
-                    success = await _ffmpegManager.SetCustomPath("ffmpeg");
-                }
-
+                StatusText.Text = "验证FFmpeg路径...";
+                var success = await _ffmpegManager.SetCustomPath(path);
+                
                 if (success)
                 {
-                    await ShowMessage("成功", "FFmpeg设置完成！");
-                    await RefreshStatus();
+                    SetupCompleted = true;
+                    await ShowMessage("成功", "FFmpeg路径设置成功！");
+                    Close();
                 }
                 else
                 {
-                    await ShowMessage("失败", "FFmpeg设置失败，请检查文件路径或压缩包格式");
+                    await ShowMessage("错误", "指定的文件不是有效的FFmpeg可执行文件");
                 }
             }
             catch (Exception ex)
             {
-                await ShowMessage("错误", $"操作失败: {ex.Message}");
+                await ShowMessage("错误", $"设置FFmpeg路径时出错: {ex.Message}");
             }
             finally
             {
-                _isProcessing = false;
-                InstallButton.IsEnabled = true;
-                ProgressBorder.IsVisible = false;
+                StatusText.Text = "";
             }
         }
 
-        private void FinishButton_Click(object sender, RoutedEventArgs e)
+        private async Task InstallFromArchive(string archivePath)
         {
-            SetupCompleted = true;
+            if (!File.Exists(archivePath))
+            {
+                await ShowMessage("错误", "指定的压缩包文件不存在");
+                return;
+            }
+
+            try
+            {
+                StatusText.Text = "正在安装FFmpeg...";
+                var success = await _ffmpegManager.InstallFFmpegFromArchive(archivePath);
+                
+                if (success)
+                {
+                    SetupCompleted = true;
+                    await ShowMessage("成功", "FFmpeg安装成功！");
+                    Close();
+                }
+                else
+                {
+                    await ShowMessage("错误", "FFmpeg安装失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowMessage("错误", $"安装FFmpeg时出错: {ex.Message}");
+            }
+            finally
+            {
+                StatusText.Text = "";
+            }
+        }
+
+        private void SkipButton_Click(object sender, RoutedEventArgs e)
+        {
             Close();
         }
 
@@ -171,8 +203,8 @@ namespace FFGUITool
             var dialog = new Window
             {
                 Title = title,
-                Width = 400,
-                Height = 200,
+                Width = 350,
+                Height = 150,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Content = new StackPanel
                 {
@@ -181,10 +213,18 @@ namespace FFGUITool
                     Children =
                     {
                         new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                        new Button { Content = "确定", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center }
+                        new Button 
+                        { 
+                            Content = "确定", 
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                        }
                     }
                 }
             };
+
+            // 为确定按钮添加事件处理
+            var okButton = (Button)((StackPanel)dialog.Content).Children[1];
+            okButton.Click += (s, e) => dialog.Close();
 
             await dialog.ShowDialog(this);
         }

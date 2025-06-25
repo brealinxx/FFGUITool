@@ -18,7 +18,7 @@ namespace FFGUITool.Services
         public FFmpegManager()
         {
             // 创建应用数据目录
-            _appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFmpegGUI");
+            _appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFGUITool");
             _embeddedFFmpegPath = Path.Combine(_appDataPath, "ffmpeg");
             
             Directory.CreateDirectory(_appDataPath);

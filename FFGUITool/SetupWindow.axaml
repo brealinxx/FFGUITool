@@ -1,144 +1,142 @@
-﻿<!-- SetupWindow.axaml -->
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="FFGUITool.SetupWindow"
-        Title="FFmpeg 安装向导"
-        Width="600" Height="500"
-        MinWidth="500" MinHeight="400"
-        WindowStartupLocation="CenterScreen">
+        Title="FFmpeg 配置"
+        Width="500" Height="400"
+        MinWidth="450" MinHeight="350"
+        WindowStartupLocation="CenterOwner"
+        CanResize="false">
     
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 标题 -->
-        <TextBlock Grid.Row="0" Text="FFmpeg 安装向导" 
-                   FontSize="24" FontWeight="Bold" 
-                   HorizontalAlignment="Center" Margin="0,0,0,20"/>
+        <!-- 标题和说明 -->
+        <StackPanel Grid.Row="0" Spacing="10" Margin="0,0,0,20">
+            <TextBlock Text="FFmpeg 配置" FontSize="18" FontWeight="Bold" 
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="请选择以下方式之一来配置FFmpeg：" 
+                       TextWrapping="Wrap" HorizontalAlignment="Center"/>
+        </StackPanel>
 
-        <!-- 主要内容区域 -->
+        <!-- 配置选项 -->
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="20">
                 
-                <!-- 当前状态 -->
+                <!-- 方式1：指定现有的FFmpeg路径 -->
                 <Border BorderBrush="Gray" BorderThickness="1" 
                         CornerRadius="5" Padding="15">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="当前状态" FontWeight="Bold" FontSize="16"/>
+                        <TextBlock Text="方式1：指定现有的FFmpeg路径" 
+                                   FontWeight="Bold" FontSize="14"/>
+                        <TextBlock Text="如果您已经安装了FFmpeg，请选择ffmpeg可执行文件" 
+                                   TextWrapping="Wrap" Foreground="Gray"/>
+                        
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="FFmpeg状态:" Margin="0,0,10,0"/>
-                            <TextBlock Grid.Column="1" Name="StatusText" Text="检测中..." 
-                                       Foreground="Orange"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="当前路径:" Margin="0,0,10,0"/>
-                            <TextBlock Grid.Column="1" Name="CurrentPathText" Text="无" 
-                                       TextWrapping="Wrap"/>
+                            
+                            <TextBox Grid.Column="0" Name="FFmpegPathTextBox" 
+                                     Watermark="选择ffmpeg.exe文件..." 
+                                     IsReadOnly="True"/>
+                            <Button Grid.Column="1" Content="浏览" 
+                                    Name="BrowseFFmpegButton" Margin="5,0,0,0"
+                                    Click="BrowseFFmpegButton_Click"/>
                         </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="版本信息:" Margin="0,0,10,0"/>
-                            <TextBlock Grid.Column="1" Name="VersionText" Text="无" 
-                                       TextWrapping="Wrap"/>
-                        </Grid>
+                        
+                        <Button Content="设置此路径" Name="SetCustomPathButton" 
+                                HorizontalAlignment="Left" Width="120"
+                                Click="SetCustomPathButton_Click"/>
                     </StackPanel>
                 </Border>
 
-                <!-- 安装选项 -->
+                <!-- 方式2：从压缩包安装 -->
                 <Border BorderBrush="Gray" BorderThickness="1" 
                         CornerRadius="5" Padding="15">
-                    <StackPanel Spacing="15">
-                        <TextBlock Text="安装选项" FontWeight="Bold" FontSize="16"/>
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="方式2：从压缩包安装FFmpeg" 
+                                   FontWeight="Bold" FontSize="14"/>
+                        <TextBlock Text="选择FFmpeg的zip压缩包，程序将自动解压并安装到应用目录" 
+                                   TextWrapping="Wrap" Foreground="Gray"/>
                         
-                        <!-- 选项1: 从压缩包安装 -->
-                        <RadioButton Name="InstallFromArchiveRadio" Content="从压缩包安装FFmpeg" 
-                                     IsChecked="True" GroupName="InstallOptions"/>
-                        <Grid Margin="20,0,0,0" IsEnabled="{Binding #InstallFromArchiveRadio.IsChecked}">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             
                             <TextBox Grid.Column="0" Name="ArchivePathTextBox" 
-                                     Watermark="选择FFmpeg压缩包文件..." 
+                                     Watermark="选择FFmpeg压缩包..." 
                                      IsReadOnly="True"/>
-                            <Button Grid.Column="1" Content="浏览..." 
+                            <Button Grid.Column="1" Content="浏览" 
                                     Name="BrowseArchiveButton" Margin="5,0,0,0"
                                     Click="BrowseArchiveButton_Click"/>
                         </Grid>
                         
-                        <TextBlock Text="支持格式: .zip (推荐从 https://ffmpeg.org/download.html 下载)" 
-                                   FontSize="12" Foreground="Gray" Margin="20,0,0,0"/>
-
-                        <!-- 选项2: 指定现有路径 -->
-                        <RadioButton Name="UseExistingRadio" Content="使用现有的FFmpeg" 
-                                     GroupName="InstallOptions"/>
-                        <Grid Margin="20,0,0,0" IsEnabled="{Binding #UseExistingRadio.IsChecked}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBox Grid.Column="0" Name="ExistingPathTextBox" 
-                                     Watermark="指定FFmpeg可执行文件路径..."/>
-                            <Button Grid.Column="1" Content="浏览..." 
-                                    Name="BrowseExistingButton" Margin="5,0,0,0"
-                                    Click="BrowseExistingButton_Click"/>
-                        </Grid>
-
-                        <!-- 选项3: 使用系统PATH -->
-                        <RadioButton Name="UseSystemRadio" Content="使用系统PATH中的FFmpeg" 
-                                     GroupName="InstallOptions"/>
-                        <TextBlock Text="如果您已经将FFmpeg添加到系统环境变量中，请选择此选项" 
-                                   FontSize="12" Foreground="Gray" Margin="20,0,0,0"/>
+                        <Button Content="从压缩包安装" Name="InstallFromArchiveButton" 
+                                HorizontalAlignment="Left" Width="120"
+                                Click="InstallFromArchiveButton_Click"/>
                     </StackPanel>
                 </Border>
 
-                <!-- 进度显示 -->
-                <Border BorderBrush="Gray" BorderThickness="1" 
-                        CornerRadius="5" Padding="15" Name="ProgressBorder" IsVisible="False">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="安装进度" FontWeight="Bold" FontSize="16"/>
-                        <ProgressBar Name="InstallProgressBar" Height="20" IsIndeterminate="True"/>
-                        <TextBlock Name="ProgressText" Text="正在处理..." HorizontalAlignment="Center"/>
+                <!-- 下载提示 -->
+                <Border BorderBrush="LightBlue" BorderThickness="1" 
+                        CornerRadius="5" Padding="15" Background="#F0F8FF">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="💡 获取FFmpeg" FontWeight="Bold" FontSize="14"/>
+                        <TextBlock TextWrapping="Wrap">
+                            <Run Text="如果您还没有FFmpeg，可以从官方网站下载："/>
+                            <LineBreak/>
+                            <Run Text="• Windows: https://ffmpeg.org/download.html"/>
+                            <LineBreak/>
+                            <Run Text="• 建议下载 'Windows builds' 中的静态版本"/>
+                            <LineBreak/>
+                            <Run Text="• 解压后找到 bin/ffmpeg.exe 文件"/>
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 
             </StackPanel>
         </ScrollViewer>
 
+        <!-- 状态文本 -->
+        <TextBlock Grid.Row="2" Name="StatusText" 
+                   HorizontalAlignment="Center" Margin="0,10,0,0"
+                   FontStyle="Italic" Foreground="Blue"/>
+
         <!-- 底部按钮 -->
-        <Grid Grid.Row="2" Margin="0,20,0,0">
+        <Grid Grid.Row="3" Margin="0,20,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <Button Grid.Column="1" Content="刷新状态" Name="RefreshButton" 
-                    Width="100" Height="35" Margin="0,0,10,0"
-                    Click="RefreshButton_Click"/>
-            <Button Grid.Column="2" Content="安装/设置" Name="InstallButton" 
-                    Width="100" Height="35" Margin="0,0,10,0"
-                    Click="InstallButton_Click"/>
-            <Button Grid.Column="3" Content="完成" Name="FinishButton" 
-                    Width="100" Height="35" IsEnabled="False"
-                    Click="FinishButton_Click"/>
+            <TextBlock Grid.Column="0" Text="稍后可以通过菜单重新配置" 
+                       VerticalAlignment="Center" Foreground="Gray"/>
+            
+            <!-- 跳过按钮 - 灰色样式 -->
+            <Button Grid.Column="1" Content="跳过" Name="SkipButton" 
+                    Width="80" Height="32" Margin="0,0,10,0"
+                    Background="#F5F5F5" 
+                    Foreground="#666666"
+                    BorderBrush="#CCCCCC"
+                    Click="SkipButton_Click"/>
+            
+            <!-- 确定按钮 - 强调色样式 -->
+            <Button Grid.Column="2" Content="确定" Name="ConfirmButton" 
+                    Width="80" Height="32"
+                    Background="#007ACC" 
+                    Foreground="White"
+                    BorderBrush="#005A9B"
+                    FontWeight="Bold"
+                    Click="ConfirmButton_Click"/>
         </Grid>
 
     </Grid>

@@ -7,18 +7,33 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Text;
+using System.Reflection;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace FFGUITool
 {
+    public class VideoInfo
+    {
+        public int Bitrate { get; set; }
+        public double Duration { get; set; }
+        public string Resolution { get; set; } = "";
+        public double Framerate { get; set; }
+        public long FileSize { get; set; }
+    }
+
     public partial class MainWindow : Window
     {
         private string _inputPath = "";
         private string _outputPath = "";
-        private int _bitrate = 2000;
+        private int _compressionPercentage = 70;
+        private int _calculatedBitrate = 2000;
         private string _codec = "libx264";
         private bool _isProcessing = false;
         private bool _isInitialized = false;
         private readonly FFmpegManager _ffmpegManager;
+        private VideoInfo? _currentVideoInfo;
 
         public MainWindow()
         {
@@ -37,6 +52,9 @@ namespace FFGUITool
 
         private async Task InitializeFFmpeg()
         {
+            // 更新状态显示
+            FFmpegStatusText.Text = " - 检测FFmpeg中...";
+            
             await _ffmpegManager.InitializeAsync();
             
             if (!_ffmpegManager.IsFFmpegAvailable)
@@ -51,15 +69,422 @@ namespace FFGUITool
                 
                 if (!_ffmpegManager.IsFFmpegAvailable)
                 {
-                    await ShowMessage("警告", "FFmpeg未正确配置，某些功能可能无法使用。\n您可以稍后通过菜单重新配置。");
+                    await ShowMessage("警告", "FFmpeg未正确配置，某些功能可能无法使用。\n您可以通过菜单重新配置。");
                 }
             }
             
-            // 更新窗口标题显示FFmpeg状态
-            Title = _ffmpegManager.IsFFmpegAvailable 
-                ? "FFmpeg 视频压缩工具 - FFmpeg已就绪" 
-                : "FFmpeg 视频压缩工具 - FFmpeg未配置";
+            UpdateFFmpegStatus();
         }
+
+        private void UpdateFFmpegStatus()
+        {
+            if (_ffmpegManager.IsFFmpegAvailable)
+            {
+                Title = "FFmpeg 视频压缩工具 - FFmpeg已就绪";
+                FFmpegStatusText.Text = " - FFmpeg已就绪";
+                FFmpegStatusText.Foreground = Avalonia.Media.Brushes.Green;
+            }
+            else
+            {
+                Title = "FFmpeg 视频压缩工具 - FFmpeg未配置";
+                FFmpegStatusText.Text = " - FFmpeg未配置";
+                FFmpegStatusText.Foreground = Avalonia.Media.Brushes.Red;
+            }
+        }
+
+        #region 菜单事件处理
+
+        private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private async void FFmpegSettingsMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var setupWindow = new SetupWindow();
+            await setupWindow.ShowDialog(this);
+            
+            if (setupWindow.SetupCompleted)
+            {
+                await _ffmpegManager.InitializeAsync();
+                UpdateFFmpegStatus();
+                
+                if (_ffmpegManager.IsFFmpegAvailable)
+                {
+                    await ShowMessage("成功", "FFmpeg配置已更新！");
+                }
+            }
+        }
+
+        private async void RedetectFFmpegMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            FFmpegStatusText.Text = " - 重新检测中...";
+            FFmpegStatusText.Foreground = Avalonia.Media.Brushes.Gray;
+            
+            await _ffmpegManager.InitializeAsync();
+            UpdateFFmpegStatus();
+            
+            var message = _ffmpegManager.IsFFmpegAvailable 
+                ? "FFmpeg检测成功！" 
+                : "未找到FFmpeg，请通过菜单手动配置。";
+            
+            await ShowMessage("检测完成", message);
+        }
+
+        private async void AboutMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0";
+            var ffmpegVersion = await _ffmpegManager.GetFFmpegVersion();
+
+            // 尝试创建图标控件
+            Control iconControl;
+            try
+            {
+                iconControl = new Image
+                {
+                    Source = new Avalonia.Media.Imaging.Bitmap(
+                        Avalonia.Platform.AssetLoader.Open(new Uri("avares://FFGUITool/Resource/icon.ico"))),
+                    Width = 48,
+                    Height = 48,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+            }
+            catch
+            {
+                // 如果图标加载失败，使用文本替代
+                iconControl = new TextBlock 
+                { 
+                    Text = "🎬", 
+                    FontSize = 32,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+            }
+
+            var aboutDialog = new Window
+            {
+                Title = "关于 FFGUITool",
+                Width = 480,
+                Height = 420,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                Content = new ScrollViewer
+                {
+                    Margin = new Avalonia.Thickness(10),
+                    Content = new StackPanel
+                    {
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 15,
+                        Children =
+                        {
+                            // 应用图标和标题
+                            new StackPanel
+                            {
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                Spacing = 10,
+                                Children =
+                                {
+                                    iconControl,
+                                    new TextBlock 
+                                    { 
+                                        Text = "FFGUITool", 
+                                        FontSize = 22, 
+                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                    },
+                                    new TextBlock 
+                                    { 
+                                        Text = "FFmpeg 视频压缩工具", 
+                                        FontSize = 14, 
+                                        Foreground = Avalonia.Media.Brushes.Gray,
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                    }
+                                }
+                            },
+                            
+                            // 分隔线
+                            new Border 
+                            { 
+                                Height = 1, 
+                                Background = Avalonia.Media.Brushes.LightGray,
+                                Margin = new Avalonia.Thickness(0, 5, 0, 5)
+                            },
+                            
+                            // 版本信息
+                            new StackPanel
+                            {
+                                Spacing = 8,
+                                Children =
+                                {
+                                    new TextBlock 
+                                    { 
+                                        Text = "版本信息", 
+                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                        FontSize = 14
+                                    },
+                                    new TextBlock 
+                                    { 
+                                        Text = $"应用版本：{version}",
+                                        Margin = new Avalonia.Thickness(10, 0, 0, 0)
+                                    },
+                                    new TextBlock 
+                                    { 
+                                        Text = $"FFmpeg：{ffmpegVersion}",
+                                        Margin = new Avalonia.Thickness(10, 0, 0, 0),
+                                        TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                                    }
+                                }
+                            },
+                            
+                            // 功能介绍
+                            new StackPanel
+                            {
+                                Spacing = 8,
+                                Children =
+                                {
+                                    new TextBlock 
+                                    { 
+                                        Text = "功能特性", 
+                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                        FontSize = 14
+                                    },
+                                    new TextBlock 
+                                    { 
+                                        Text = "这是一个基于FFmpeg的视频压缩工具，提供友好的图形界面来简化视频压缩操作。",
+                                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                        Margin = new Avalonia.Thickness(10, 0, 0, 0),
+                                        LineHeight = 1.3
+                                    }
+                                }
+                            },
+                            
+                            // 支持的编码器
+                            new StackPanel
+                            {
+                                Spacing = 8,
+                                Children =
+                                {
+                                    new TextBlock 
+                                    { 
+                                        Text = "支持的编码器", 
+                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                        FontSize = 14
+                                    },
+                                    new StackPanel
+                                    {
+                                        Margin = new Avalonia.Thickness(10, 0, 0, 0),
+                                        Spacing = 3,
+                                        Children =
+                                        {
+                                            new TextBlock { Text = "• H.264 (libx264) - 广泛兼容" },
+                                            new TextBlock { Text = "• H.265 (libx265) - 高压缩比" },
+                                            new TextBlock { Text = "• VP9 (libvpx-vp9) - 开源编码" }
+                                        }
+                                    }
+                                }
+                            },
+                            
+                            // 版权信息
+                            new Border 
+                            { 
+                                Height = 1, 
+                                Background = Avalonia.Media.Brushes.LightGray,
+                                Margin = new Avalonia.Thickness(0, 10, 0, 5)
+                            },
+                            
+                            new TextBlock 
+                            { 
+                                Text = "© 2025 FFGUITool Powered by FFmpeg",
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                FontSize = 12,
+                                Foreground = Avalonia.Media.Brushes.Gray
+                            },
+                            new TextBlock 
+                            { 
+                                Text = "Assembled by brealin",
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                FontSize = 12,
+                                Foreground = Avalonia.Media.Brushes.Gray
+                            },
+                            
+                            // 确定按钮
+                            new Button 
+                            { 
+                                Content = "确定", 
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                Width = 100,
+                                Height = 35,
+                                Margin = new Avalonia.Thickness(0, 10, 0, 0)
+                            }
+                        }
+                    }
+                }
+            };
+
+            // 为确定按钮添加事件处理
+            var okButton = (Button)((StackPanel)((ScrollViewer)aboutDialog.Content).Content).Children.Last();
+            okButton.Click += (s, e) => aboutDialog.Close();
+
+            await aboutDialog.ShowDialog(this);
+        }
+
+        #endregion
+
+        #region 视频分析和比特率计算
+
+        private async Task<VideoInfo?> AnalyzeVideo(string videoPath)
+        {
+            if (!_ffmpegManager.IsFFmpegAvailable || !File.Exists(videoPath))
+                return null;
+
+            try
+            {
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = _ffmpegManager.FFmpegPath,
+                    Arguments = $"-i \"{videoPath}\" -hide_banner",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = processInfo };
+                process.Start();
+                
+                var output = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                return ParseVideoInfo(output, videoPath);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private VideoInfo? ParseVideoInfo(string ffmpegOutput, string filePath)
+        {
+            try
+            {
+                var videoInfo = new VideoInfo();
+                
+                // 解析时长
+                var durationMatch = Regex.Match(ffmpegOutput, @"Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})");
+                if (durationMatch.Success)
+                {
+                    var hours = int.Parse(durationMatch.Groups[1].Value);
+                    var minutes = int.Parse(durationMatch.Groups[2].Value);
+                    var seconds = double.Parse(durationMatch.Groups[3].Value, CultureInfo.InvariantCulture);
+                    videoInfo.Duration = hours * 3600 + minutes * 60 + seconds;
+                }
+
+                // 解析比特率
+                var bitrateMatch = Regex.Match(ffmpegOutput, @"bitrate: (\d+) kb/s");
+                if (bitrateMatch.Success)
+                {
+                    videoInfo.Bitrate = int.Parse(bitrateMatch.Groups[1].Value);
+                }
+
+                // 解析分辨率
+                var resolutionMatch = Regex.Match(ffmpegOutput, @"(\d{3,4}x\d{3,4})");
+                if (resolutionMatch.Success)
+                {
+                    videoInfo.Resolution = resolutionMatch.Groups[1].Value;
+                }
+
+                // 解析帧率
+                var framerateMatch = Regex.Match(ffmpegOutput, @"(\d+(?:\.\d+)?) fps");
+                if (framerateMatch.Success)
+                {
+                    videoInfo.Framerate = double.Parse(framerateMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+                }
+
+                // 获取文件大小
+                videoInfo.FileSize = new FileInfo(filePath).Length;
+
+                return videoInfo;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async Task CalculateOptimalBitrate()
+        {
+            if (_currentVideoInfo == null)
+            {
+                EstimatedBitrateText.Text = "请先选择视频文件";
+                return;
+            }
+
+            try
+            {
+                EstimatedBitrateText.Text = "计算中...";
+
+                // 基于压缩百分比计算目标比特率
+                var originalBitrate = _currentVideoInfo.Bitrate;
+                var targetBitrate = (int)(originalBitrate * _compressionPercentage / 100.0);
+
+                // 根据编码器调整比特率
+                targetBitrate = AdjustBitrateForCodec(targetBitrate, _codec);
+
+                // 根据分辨率调整比特率范围
+                targetBitrate = ClampBitrateByResolution(targetBitrate, _currentVideoInfo.Resolution);
+
+                _calculatedBitrate = Math.Max(100, targetBitrate); // 最小100k
+
+                // 计算预估文件大小
+                var estimatedSize = CalculateEstimatedFileSize(_calculatedBitrate, _currentVideoInfo.Duration);
+                var originalSizeMB = _currentVideoInfo.FileSize / 1024.0 / 1024.0;
+                var estimatedSizeMB = estimatedSize / 1024.0 / 1024.0;
+                var actualCompressionRatio = (1 - estimatedSizeMB / originalSizeMB) * 100;
+
+                EstimatedBitrateText.Text = $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 压缩: {actualCompressionRatio:F1}%)";
+                EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Green;
+            }
+            catch
+            {
+                EstimatedBitrateText.Text = "计算失败";
+                EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Red;
+            }
+        }
+
+        private int AdjustBitrateForCodec(int baseBitrate, string codec)
+        {
+            return codec switch
+            {
+                "libx265" => (int)(baseBitrate * 0.7), // H.265效率更高
+                "libvpx-vp9" => (int)(baseBitrate * 0.8), // VP9效率较高
+                _ => baseBitrate // H.264基准
+            };
+        }
+
+        private int ClampBitrateByResolution(int bitrate, string resolution)
+        {
+            var minMax = resolution switch
+            {
+                var r when r.Contains("3840x2160") => (3000, 25000), // 4K
+                var r when r.Contains("2560x1440") => (2000, 15000), // 1440p
+                var r when r.Contains("1920x1080") => (1000, 8000),  // 1080p
+                var r when r.Contains("1280x720") => (500, 4000),    // 720p
+                _ => (200, 2000) // 其他分辨率
+            };
+
+            return Math.Clamp(bitrate, minMax.Item1, minMax.Item2);
+        }
+
+        private long CalculateEstimatedFileSize(int bitrateKbps, double durationSeconds)
+        {
+            // 文件大小 = 比特率 * 时长 / 8 (转换为字节)
+            // 考虑音频轨道大约占总比特率的10-15%
+            var totalBitrateKbps = bitrateKbps + (bitrateKbps * 0.12); // 视频+音频
+            return (long)(totalBitrateKbps * 1024 * durationSeconds / 8);
+        }
+
+        #endregion
+
+        #region 原有的事件处理方法
 
         private async void SelectFileButton_Click(object sender, RoutedEventArgs e)
         {
@@ -88,6 +513,23 @@ namespace FFGUITool
             {
                 _inputPath = files[0].Path.LocalPath;
                 InputPathTextBox.Text = _inputPath;
+                
+                // 分析视频文件
+                if (Path.GetExtension(_inputPath).ToLower() is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm")
+                {
+                    EstimatedBitrateText.Text = "分析视频中...";
+                    EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Blue;
+                    
+                    _currentVideoInfo = await AnalyzeVideo(_inputPath);
+                    await CalculateOptimalBitrate();
+                }
+                else
+                {
+                    _currentVideoInfo = null;
+                    EstimatedBitrateText.Text = "非视频文件";
+                    EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Gray;
+                }
+                
                 UpdateCommand();
             }
         }
@@ -124,25 +566,41 @@ namespace FFGUITool
             }
         }
 
+        private async void CompressionSlider_ValueChanged(object sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            if (!_isInitialized) return;
+            
+            _compressionPercentage = (int)e.NewValue;
+            if (CompressionValueText != null)
+            {
+                CompressionValueText.Text = $"{_compressionPercentage}%";
+            }
+            
+            await CalculateOptimalBitrate();
+            UpdateCommand();
+        }
+
         private void BitrateSlider_ValueChanged(object sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             if (!_isInitialized) return;
             
-            _bitrate = (int)e.NewValue;
+            _calculatedBitrate = (int)e.NewValue;
             if (BitrateValueText != null)
             {
-                BitrateValueText.Text = $"{_bitrate}k";
+                BitrateValueText.Text = $"{_calculatedBitrate}k";
             }
+            
             UpdateCommand();
         }
 
-        private void CodecComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void CodecComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_isInitialized || CodecComboBox?.SelectedItem == null) return;
             
             if (CodecComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
             {
                 _codec = selectedItem.Tag.ToString() ?? "libx264";
+                await CalculateOptimalBitrate();
                 UpdateCommand();
             }
         }
@@ -176,8 +634,8 @@ namespace FFGUITool
             // 视频编码器
             command.Append($"-c:v {_codec} ");
 
-            // 比特率
-            command.Append($"-b:v {_bitrate}k ");
+            // 使用计算出的比特率
+            command.Append($"-b:v {_calculatedBitrate}k ");
 
             // 音频编码器（保持原有或使用AAC）
             command.Append("-c:a aac ");
@@ -186,7 +644,7 @@ namespace FFGUITool
             if (!string.IsNullOrEmpty(_outputPath))
             {
                 var inputFileName = Path.GetFileNameWithoutExtension(_inputPath);
-                var outputFileName = $"{inputFileName}_compressed.mp4";
+                var outputFileName = $"{inputFileName}_compressed_{_compressionPercentage}%.mp4";
                 var outputFilePath = Path.Combine(_outputPath, outputFileName);
                 command.Append($"\"{outputFilePath}\"");
             }
@@ -196,7 +654,7 @@ namespace FFGUITool
             }
 
             CommandTextBox.Text = command.ToString();
-            ExecuteButton.IsEnabled = !string.IsNullOrEmpty(_inputPath) && !string.IsNullOrEmpty(_outputPath);
+            ExecuteButton.IsEnabled = !string.IsNullOrEmpty(_inputPath) && !string.IsNullOrEmpty(_outputPath) && _ffmpegManager.IsFFmpegAvailable;
         }
 
         private async void ExecuteButton_Click(object sender, RoutedEventArgs e)
@@ -214,24 +672,7 @@ namespace FFGUITool
             }
             catch (Exception ex)
             {
-                // 这里应该显示错误信息给用户
-                var dialog = new Window
-                {
-                    Title = "错误",
-                    Width = 400,
-                    Height = 200,
-                    Content = new StackPanel
-                    {
-                        Margin = new Avalonia.Thickness(20),
-                        Children =
-                        {
-                            new TextBlock { Text = "执行FFmpeg命令时出错:", FontWeight = Avalonia.Media.FontWeight.Bold },
-                            new TextBlock { Text = ex.Message, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Avalonia.Thickness(0, 10, 0, 10) },
-                            new Button { Content = "确定", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center }
-                        }
-                    }
-                };
-                await dialog.ShowDialog(this);
+                await ShowMessage("错误", $"执行FFmpeg命令时出错:\n{ex.Message}");
             }
             finally
             {
@@ -299,12 +740,22 @@ namespace FFGUITool
                     Children =
                     {
                         new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                        new Button { Content = "确定", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center }
+                        new Button 
+                        { 
+                            Content = "确定", 
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                        }
                     }
                 }
             };
 
+            // 为确定按钮添加事件处理
+            var okButton = (Button)((StackPanel)dialog.Content).Children[1];
+            okButton.Click += (s, e) => dialog.Close();
+
             await dialog.ShowDialog(this);
         }
+
+        #endregion
     }
 }
