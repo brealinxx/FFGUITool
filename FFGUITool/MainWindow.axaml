@@ -2,8 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="FFGUITool.MainWindow"
         Title="FFmpeg 视频压缩工具"
-        Width="800" Height="650"
-        MinWidth="600" MinHeight="550">
+        Width="800" Height="700"
+        MinWidth="600" MinHeight="600">
     
     <Grid>
         <Grid.RowDefinitions>
@@ -74,78 +74,136 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- 原视频信息显示（选择视频后显示）-->
+                    <Border Name="VideoInfoPanel" BorderBrush="PeachPuff" BorderThickness="1" 
+                            CornerRadius="5" Padding="15" Background="#FFFFDAb9"
+                            IsVisible="False">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="原视频信息" FontWeight="Bold" FontSize="16" Foreground="#4682B4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <!-- 第一行 -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="文件大小:" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Name="OriginalSizeText" Text="-" Margin="5,0,15,0"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="时长:" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="0" Grid.Column="3" Name="DurationText" Text="-" Margin="5,0,0,0"/>
+                                
+                                <!-- 第二行 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="原比特率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Name="OriginalBitrateText" Text="-" Margin="5,5,15,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="分辨率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="3" Name="ResolutionText" Text="-" Margin="5,5,0,0"/>
+                                
+                                <!-- 第三行 -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="帧率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Name="FramerateText" Text="-" Margin="5,5,15,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <!-- 压缩参数设置 -->
                     <Border BorderBrush="Gray" BorderThickness="1" 
                             CornerRadius="5" Padding="15">
-                        <StackPanel Spacing="10">
+                        <StackPanel Spacing="12">
                             <TextBlock Text="压缩设置" FontWeight="Bold" FontSize="16"/>
                             
-                            <!-- 压缩百分比滑动条 -->
+                            <!-- 压缩百分比输入框 -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
+                                    <ColumnDefinition Width="80"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 
                                 <TextBlock Grid.Column="0" Text="压缩率:" 
-                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <Slider Grid.Column="1" Name="CompressionSlider" 
-                                        Minimum="10" Maximum="100" Value="70"
-                                        TickFrequency="10" IsSnapToTickEnabled="True"
-                                        ValueChanged="CompressionSlider_ValueChanged"/>
-                                <TextBlock Grid.Column="2" Name="CompressionValueText" 
-                                           Text="70%" VerticalAlignment="Center" 
-                                           Margin="10,0,0,0" Width="60"/>
+                                           VerticalAlignment="Center"/>
+                                <NumericUpDown Grid.Column="1" Name="CompressionNumericUpDown" 
+                                               Minimum="10" Maximum="100" Value="70"
+                                               Increment="1" FormatString="0"
+                                               Margin="5,0,0,0"/>
+                                <TextBlock Grid.Column="2" Text="%" 
+                                           VerticalAlignment="Center" Margin="5,0,0,0"/>
                             </Grid>
 
-                            <!-- 手动比特率滑动条（可选） -->
+                            <!-- 手动比特率滑动条 -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="80"/>
                                 </Grid.ColumnDefinitions>
                                 
                                 <TextBlock Grid.Column="0" Text="手动比特率:" 
-                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <Slider Grid.Column="1" Name="BitrateSlider" 
-                                        Minimum="500" Maximum="10000" Value="2000"
-                                        TickFrequency="500" IsSnapToTickEnabled="True"
+                                           VerticalAlignment="Center"/>
+                                           
+                                <!-- 问号提示按钮 -->
+                                <Button Grid.Column="1" Name="BitrateHelpButton"
+                                        Content="?" Width="20" Height="20"
+                                        FontSize="12" FontWeight="Bold"
+                                        Background="LightBlue" Foreground="White"
+                                        CornerRadius="10" Margin="5,0,10,0"
+                                        VerticalAlignment="Center"
+                                        PointerEntered="BitrateHelpButton_PointerEntered"
+                                        PointerExited="BitrateHelpButton_PointerExited"/>
+                                
+                                <Slider Grid.Column="2" Name="BitrateSlider" 
+                                        Minimum="100" Maximum="50000" Value="2000"
+                                        TickFrequency="500" IsSnapToTickEnabled="False"
                                         ValueChanged="BitrateSlider_ValueChanged"/>
-                                <TextBlock Grid.Column="2" Name="BitrateValueText" 
+                                <TextBlock Grid.Column="3" Name="BitrateValueText" 
                                            Text="2000k" VerticalAlignment="Center" 
-                                           Margin="10,0,0,0" Width="60"/>
+                                           Margin="10,0,0,0" TextAlignment="Right"/>
                             </Grid>
 
-                            <!-- 预估比特率显示 -->
+                            <!-- 比特率警告信息 -->
+                            <TextBlock Name="BitrateWarningText" 
+                                       Text="⚠ 警告：当前比特率高于原视频，文件可能会变大！" 
+                                       Foreground="Orange" FontWeight="Bold"
+                                       FontSize="12" IsVisible="False"
+                                       Margin="85,0,0,0"/>
+
+                            <!-- 预估结果显示 -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 
-                                <TextBlock Grid.Column="0" Text="预估比特率:" 
-                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBlock Grid.Column="0" Text="预估结果:" 
+                                           VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1" Name="EstimatedBitrateText" 
                                            Text="请先选择视频文件" VerticalAlignment="Center"
-                                           Foreground="Gray"/>
+                                           Foreground="Gray" Margin="5,0,0,0"/>
                             </Grid>
 
                             <!-- 编码器选择 -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 
                                 <TextBlock Grid.Column="0" Text="编码器:" 
-                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                           VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1" Name="CodecComboBox" 
-                                          SelectedIndex="0" SelectionChanged="CodecComboBox_SelectionChanged">
-                                    <ComboBoxItem Content="H.264 (libx264)" Tag="libx264"/>
-                                    <ComboBoxItem Content="H.265 (libx265)" Tag="libx265"/>
-                                    <ComboBoxItem Content="VP9 (libvpx-vp9)" Tag="libvpx-vp9"/>
+                                          SelectedIndex="0" SelectionChanged="CodecComboBox_SelectionChanged"
+                                          Margin="5,0,0,0">
+                                    <ComboBoxItem Content="H.264 (libx264) - 兼容性最好" Tag="libx264"/>
+                                    <ComboBoxItem Content="H.265 (libx265) - 压缩率更高" Tag="libx265"/>
+                                    <ComboBoxItem Content="VP9 (libvpx-vp9) - 开源编码" Tag="libvpx-vp9"/>
                                 </ComboBox>
                             </Grid>
                         </StackPanel>
@@ -211,5 +269,48 @@
             </Grid>
 
         </Grid>
+        
+        <!-- 比特率帮助提示弹出框 -->
+        <Popup Name="BitrateTooltipPopup" 
+               PlacementMode="Right"
+               HorizontalOffset="10"
+               IsLightDismissEnabled="False">
+            <Border Background="White" 
+                    BorderBrush="Gray" 
+                    BorderThickness="1" 
+                    CornerRadius="5" 
+                    Padding="15"
+                    MaxWidth="300">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" OffsetY="2" Opacity="0.3"/>
+                </Border.Effect>
+                <StackPanel Spacing="8">
+                    <TextBlock Text="什么是比特率？" FontWeight="Bold" FontSize="14"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="12" LineHeight="1.5">
+                        比特率（Bitrate）是指单位时间内传输的数据量，通常以 kbps（千比特每秒）为单位。
+                    </TextBlock>
+                    <TextBlock Text="对视频压缩的影响：" FontWeight="SemiBold" FontSize="12" Margin="0,5,0,0"/>
+                    <StackPanel Spacing="3" Margin="10,0,0,0">
+                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                            • 更高的比特率 = 更好的画质，但文件更大
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                            • 更低的比特率 = 更小的文件，但画质下降
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                            • 建议根据视频内容和用途选择合适的比特率
+                        </TextBlock>
+                    </StackPanel>
+                    <Border Height="1" Background="LightGray" Margin="0,5,0,5"/>
+                    <TextBlock Text="参考值：" FontWeight="SemiBold" FontSize="12"/>
+                    <StackPanel Spacing="2" Margin="10,0,0,0">
+                        <TextBlock FontSize="11">• 4K (2160p): 15000-25000 kbps</TextBlock>
+                        <TextBlock FontSize="11">• 1080p: 4000-8000 kbps</TextBlock>
+                        <TextBlock FontSize="11">• 720p: 2000-4000 kbps</TextBlock>
+                        <TextBlock FontSize="11">• 480p: 1000-2000 kbps</TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Window>
