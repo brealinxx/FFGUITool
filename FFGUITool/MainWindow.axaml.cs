@@ -61,6 +61,36 @@ namespace FFGUITool
             {
                 CompressionNumericUpDown.ValueChanged += CompressionNumericUpDown_ValueChanged;
             }
+    
+            // 为比特率输入框添加事件处理器
+            if (BitrateNumericUpDown != null)
+            {
+                BitrateNumericUpDown.ValueChanged += BitrateNumericUpDown_ValueChanged;
+            }
+        }
+        
+        private void BitrateNumericUpDown_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+        {
+            if (!_isInitialized || sender is not NumericUpDown numericUpDown) return;
+
+            var newValue = (int)(numericUpDown.Value ?? 2000);
+            _calculatedBitrate = newValue;
+
+            // 同步更新滑动条，但不触发其事件
+            if (BitrateSlider != null && Math.Abs(BitrateSlider.Value - newValue) > 0.1)
+            {
+                BitrateSlider.Value = newValue;
+            }
+
+            // 更新显示文本
+            if (BitrateValueText != null)
+            {
+                BitrateValueText.Text = $"{_calculatedBitrate}k";
+            }
+
+            // 检查警告和更新预估信息
+            UpdateBitrateWarningAndEstimation();
+            UpdateCommand();
         }
 
         private async void MainWindow_Loaded(object sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -485,42 +515,27 @@ namespace FFGUITool
                 // 根据编码器调整比特率
                 targetBitrate = AdjustBitrateForCodec(targetBitrate, _codec);
 
-                // 根据分辨率调整比特率范围
-                targetBitrate = ClampBitrateByResolution(targetBitrate, _currentVideoInfo.Resolution);
+                // 确保比特率在合理范围内，但不超过原视频比特率（除非手动设置）
+                targetBitrate = Math.Max(1, Math.Min(targetBitrate, originalBitrate));
 
-                _calculatedBitrate = Math.Max(100, targetBitrate); // 最小100k
+                _calculatedBitrate = targetBitrate;
 
-                // 更新滑动条的值
+                // 动态调整滑动条和输入框的范围
+                UpdateBitrateControlsRange(originalBitrate);
+
+                // 更新控件值
                 if (BitrateSlider != null)
                 {
                     BitrateSlider.Value = _calculatedBitrate;
                 }
-
-                // 检查是否超过原视频比特率
-                if (BitrateWarningText != null)
+        
+                if (BitrateNumericUpDown != null)
                 {
-                    BitrateWarningText.IsVisible = _calculatedBitrate > originalBitrate;
+                    BitrateNumericUpDown.Value = _calculatedBitrate;
                 }
 
-                // 计算预估文件大小
-                var estimatedSize = CalculateEstimatedFileSize(_calculatedBitrate, _currentVideoInfo.Duration);
-                var originalSizeMB = _currentVideoInfo.FileSize / 1024.0 / 1024.0;
-                var estimatedSizeMB = estimatedSize / 1024.0 / 1024.0;
-
-                if (estimatedSizeMB > originalSizeMB)
-                {
-                    var increaseRatio = (estimatedSizeMB / originalSizeMB - 1) * 100;
-                    EstimatedBitrateText.Text =
-                        $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 增大: {increaseRatio:F1}%)";
-                    EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Orange;
-                }
-                else
-                {
-                    var compressionRatio = (1 - estimatedSizeMB / originalSizeMB) * 100;
-                    EstimatedBitrateText.Text =
-                        $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 压缩: {compressionRatio:F1}%)";
-                    EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Green;
-                }
+                // 检查警告和更新预估信息
+                UpdateBitrateWarningAndEstimation();
             }
             catch
             {
@@ -538,6 +553,53 @@ namespace FFGUITool
                 "libvpx-vp9" => (int)(baseBitrate * 0.8), // VP9效率较高
                 _ => baseBitrate // H.264基准
             };
+        }
+        
+        private void UpdateBitrateControlsRange(int originalBitrate)
+        {
+            // 设置最大值为原视频比特率的1.5倍，最小值为1
+            var maxBitrate = Math.Max(originalBitrate * 3 / 2, 50000); // 至少保持50000的上限
+            var minBitrate = 1;
+
+            if (BitrateSlider != null)
+            {
+                BitrateSlider.Minimum = minBitrate;
+                BitrateSlider.Maximum = maxBitrate;
+        
+                // 根据范围调整步进值
+                if (maxBitrate > 10000)
+                {
+                    BitrateSlider.TickFrequency = 1000;
+                }
+                else if (maxBitrate > 5000)
+                {
+                    BitrateSlider.TickFrequency = 500;
+                }
+                else
+                {
+                    BitrateSlider.TickFrequency = 100;
+                }
+            }
+
+            if (BitrateNumericUpDown != null)
+            {
+                BitrateNumericUpDown.Minimum = minBitrate;
+                BitrateNumericUpDown.Maximum = maxBitrate;
+        
+                // 根据范围调整增量
+                if (maxBitrate > 10000)
+                {
+                    BitrateNumericUpDown.Increment = 500;
+                }
+                else if (maxBitrate > 5000)
+                {
+                    BitrateNumericUpDown.Increment = 100;
+                }
+                else
+                {
+                    BitrateNumericUpDown.Increment = 50;
+                }
+            }
         }
 
         private int ClampBitrateByResolution(int bitrate, string resolution)
@@ -707,50 +769,60 @@ namespace FFGUITool
             ScheduleUpdate();
         }
 
-        private void BitrateSlider_ValueChanged(object sender,
-            Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        private void BitrateSlider_ValueChanged(object sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             if (!_isInitialized) return;
 
             _calculatedBitrate = (int)e.NewValue;
+    
+            // 同步更新输入框，但不触发其事件
+            if (BitrateNumericUpDown != null && Math.Abs((decimal)(BitrateNumericUpDown.Value ?? 0) - (decimal)_calculatedBitrate) > 0.1m)
+            {
+                BitrateNumericUpDown.Value = _calculatedBitrate;
+            }
+
             if (BitrateValueText != null)
             {
                 BitrateValueText.Text = $"{_calculatedBitrate}k";
             }
 
+            // 检查警告和更新预估信息
+            UpdateBitrateWarningAndEstimation();
+            UpdateCommand();
+        }
+        
+        private void UpdateBitrateWarningAndEstimation()
+        {
+            if (_currentVideoInfo == null) return;
+
             // 检查是否超过原视频比特率
-            if (_currentVideoInfo != null)
+            var showWarning = _calculatedBitrate > _currentVideoInfo.Bitrate;
+            if (BitrateWarningText != null)
             {
-                var showWarning = _calculatedBitrate > _currentVideoInfo.Bitrate;
-                if (BitrateWarningText != null)
-                {
-                    BitrateWarningText.IsVisible = showWarning;
-                }
-
-                // 更新预估信息
-                var estimatedSize = CalculateEstimatedFileSize(_calculatedBitrate, _currentVideoInfo.Duration);
-                var originalSizeMB = _currentVideoInfo.FileSize / 1024.0 / 1024.0;
-                var estimatedSizeMB = estimatedSize / 1024.0 / 1024.0;
-
-                if (estimatedSizeMB > originalSizeMB)
-                {
-                    // 文件会变大的情况
-                    var increaseRatio = (estimatedSizeMB / originalSizeMB - 1) * 100;
-                    EstimatedBitrateText.Text =
-                        $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 增大: {increaseRatio:F1}%)";
-                    EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Orange;
-                }
-                else
-                {
-                    // 正常压缩的情况
-                    var compressionRatio = (1 - estimatedSizeMB / originalSizeMB) * 100;
-                    EstimatedBitrateText.Text =
-                        $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 压缩: {compressionRatio:F1}%)";
-                    EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Green;
-                }
+                BitrateWarningText.IsVisible = showWarning;
             }
 
-            UpdateCommand();
+            // 更新预估信息
+            var estimatedSize = CalculateEstimatedFileSize(_calculatedBitrate, _currentVideoInfo.Duration);
+            var originalSizeMB = _currentVideoInfo.FileSize / 1024.0 / 1024.0;
+            var estimatedSizeMB = estimatedSize / 1024.0 / 1024.0;
+
+            if (estimatedSizeMB > originalSizeMB)
+            {
+                // 文件会变大的情况
+                var increaseRatio = (estimatedSizeMB / originalSizeMB - 1) * 100;
+                EstimatedBitrateText.Text =
+                    $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 增大: {increaseRatio:F1}%)";
+                EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Orange;
+            }
+            else
+            {
+                // 正常压缩的情况
+                var compressionRatio = (1 - estimatedSizeMB / originalSizeMB) * 100;
+                EstimatedBitrateText.Text =
+                    $"{_calculatedBitrate}k (预估: {estimatedSizeMB:F1}MB, 压缩: {compressionRatio:F1}%)";
+                EstimatedBitrateText.Foreground = Avalonia.Media.Brushes.Green;
+            }
         }
 
         private async void CodecComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
