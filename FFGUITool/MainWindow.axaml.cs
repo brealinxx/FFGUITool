@@ -14,6 +14,9 @@ using System.Globalization;
 using Avalonia.Input;
 using System.Threading;
 using Avalonia.Controls.Primitives;
+using Avalonia.Media;
+using Avalonia.Styling;
+using Avalonia;
 
 namespace FFGUITool
 {
@@ -39,6 +42,7 @@ namespace FFGUITool
         private VideoInfo? _currentVideoInfo;
         private Timer? _updateTimer;
         private bool _isTooltipVisible = false;
+        private ThemeVariant _currentTheme = ThemeVariant.Default;
 
         public MainWindow()
         {
@@ -52,6 +56,9 @@ namespace FFGUITool
 
             // 初始化计时器用于延迟更新
             _updateTimer = new Timer(OnUpdateTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
+
+            ApplyTheme(ThemeVariant.Default);
+            UpdateThemeResources();
         }
 
         private void InitializeEvents()
@@ -61,14 +68,14 @@ namespace FFGUITool
             {
                 CompressionNumericUpDown.ValueChanged += CompressionNumericUpDown_ValueChanged;
             }
-    
+
             // 为比特率输入框添加事件处理器
             if (BitrateNumericUpDown != null)
             {
                 BitrateNumericUpDown.ValueChanged += BitrateNumericUpDown_ValueChanged;
             }
         }
-        
+
         private void BitrateNumericUpDown_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
         {
             if (!_isInitialized || sender is not NumericUpDown numericUpDown) return;
@@ -193,8 +200,8 @@ namespace FFGUITool
                 {
                     Source = new Avalonia.Media.Imaging.Bitmap(
                         Avalonia.Platform.AssetLoader.Open(new Uri("avares://FFGUITool/Resource/icon.ico"))),
-                    Width = 48,
-                    Height = 48,
+                    Width = 64,
+                    Height = 64,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
             }
@@ -204,7 +211,7 @@ namespace FFGUITool
                 iconControl = new TextBlock
                 {
                     Text = "🎬",
-                    FontSize = 32,
+                    FontSize = 40,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
             }
@@ -212,40 +219,42 @@ namespace FFGUITool
             var aboutDialog = new Window
             {
                 Title = "关于 FFGUITool",
-                Width = 480,
-                Height = 420,
+                Width = 560,
+                Height = 520,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 CanResize = false,
                 Content = new ScrollViewer
                 {
-                    Margin = new Avalonia.Thickness(10),
+                    Padding = new Avalonia.Thickness(0, 10, 0, 10),
                     Content = new StackPanel
                     {
-                        Margin = new Avalonia.Thickness(20),
-                        Spacing = 15,
+                        Margin = new Avalonia.Thickness(30, 20, 30, 20),
+                        Spacing = 20,
                         Children =
                         {
                             // 应用图标和标题
                             new StackPanel
                             {
                                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                Spacing = 10,
+                                Spacing = 15,
+                                Margin = new Avalonia.Thickness(0, 0, 0, 10),
                                 Children =
                                 {
                                     iconControl,
                                     new TextBlock
                                     {
                                         Text = "FFGUITool",
-                                        FontSize = 22,
+                                        FontSize = 26,
                                         FontWeight = Avalonia.Media.FontWeight.Bold,
                                         HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
                                     },
                                     new TextBlock
                                     {
                                         Text = "FFmpeg 视频压缩工具",
-                                        FontSize = 14,
+                                        FontSize = 16,
                                         Foreground = Avalonia.Media.Brushes.Gray,
-                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        Margin = new Avalonia.Thickness(0, 5, 0, 0)
                                     }
                                 }
                             },
@@ -255,31 +264,72 @@ namespace FFGUITool
                             {
                                 Height = 1,
                                 Background = Avalonia.Media.Brushes.LightGray,
-                                Margin = new Avalonia.Thickness(0, 5, 0, 5)
+                                Margin = new Avalonia.Thickness(20, 10, 20, 10),
+                                Opacity = 0.5
                             },
 
                             // 版本信息
                             new StackPanel
                             {
-                                Spacing = 8,
+                                Spacing = 12,
                                 Children =
                                 {
                                     new TextBlock
                                     {
                                         Text = "版本信息",
                                         FontWeight = Avalonia.Media.FontWeight.Bold,
-                                        FontSize = 14
+                                        FontSize = 16,
+                                        Margin = new Avalonia.Thickness(0, 0, 0, 5)
                                     },
-                                    new TextBlock
+                                    new StackPanel
                                     {
-                                        Text = $"应用版本：{version}",
-                                        Margin = new Avalonia.Thickness(10, 0, 0, 0)
-                                    },
-                                    new TextBlock
-                                    {
-                                        Text = $"FFmpeg：{ffmpegVersion}",
-                                        Margin = new Avalonia.Thickness(10, 0, 0, 0),
-                                        TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                                        Margin = new Avalonia.Thickness(20, 0, 0, 0),
+                                        Spacing = 8,
+                                        Children =
+                                        {
+                                            new StackPanel
+                                            {
+                                                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                                Spacing = 10,
+                                                Children =
+                                                {
+                                                    new TextBlock
+                                                    {
+                                                        Text = "应用版本：",
+                                                        FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                                                        Width = 120,
+                                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                                    },
+                                                    new TextBlock
+                                                    {
+                                                        Text = version,
+                                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                                                    }
+                                                }
+                                            },
+                                            new StackPanel
+                                            {
+                                                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                                Spacing = 10,
+                                                Children =
+                                                {
+                                                    new TextBlock
+                                                    {
+                                                        Text = "FFmpeg：",
+                                                        FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                                                        Width = 120,
+                                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top
+                                                    },
+                                                    new TextBlock
+                                                    {
+                                                        Text = ffmpegVersion,
+                                                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                                                        MaxWidth = 350
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -287,21 +337,23 @@ namespace FFGUITool
                             // 功能介绍
                             new StackPanel
                             {
-                                Spacing = 8,
+                                Spacing = 12,
                                 Children =
                                 {
                                     new TextBlock
                                     {
                                         Text = "功能特性",
                                         FontWeight = Avalonia.Media.FontWeight.Bold,
-                                        FontSize = 14
+                                        FontSize = 16,
+                                        Margin = new Avalonia.Thickness(0, 0, 0, 5)
                                     },
                                     new TextBlock
                                     {
                                         Text = "这是一个基于FFmpeg的视频压缩工具，提供友好的图形界面来简化视频压缩操作。",
-                                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                                        Margin = new Avalonia.Thickness(10, 0, 0, 0),
-                                        LineHeight = 1.3
+                                        //TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                        //Margin = new Avalonia.Thickness(20, 0, 20, 0),
+                                        //LineHeight = 1.5,
+                                        FontSize = 14
                                     }
                                 }
                             },
@@ -309,24 +361,82 @@ namespace FFGUITool
                             // 支持的编码器
                             new StackPanel
                             {
-                                Spacing = 8,
+                                Spacing = 12,
                                 Children =
                                 {
                                     new TextBlock
                                     {
                                         Text = "支持的编码器",
                                         FontWeight = Avalonia.Media.FontWeight.Bold,
-                                        FontSize = 14
+                                        FontSize = 16,
+                                        Margin = new Avalonia.Thickness(0, 0, 0, 5)
                                     },
                                     new StackPanel
                                     {
-                                        Margin = new Avalonia.Thickness(10, 0, 0, 0),
-                                        Spacing = 3,
+                                        Margin = new Avalonia.Thickness(20, 0, 0, 0),
+                                        Spacing = 8,
                                         Children =
                                         {
-                                            new TextBlock { Text = "• H.264 (libx264) - 广泛兼容" },
-                                            new TextBlock { Text = "• H.265 (libx265) - 高压缩比" },
-                                            new TextBlock { Text = "• VP9 (libvpx-vp9) - 开源编码" }
+                                            new StackPanel
+                                            {
+                                                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                                Spacing = 10,
+                                                Children =
+                                                {
+                                                    new TextBlock
+                                                    {
+                                                        Text = "•",
+                                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                                        Foreground = new SolidColorBrush(Color.Parse("#4A90E2")),
+                                                        FontSize = 16
+                                                    },
+                                                    new TextBlock
+                                                    {
+                                                        Text = "H.264 (libx264) - 广泛兼容",
+                                                        FontSize = 14
+                                                    }
+                                                }
+                                            },
+                                            new StackPanel
+                                            {
+                                                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                                Spacing = 10,
+                                                Children =
+                                                {
+                                                    new TextBlock
+                                                    {
+                                                        Text = "•",
+                                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                                        Foreground = new SolidColorBrush(Color.Parse("#4A90E2")),
+                                                        FontSize = 16
+                                                    },
+                                                    new TextBlock
+                                                    {
+                                                        Text = "H.265 (libx265) - 高压缩比",
+                                                        FontSize = 14
+                                                    }
+                                                }
+                                            },
+                                            new StackPanel
+                                            {
+                                                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                                Spacing = 10,
+                                                Children =
+                                                {
+                                                    new TextBlock
+                                                    {
+                                                        Text = "•",
+                                                        FontWeight = Avalonia.Media.FontWeight.Bold,
+                                                        Foreground = new SolidColorBrush(Color.Parse("#4A90E2")),
+                                                        FontSize = 16
+                                                    },
+                                                    new TextBlock
+                                                    {
+                                                        Text = "VP9 (libvpx-vp9) - 开源编码",
+                                                        FontSize = 14
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -337,22 +447,31 @@ namespace FFGUITool
                             {
                                 Height = 1,
                                 Background = Avalonia.Media.Brushes.LightGray,
-                                Margin = new Avalonia.Thickness(0, 10, 0, 5)
+                                Margin = new Avalonia.Thickness(20, 15, 20, 15),
+                                Opacity = 0.5
                             },
 
-                            new TextBlock
+                            new StackPanel
                             {
-                                Text = "© 2025 FFGUITool Powered by FFmpeg",
+                                Spacing = 8,
                                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                FontSize = 12,
-                                Foreground = Avalonia.Media.Brushes.Gray
-                            },
-                            new TextBlock
-                            {
-                                Text = "Assembled by brealin",
-                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                FontSize = 12,
-                                Foreground = Avalonia.Media.Brushes.Gray
+                                Children =
+                                {
+                                    new TextBlock
+                                    {
+                                        Text = "© 2025 FFGUITool Powered by FFmpeg and Avalonia",
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        FontSize = 13,
+                                        Foreground = Avalonia.Media.Brushes.Gray
+                                    },
+                                    new TextBlock
+                                    {
+                                        Text = "Assembled by brealin",
+                                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                        FontSize = 13,
+                                        Foreground = Avalonia.Media.Brushes.Gray
+                                    }
+                                }
                             },
 
                             // 确定按钮
@@ -360,9 +479,11 @@ namespace FFGUITool
                             {
                                 Content = "确定",
                                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                Width = 100,
-                                Height = 35,
-                                Margin = new Avalonia.Thickness(0, 10, 0, 0)
+                                Width = 120,
+                                Height = 40,
+                                Margin = new Avalonia.Thickness(0, 10, 0, 30),
+                                FontSize = 14,
+                                Classes = { "primary-button" }
                             }
                         }
                     }
@@ -528,7 +649,7 @@ namespace FFGUITool
                 {
                     BitrateSlider.Value = _calculatedBitrate;
                 }
-        
+
                 if (BitrateNumericUpDown != null)
                 {
                     BitrateNumericUpDown.Value = _calculatedBitrate;
@@ -554,7 +675,7 @@ namespace FFGUITool
                 _ => baseBitrate // H.264基准
             };
         }
-        
+
         private void UpdateBitrateControlsRange(int originalBitrate)
         {
             // 设置最大值为原视频比特率的1.5倍，最小值为1
@@ -565,7 +686,7 @@ namespace FFGUITool
             {
                 BitrateSlider.Minimum = minBitrate;
                 BitrateSlider.Maximum = maxBitrate;
-        
+
                 // 根据范围调整步进值
                 if (maxBitrate > 10000)
                 {
@@ -585,7 +706,7 @@ namespace FFGUITool
             {
                 BitrateNumericUpDown.Minimum = minBitrate;
                 BitrateNumericUpDown.Maximum = maxBitrate;
-        
+
                 // 根据范围调整增量
                 if (maxBitrate > 10000)
                 {
@@ -609,7 +730,7 @@ namespace FFGUITool
                 var r when r.Contains("3840x2160") => (3000, 50000), // 4K - 提高上限
                 var r when r.Contains("2560x1440") => (2000, 30000), // 1440p - 提高上限
                 var r when r.Contains("1920x1080") => (1000, 20000), // 1080p - 提高上限
-                var r when r.Contains("1280x720") => (500, 10000),   // 720p - 提高上限
+                var r when r.Contains("1280x720") => (500, 10000), // 720p - 提高上限
                 _ => (200, 5000) // 其他分辨率 - 提高上限
             };
 
@@ -769,14 +890,16 @@ namespace FFGUITool
             ScheduleUpdate();
         }
 
-        private void BitrateSlider_ValueChanged(object sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        private void BitrateSlider_ValueChanged(object sender,
+            Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             if (!_isInitialized) return;
 
             _calculatedBitrate = (int)e.NewValue;
-    
+
             // 同步更新输入框，但不触发其事件
-            if (BitrateNumericUpDown != null && Math.Abs((decimal)(BitrateNumericUpDown.Value ?? 0) - (decimal)_calculatedBitrate) > 0.1m)
+            if (BitrateNumericUpDown != null &&
+                Math.Abs((decimal)(BitrateNumericUpDown.Value ?? 0) - (decimal)_calculatedBitrate) > 0.1m)
             {
                 BitrateNumericUpDown.Value = _calculatedBitrate;
             }
@@ -790,7 +913,7 @@ namespace FFGUITool
             UpdateBitrateWarningAndEstimation();
             UpdateCommand();
         }
-        
+
         private void UpdateBitrateWarningAndEstimation()
         {
             if (_currentVideoInfo == null) return;
@@ -993,6 +1116,114 @@ namespace FFGUITool
         {
             _updateTimer?.Dispose();
             base.OnClosed(e);
+        }
+
+        #endregion
+
+        #region 主题切换
+
+        private void ThemeSystemMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            ApplyTheme(ThemeVariant.Default);
+            UpdateThemeMenuChecks("System");
+        }
+
+        private void ThemeLightMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            ApplyTheme(ThemeVariant.Light);
+            UpdateThemeMenuChecks("Light");
+        }
+
+        private void ThemeDarkMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            ApplyTheme(ThemeVariant.Dark);
+            UpdateThemeMenuChecks("Dark");
+        }
+
+        private void ThemeToggleButton_IsCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleButton toggleButton)
+            {
+                var theme = toggleButton.IsChecked == true ? ThemeVariant.Dark : ThemeVariant.Light;
+                ApplyTheme(theme);
+                UpdateThemeMenuChecks(theme == ThemeVariant.Dark ? "Dark" : "Light");
+            }
+        }
+
+        private void ApplyTheme(ThemeVariant theme)
+        {
+            _currentTheme = theme;
+            Application.Current!.RequestedThemeVariant = theme;
+            UpdateThemeResources();
+        }
+
+        private void UpdateThemeMenuChecks(string selectedTheme)
+        {
+            // 更新菜单项的勾选状态
+            if (ThemeSystemCheck != null) ThemeSystemCheck.IsVisible = selectedTheme == "System";
+            if (ThemeLightCheck != null) ThemeLightCheck.IsVisible = selectedTheme == "Light";
+            if (ThemeDarkCheck != null) ThemeDarkCheck.IsVisible = selectedTheme == "Dark";
+
+            // 更新切换按钮状态
+            if (ThemeToggleButton != null && selectedTheme != "System")
+            {
+                ThemeToggleButton.IsChecked = selectedTheme == "Dark";
+            }
+        }
+
+        private void UpdateThemeResources()
+        {
+            // 判断当前是否为深色主题
+            var isDark = _currentTheme == ThemeVariant.Dark ||
+                         (_currentTheme == ThemeVariant.Default &&
+                          Application.Current!.ActualThemeVariant == ThemeVariant.Dark);
+
+            // 更新动态资源
+            Resources["CardBackground"] = isDark ? Resources["CardBackgroundDark"] : Resources["CardBackgroundLight"];
+            Resources["CardBorderBrush"] =
+                isDark ? Resources["CardBorderBrushDark"] : Resources["CardBorderBrushLight"];
+
+            // 更新视频信息面板样式
+            if (VideoInfoPanel != null)
+            {
+                VideoInfoPanel.Background = isDark
+                    ? new SolidColorBrush(Color.Parse("#1E3A5F"))
+                    : new SolidColorBrush(Color.Parse("#F0F8FF"));
+                VideoInfoPanel.BorderBrush = isDark
+                    ? new SolidColorBrush(Color.Parse("#5E9ED6"))
+                    : new SolidColorBrush(Color.Parse("#4682B4"));
+            }
+
+            // 更新命令框样式
+            if (CommandTextBox != null)
+            {
+                CommandTextBox.Background = isDark
+                    ? new SolidColorBrush(Color.Parse("#1E1E1E"))
+                    : new SolidColorBrush(Color.Parse("#2D2D30"));
+                CommandTextBox.Foreground = new SolidColorBrush(Color.Parse("#00FF00"));
+            }
+
+            // 更新帮助按钮样式
+            if (BitrateHelpButton != null)
+            {
+                BitrateHelpButton.Background = isDark
+                    ? new SolidColorBrush(Color.Parse("#5E81AC"))
+                    : new SolidColorBrush(Color.Parse("#87CEEB"));
+            }
+
+            // 更新工具提示样式
+            if (BitrateTooltipPopup?.Child is Border tooltipBorder)
+            {
+                tooltipBorder.Background = isDark
+                    ? new SolidColorBrush(Color.Parse("#2D2D30"))
+                    : new SolidColorBrush(Color.Parse("#FFFFFF"));
+                tooltipBorder.BorderBrush = isDark
+                    ? new SolidColorBrush(Color.Parse("#3F3F46"))
+                    : new SolidColorBrush(Color.Parse("#E0E0E0"));
+            }
+
+            // 更新其他对话框的主题（如关于对话框）
+            // 这将在创建新窗口时应用当前主题
         }
 
         #endregion

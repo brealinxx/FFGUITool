@@ -2,8 +2,33 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="FFGUITool.MainWindow"
         Title="FFmpeg 视频压缩工具"
-        Width="800" Height="700"
-        MinWidth="600" MinHeight="600">
+        Width="900" Height="750"
+        MinWidth="700" MinHeight="650">
+    
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.info-card">
+            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        </Style>
+    </Window.Styles>
+    
+    <Window.Resources>
+        <!-- 浅色主题资源 -->
+        <SolidColorBrush x:Key="CardBackgroundLight" Color="#FAFAFA"/>
+        <SolidColorBrush x:Key="CardBorderBrushLight" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="VideoInfoBackgroundLight" Color="#F0F8FF"/>
+        <SolidColorBrush x:Key="VideoInfoBorderLight" Color="#4682B4"/>
+        
+        <!-- 深色主题资源 -->
+        <SolidColorBrush x:Key="CardBackgroundDark" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="CardBorderBrushDark" Color="#3F3F46"/>
+        <SolidColorBrush x:Key="VideoInfoBackgroundDark" Color="#1E3A5F"/>
+        <SolidColorBrush x:Key="VideoInfoBorderDark" Color="#5E9ED6"/>
+    </Window.Resources>
     
     <Grid>
         <Grid.RowDefinitions>
@@ -21,6 +46,25 @@
                 <Separator/>
                 <MenuItem Header="重新检测FFmpeg(_R)" Name="RedetectFFmpegMenuItem" Click="RedetectFFmpegMenuItem_Click"/>
             </MenuItem>
+            <MenuItem Header="视图(_V)">
+                <MenuItem Header="主题(_T)">
+                    <MenuItem Header="跟随系统" Name="ThemeSystemMenuItem" Click="ThemeSystemMenuItem_Click">
+                        <MenuItem.Icon>
+                            <TextBlock Text="●" Name="ThemeSystemCheck" IsVisible="True"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="浅色" Name="ThemeLightMenuItem" Click="ThemeLightMenuItem_Click">
+                        <MenuItem.Icon>
+                            <TextBlock Text="●" Name="ThemeLightCheck" IsVisible="False"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="深色" Name="ThemeDarkMenuItem" Click="ThemeDarkMenuItem_Click">
+                        <MenuItem.Icon>
+                            <TextBlock Text="●" Name="ThemeDarkCheck" IsVisible="False"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </MenuItem>
+            </MenuItem>
             <MenuItem Header="帮助(_H)">
                 <MenuItem Header="关于(_A)" Name="AboutMenuItem" Click="AboutMenuItem_Click"/>
             </MenuItem>
@@ -35,21 +79,50 @@
                 <RowDefinition Height="120"/>
             </Grid.RowDefinitions>
 
-            <!-- 顶部标题 -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
-                <TextBlock Text="FFGUITool" 
-                           FontSize="24" FontWeight="Bold"/>
-                <TextBlock Name="FFmpegStatusText" Text=" - FFmpeg状态检测中..." 
-                           FontSize="14" VerticalAlignment="Bottom" 
-                           Margin="10,0,0,2" Foreground="Gray"/>
-            </StackPanel>
+            <!-- 顶部标题和主题切换 -->
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- 中间标题区域 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBlock Text="FFGUITool" 
+                               FontSize="24" FontWeight="Bold"/>
+                    <TextBlock Name="FFmpegStatusText" Text=" - FFmpeg状态检测中..." 
+                               FontSize="14" VerticalAlignment="Bottom" 
+                               Margin="10,0,0,2" Foreground="Gray"/>
+                </StackPanel>
+                
+                <!-- 右侧主题切换按钮 -->
+                <ToggleButton Grid.Column="2" Name="ThemeToggleButton"
+                              HorizontalAlignment="Right"
+                              Width="50" Height="30"
+                              ToolTip.Tip="切换深色/浅色主题"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              IsCheckedChanged="ThemeToggleButton_IsCheckedChanged">
+                    <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="🌙" 
+                                   HorizontalAlignment="Center" 
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding !IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                        <TextBlock Text="☀️" 
+                                   HorizontalAlignment="Center" 
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                    </Panel>
+                </ToggleButton>
+            </Grid>
 
             <!-- 主要操作区域 -->
             <ScrollViewer Grid.Row="1">
                 <StackPanel Spacing="15">
                     
                     <!-- 文件选择区域 -->
-                    <Border BorderBrush="Gray" BorderThickness="1" 
+                    <Border Classes="info-card" BorderThickness="1" 
                             CornerRadius="5" Padding="15">
                         <StackPanel Spacing="10">
                             <TextBlock Text="文件选择" FontWeight="Bold" FontSize="16"/>
@@ -74,12 +147,14 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 原视频信息显示（选择视频后显示）-->
-                    <Border Name="VideoInfoPanel" BorderBrush="PeachPuff" BorderThickness="1" 
-                            CornerRadius="5" Padding="15" Background="#000"
+                    <!-- 原视频信息显示 -->
+                    <Border Name="VideoInfoPanel" 
+                            Classes="video-info"
+                            BorderThickness="1" 
+                            CornerRadius="5" Padding="15"
                             IsVisible="False">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="原视频信息" FontWeight="Bold" FontSize="16" Foreground="#4682B4"/>
+                            <TextBlock Text="原视频信息" FontWeight="Bold" FontSize="16"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" MinWidth="100"/>
@@ -113,7 +188,7 @@
                     </Border>
 
                     <!-- 压缩参数设置 -->
-                    <Border BorderBrush="Gray" BorderThickness="1" 
+                    <Border Classes="info-card" BorderThickness="1" 
                             CornerRadius="5" Padding="15">
                         <StackPanel Spacing="12">
                             <TextBlock Text="压缩设置" FontWeight="Bold" FontSize="16"/>
@@ -137,10 +212,10 @@
                                            VerticalAlignment="Center" Margin="10,0,0,0"/>
                                 <TextBlock Grid.Column="3" Text="（数值越小压缩越多）" 
                                            VerticalAlignment="Center" Margin="15,0,0,0"
-                                           Foreground="Gray" FontSize="12"/>
+                                           Opacity="0.7" FontSize="12"/>
                             </Grid>
 
-                            <!-- 手动比特率控制 - 优化布局版本 -->
+                            <!-- 手动比特率控制 -->
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -154,9 +229,9 @@
                                     <Button Name="BitrateHelpButton"
                                             Content="?" Width="20" Height="20"
                                             FontSize="12" FontWeight="Bold"
-                                            Background="LightBlue" Foreground="White"
                                             CornerRadius="10" Margin="8,0,0,0"
                                             VerticalAlignment="Center"
+                                            Classes="help-button"
                                             PointerEntered="BitrateHelpButton_PointerEntered"
                                             PointerExited="BitrateHelpButton_PointerExited"/>
                                 </StackPanel>
@@ -207,7 +282,7 @@
                                            VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1" Name="EstimatedBitrateText" 
                                            Text="请先选择视频文件" VerticalAlignment="Center"
-                                           Foreground="Gray" Margin="5,0,0,0" TextWrapping="Wrap"/>
+                                           Opacity="0.7" Margin="5,0,0,0" TextWrapping="Wrap"/>
                             </Grid>
 
                             <!-- 编码器选择 -->
@@ -231,7 +306,7 @@
                     </Border>
 
                     <!-- 输出设置 -->
-                    <Border BorderBrush="Gray" BorderThickness="1" 
+                    <Border Classes="info-card" BorderThickness="1" 
                             CornerRadius="5" Padding="15">
                         <StackPanel Spacing="10">
                             <TextBlock Text="输出设置" FontWeight="Bold" FontSize="16"/>
@@ -256,7 +331,7 @@
             </ScrollViewer>
 
             <!-- 分隔线 -->
-            <Border Grid.Row="2" Height="1" Background="Gray" Margin="0,10"/>
+            <Border Grid.Row="2" Height="1" Opacity="0.3" Background="{DynamicResource CardBorderBrush}" Margin="0,10"/>
 
             <!-- CLI命令显示和执行区域 -->
             <Grid Grid.Row="3">
@@ -270,10 +345,12 @@
                            FontWeight="Bold" Margin="0,0,0,5"/>
                 
                 <TextBox Grid.Row="1" Name="CommandTextBox" 
-                         Background="Black" Foreground="White" 
-                         FontFamily="Consolas" FontSize="12"
+                         Classes="command-box"
+                         FontFamily="Consolas,Courier New,monospace" FontSize="12"
                          IsReadOnly="True" TextWrapping="Wrap"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         LineHeight="18"
+                         Padding="8,6,8,4"/>
                 
                 <Grid Grid.Row="2" Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
@@ -285,6 +362,7 @@
                                  Height="30" IsVisible="False"/>
                     <Button Grid.Column="1" Content="执行" Name="ExecuteButton" 
                             Width="100" Height="30" Margin="10,0,0,0"
+                            Classes="primary-button"
                             Click="ExecuteButton_Click" IsEnabled="False"/>
                 </Grid>
             </Grid>
@@ -296,8 +374,7 @@
                PlacementMode="Right"
                HorizontalOffset="10"
                IsLightDismissEnabled="False">
-            <Border Background="White" 
-                    BorderBrush="Gray" 
+            <Border Classes="tooltip-card"
                     BorderThickness="1" 
                     CornerRadius="5" 
                     Padding="20"
@@ -309,50 +386,47 @@
                 <StackPanel Spacing="12">
                     <TextBlock Text="什么是比特率？" 
                                FontWeight="Bold" 
-                               FontSize="16" 
-                               Foreground="#2E3440"/>
+                               FontSize="16"/>
                     
                     <TextBlock TextWrapping="Wrap" 
                                FontSize="13" 
                                LineHeight="1.4"
-                               Foreground="#5E81AC">
+                               Opacity="0.8">
                         比特率（Bitrate）是指单位时间内传输的数据量，通常以 kbps（千比特每秒）为单位。它是衡量视频质量和文件大小的关键指标。
                     </TextBlock>
                     
-                    <Border Height="1" Background="#E5E9F0" Margin="0,5,0,5"/>
+                    <Border Height="1" Opacity="0.2" Background="{DynamicResource CardBorderBrush}" Margin="0,5,0,5"/>
                     
                     <TextBlock Text="对视频压缩的影响：" 
                                FontWeight="SemiBold" 
-                               FontSize="14"
-                               Foreground="#2E3440"/>
+                               FontSize="14"/>
                                
                     <StackPanel Spacing="6" Margin="15,0,0,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="•" FontWeight="Bold" Foreground="#81A1C1"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#4C566A">
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
                                 <Run Text="更高的比特率" FontWeight="SemiBold"/> = 更好的画质，但文件更大
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="•" FontWeight="Bold" Foreground="#81A1C1"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#4C566A">
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
                                 <Run Text="更低的比特率" FontWeight="SemiBold"/> = 更小的文件，但画质下降
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="•" FontWeight="Bold" Foreground="#81A1C1"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#4C566A">
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
                                 建议根据视频内容和用途选择合适的比特率
                             </TextBlock>
                         </StackPanel>
                     </StackPanel>
                     
-                    <Border Height="1" Background="#E5E9F0" Margin="0,8,0,5"/>
+                    <Border Height="1" Opacity="0.2" Background="{DynamicResource CardBorderBrush}" Margin="0,8,0,5"/>
                     
                     <TextBlock Text="参考值（推荐范围）：" 
                                FontWeight="SemiBold" 
-                               FontSize="14"
-                               Foreground="#2E3440"/>
+                               FontSize="14"/>
                                
                     <Grid Margin="15,0,0,0">
                         <Grid.ColumnDefinitions>
@@ -367,22 +441,22 @@
                         </Grid.RowDefinitions>
                         
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="4K (2160p):" FontWeight="SemiBold" FontSize="12" Foreground="#5E81AC" Margin="0,0,15,3"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="15000-25000 kbps" FontSize="12" Foreground="#4C566A" Margin="0,0,0,3"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="15000-25000 kbps" FontSize="12" Opacity="0.85" Margin="0,0,0,3"/>
                         
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="1080p:" FontWeight="SemiBold" FontSize="12" Foreground="#5E81AC" Margin="0,0,15,3"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="4000-8000 kbps" FontSize="12" Foreground="#4C566A" Margin="0,0,0,3"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="4000-8000 kbps" FontSize="12" Opacity="0.85" Margin="0,0,0,3"/>
                         
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="720p:" FontWeight="SemiBold" FontSize="12" Foreground="#5E81AC" Margin="0,0,15,3"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="2000-4000 kbps" FontSize="12" Foreground="#4C566A" Margin="0,0,0,3"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="2000-4000 kbps" FontSize="12" Opacity="0.85" Margin="0,0,0,3"/>
                         
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="480p:" FontWeight="SemiBold" FontSize="12" Foreground="#5E81AC" Margin="0,0,15,0"/>
-                        <TextBlock Grid.Row="3" Grid.Column="1" Text="1000-2000 kbps" FontSize="12" Foreground="#4C566A"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="1000-2000 kbps" FontSize="12" Opacity="0.85"/>
                     </Grid>
                     
                     <!-- 关闭提示 -->
                     <TextBlock Text="💡 提示：移开鼠标即可关闭此提示"
                                FontSize="11" 
-                               Foreground="#8FBCBB"
+                               Opacity="0.6"
                                HorizontalAlignment="Center"
                                Margin="0,10,0,0"
                                FontStyle="Italic"/>
