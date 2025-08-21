@@ -2,29 +2,48 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <UseWPF>false</UseWPF>
         <UseWindowsForms>false</UseWindowsForms>
-        <ApplicationIcon>Resource\icon.ico</ApplicationIcon>
+        <ApplicationIcon>Resources\Icons\icon.ico</ApplicationIcon>
         <AssemblyTitle>FFmpeg视频压缩工具</AssemblyTitle>
         <AssemblyDescription>基于FFmpeg的跨平台视频压缩GUI工具</AssemblyDescription>
         <LangVersion>latest</LangVersion>
-        <Version>0.0.1</Version>
+        <Version>1.0.0</Version>
         <Authors>brealin</Authors>
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- Avalonia Packages -->
         <PackageReference Include="Avalonia" Version="11.0.10" />
         <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.10" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
-        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.10" />
+
+        <!-- Dependency Injection -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+
+        <!-- Logging -->
+        <PackageReference Include="Serilog" Version="3.1.1" />
+        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="5.0.0" />
+
+        <!-- Reactive Extensions -->
+        <PackageReference Include="System.Reactive" Version="6.0.0" />
     </ItemGroup>
-    
+
     <ItemGroup>
-        <AvaloniaResource Include="Resource\**" />
+        <AvaloniaResource Include="Resources\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

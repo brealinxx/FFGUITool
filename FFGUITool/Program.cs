@@ -1,21 +1,87 @@
-﻿using Avalonia;
-using System;
+﻿using System;
+using Avalonia;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+using FFGUITool.Services;
+using FFGUITool.Services.Interfaces;
+using FFGUITool.ViewModels;
 
 namespace FFGUITool
 {
     internal class Program
     {
-        // Initialization code. Don't use any Avalonia, third-party APIs or any
-        // SynchronizationContext-dependent code before AppMain is called: things aren't initialized
-        // yet and stuff might break.
-        [STAThread]
-        public static void Main(string[] args) => BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(args);
+        public static IServiceProvider? ServiceProvider { get; private set; }
 
-        // Avalonia configuration, don't remove; also used by visual designer.
+        [STAThread]
+        public static void Main(string[] args)
+        {
+            // Configure Serilog
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File("logs/ffguitool-.log", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
+            try
+            {
+                Log.Information("Starting FFGUITool application");
+                BuildAvaloniaApp()
+                    .StartWithClassicDesktopLifetime(args);
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Application terminated unexpectedly");
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
+        }
+
         public static AppBuilder BuildAvaloniaApp()
-            => AppBuilder.Configure<App>()
+        {
+            // Build configuration
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .Build();
+
+            // Configure services
+            var services = new ServiceCollection();
+            ConfigureServices(services, configuration);
+            ServiceProvider = services.BuildServiceProvider();
+
+            return AppBuilder.Configure<App>()
                 .UsePlatformDetect()
-                .LogToTrace();
+                .LogToTrace()
+                .WithInterFont();
+        }
+
+        private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+        {
+            // Configuration
+            services.AddSingleton(configuration);
+
+            // Core Services
+            services.AddSingleton<IFFmpegService, FFmpegService>();
+            services.AddSingleton<IMediaAnalyzer, MediaAnalyzer>();
+            services.AddSingleton<IVideoProcessor, VideoProcessor>();
+            services.AddSingleton<IAudioProcessor, AudioProcessor>();
+            services.AddSingleton<IBatchProcessor, BatchProcessor>();
+
+            // ViewModels
+            services.AddTransient<MainWindowViewModel>();
+            services.AddTransient<VideoCompressionViewModel>();
+            services.AddTransient<AudioConversionViewModel>();
+            services.AddTransient<BatchProcessViewModel>();
+            services.AddTransient<SettingsViewModel>();
+
+            // Logging
+            services.AddLogging(builder =>
+            {
+                builder.AddSerilog();
+            });
+        }
     }
 }

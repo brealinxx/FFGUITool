@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Microsoft.Extensions.DependencyInjection;
+using FFGUITool.Views;
 
 namespace FFGUITool
 {
@@ -15,7 +17,11 @@ namespace FFGUITool
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow();
+                // Get MainWindow from DI container
+                var mainWindow = Program.ServiceProvider?.GetRequiredService<MainWindow>() 
+                                 ?? new MainWindow();
+                
+                desktop.MainWindow = mainWindow;
             }
 
             base.OnFrameworkInitializationCompleted();
