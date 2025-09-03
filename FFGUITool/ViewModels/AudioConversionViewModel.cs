@@ -116,8 +116,8 @@ namespace FFGUITool.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
-        public ICommand SelectFileCommand { get; }
-        public ICommand SelectOutputCommand { get; }
+        public ICommand SelectFileCommand { get; set; }
+        public ICommand SelectOutputCommand { get; set; }
         public ICommand StartConversionCommand { get; }
         public ICommand ExtractAudioCommand { get; }
 

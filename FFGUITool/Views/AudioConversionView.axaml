@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:FFGUITool.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="FFGUITool.Views.AudioConversionView"
+             x:DataType="vm:AudioConversionViewModel">
+    
+    <ScrollViewer Padding="20">
+        <StackPanel Spacing="20">
+            <!-- 文件选择 -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Padding="15">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="选择音频或视频文件" FontWeight="Bold" FontSize="16"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBox Grid.Column="0" 
+                                 Text="{Binding InputFile}" 
+                                 Watermark="选择要转换的音频文件或要提取音频的视频文件..."
+                                 IsReadOnly="True"/>
+                        <Button Grid.Column="1" 
+                                Content="浏览" 
+                                Command="{Binding SelectFileCommand}"
+                                Margin="10,0,0,0"
+                                Width="80"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 转换设置 -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Padding="15">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="音频设置" FontWeight="Bold" FontSize="16"/>
+                    
+                    <!-- 输出格式 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="200"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="输出格式:" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding AudioFormats}" SelectedItem="{Binding SelectedFormat}"/>
+                    </Grid>
+
+                    <!-- 比特率 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="200"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="比特率 (kbps):" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1"
+                                       Value="{Binding Bitrate}"
+                                       Minimum="32"
+                                       Maximum="320"
+                                       Increment="32"/>
+                    </Grid>
+
+                    <!-- 采样率 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="200"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="采样率 (Hz):" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" SelectedItem="{Binding SampleRate}">
+                            <ComboBoxItem>22050</ComboBoxItem>
+                            <ComboBoxItem>44100</ComboBoxItem>
+                            <ComboBoxItem>48000</ComboBoxItem>
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- 声道 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="200"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="声道:" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" SelectedItem="{Binding Channels}">
+                            <ComboBoxItem>1</ComboBoxItem>
+                            <ComboBoxItem>2</ComboBoxItem>
+                        </ComboBox>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 操作按钮 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+                <Button Content="转换格式" 
+                        Command="{Binding StartConversionCommand}"
+                        Width="120"
+                        Height="35"/>
+                <Button Content="提取音频" 
+                        Command="{Binding ExtractAudioCommand}"
+                        Width="120"
+                        Height="35"/>
+            </StackPanel>
+
+            <!-- 进度条 -->
+            <ProgressBar Value="{Binding Progress}"
+                         IsVisible="{Binding IsProcessing}"
+                         Height="30"
+                         ShowProgressText="True"/>
+
+            <!-- 状态消息 -->
+            <TextBlock Text="{Binding StatusMessage}"
+                       HorizontalAlignment="Center"
+                       Foreground="Gray"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FFGUITool.Helpers;
 using FFGUITool.Models;
 using FFGUITool.Services.Interfaces;
+using FFGUITool.ViewModels;
 
 namespace FFGUITool.Services
 {
@@ -113,6 +114,11 @@ namespace FFGUITool.Services
             var totalSizeBytes = (long)(videoSizeBytes * 1.12);
 
             return totalSizeBytes;
+        }
+
+        public Task CompressVideoAsync(VideoCompressionSettings settings, IProgress<double>? progress = null)
+        {
+            throw new NotImplementedException();
         }
     }
 

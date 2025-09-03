@@ -1,6 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:FFGUITool.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="750"
         x:Class="FFGUITool.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
         Title="FFmpeg 视频压缩工具"
         Width="900" Height="750"
         MinWidth="700" MinHeight="650">
@@ -39,34 +44,37 @@
         <!-- 菜单栏 -->
         <Menu Grid.Row="0">
             <MenuItem Header="文件(_F)">
-                <MenuItem Header="退出(_X)" Name="ExitMenuItem" Click="ExitMenuItem_Click"/>
+                <MenuItem Header="退出(_X)" Name="ExitMenuItem" Command="{Binding ExitCommand}"/>
             </MenuItem>
             <MenuItem Header="工具(_T)">
-                <MenuItem Header="FFmpeg设置(_S)" Name="FFmpegSettingsMenuItem" Click="FFmpegSettingsMenuItem_Click"/>
+                <MenuItem Header="FFmpeg设置(_S)" Name="FFmpegSettingsMenuItem" Command="{Binding OpenFFmpegSettingsCommand}"/>
                 <Separator/>
-                <MenuItem Header="重新检测FFmpeg(_R)" Name="RedetectFFmpegMenuItem" Click="RedetectFFmpegMenuItem_Click"/>
+                <MenuItem Header="重新检测FFmpeg(_R)" Name="RedetectFFmpegMenuItem" Command="{Binding RedetectFFmpegCommand}"/>
             </MenuItem>
             <MenuItem Header="视图(_V)">
                 <MenuItem Header="主题(_T)">
-                    <MenuItem Header="跟随系统" Name="ThemeSystemMenuItem" Click="ThemeSystemMenuItem_Click">
+                    <MenuItem Header="跟随系统" Name="ThemeSystemMenuItem" 
+                              Command="{Binding SetThemeCommand}" CommandParameter="System">
                         <MenuItem.Icon>
-                            <TextBlock Text="●" Name="ThemeSystemCheck" IsVisible="True"/>
+                            <TextBlock Text="●" Name="ThemeSystemCheck" IsVisible="{Binding IsSystemTheme}"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="浅色" Name="ThemeLightMenuItem" Click="ThemeLightMenuItem_Click">
+                    <MenuItem Header="浅色" Name="ThemeLightMenuItem" 
+                              Command="{Binding SetThemeCommand}" CommandParameter="Light">
                         <MenuItem.Icon>
-                            <TextBlock Text="●" Name="ThemeLightCheck" IsVisible="False"/>
+                            <TextBlock Text="●" Name="ThemeLightCheck" IsVisible="{Binding IsLightTheme}"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="深色" Name="ThemeDarkMenuItem" Click="ThemeDarkMenuItem_Click">
+                    <MenuItem Header="深色" Name="ThemeDarkMenuItem" 
+                              Command="{Binding SetThemeCommand}" CommandParameter="Dark">
                         <MenuItem.Icon>
-                            <TextBlock Text="●" Name="ThemeDarkCheck" IsVisible="False"/>
+                            <TextBlock Text="●" Name="ThemeDarkCheck" IsVisible="{Binding IsDarkTheme}"/>
                         </MenuItem.Icon>
                     </MenuItem>
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="帮助(_H)">
-                <MenuItem Header="关于(_A)" Name="AboutMenuItem" Click="AboutMenuItem_Click"/>
+                <MenuItem Header="关于(_A)" Name="AboutMenuItem" Command="{Binding ShowAboutCommand}"/>
             </MenuItem>
         </Menu>
 
@@ -91,7 +99,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                     <TextBlock Text="FFGUITool" 
                                FontSize="24" FontWeight="Bold"/>
-                    <TextBlock Name="FFmpegStatusText" Text=" - FFmpeg状态检测中..." 
+                    <TextBlock Name="FFmpegStatusText" Text="{Binding FFmpegStatusText}" 
                                FontSize="14" VerticalAlignment="Bottom" 
                                Margin="10,0,0,2" Foreground="Gray"/>
                 </StackPanel>
@@ -103,7 +111,8 @@
                               ToolTip.Tip="切换深色/浅色主题"
                               HorizontalContentAlignment="Center"
                               VerticalContentAlignment="Center"
-                              IsCheckedChanged="ThemeToggleButton_IsCheckedChanged">
+                              IsChecked="{Binding IsDarkTheme}"
+                              Command="{Binding ToggleThemeCommand}">
                     <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="🌙" 
                                    HorizontalAlignment="Center" 
@@ -135,14 +144,15 @@
                                 </Grid.ColumnDefinitions>
                                 
                                 <TextBox Grid.Column="0" Name="InputPathTextBox" 
+                                         Text="{Binding InputPath}"
                                          Watermark="选择视频文件或文件夹..." 
                                          IsReadOnly="True"/>
                                 <Button Grid.Column="1" Content="选择文件" 
                                         Name="SelectFileButton" Margin="5,0,0,0"
-                                        Click="SelectFileButton_Click"/>
+                                        Command="{Binding SelectInputFileCommand}"/>
                                 <Button Grid.Column="2" Content="选择文件夹" 
                                         Name="SelectFolderButton" Margin="5,0,0,0"
-                                        Click="SelectFolderButton_Click"/>
+                                        Command="{Binding SelectInputFolderCommand}"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -152,7 +162,7 @@
                             Classes="video-info"
                             BorderThickness="1" 
                             CornerRadius="5" Padding="15"
-                            IsVisible="False">
+                            IsVisible="{Binding HasVideoInfo}">
                         <StackPanel Spacing="8">
                             <TextBlock Text="原视频信息" FontWeight="Bold" FontSize="16"/>
                             <Grid>
@@ -170,19 +180,19 @@
                                 
                                 <!-- 第一行 -->
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="文件大小:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Name="OriginalSizeText" Text="-" Margin="5,0,15,0"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Name="OriginalSizeText" Text="{Binding OriginalFileSize}" Margin="5,0,15,0"/>
                                 <TextBlock Grid.Row="0" Grid.Column="2" Text="时长:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="0" Grid.Column="3" Name="DurationText" Text="-" Margin="5,0,0,0"/>
+                                <TextBlock Grid.Row="0" Grid.Column="3" Name="DurationText" Text="{Binding VideoDuration}" Margin="5,0,0,0"/>
                                 
                                 <!-- 第二行 -->
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="原比特率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Name="OriginalBitrateText" Text="-" Margin="5,5,15,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Name="OriginalBitrateText" Text="{Binding OriginalBitrate}" Margin="5,5,15,0"/>
                                 <TextBlock Grid.Row="1" Grid.Column="2" Text="分辨率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="3" Name="ResolutionText" Text="-" Margin="5,5,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="3" Name="ResolutionText" Text="{Binding VideoResolution}" Margin="5,5,0,0"/>
                                 
                                 <!-- 第三行 -->
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="帧率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Name="FramerateText" Text="-" Margin="5,5,15,0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Name="FramerateText" Text="{Binding VideoFramerate}" Margin="5,5,15,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -205,7 +215,8 @@
                                 <TextBlock Grid.Column="0" Text="压缩率:" 
                                            VerticalAlignment="Center"/>
                                 <NumericUpDown Grid.Column="1" Name="CompressionNumericUpDown" 
-                                               Minimum="10" Maximum="100" Value="70"
+                                               Value="{Binding CompressionRatio}"
+                                               Minimum="10" Maximum="100"
                                                Increment="1" FormatString="0"
                                                Margin="5,0,0,0" Height="32"/>
                                 <TextBlock Grid.Column="2" Text="%" 
@@ -246,20 +257,22 @@
                                     
                                     <!-- 手动输入框 -->
                                     <NumericUpDown Grid.Column="0" Name="BitrateNumericUpDown" 
-                                                   Minimum="1" Maximum="50000" Value="2000"
+                                                   Value="{Binding TargetBitrate}"
+                                                   Minimum="1" Maximum="50000"
                                                    Increment="100" FormatString="0"
                                                    Height="32" Margin="0,0,10,0"/>
                                     
                                     <!-- 滑动条 -->
                                     <Slider Grid.Column="1" Name="BitrateSlider" 
-                                            Minimum="1" Maximum="50000" Value="2000"
+                                            Value="{Binding TargetBitrate}"
+                                            Minimum="1" Maximum="50000"
                                             TickFrequency="500" IsSnapToTickEnabled="False"
-                                            ValueChanged="BitrateSlider_ValueChanged"
                                             Margin="0,0,10,0"/>
                                             
                                     <!-- 显示值 -->
                                     <TextBlock Grid.Column="2" Name="BitrateValueText" 
-                                               Text="2000k" VerticalAlignment="Center" 
+                                               Text="{Binding BitrateDisplayText}" 
+                                               VerticalAlignment="Center" 
                                                TextAlignment="Right" FontWeight="SemiBold"/>
                                 </Grid>
                             </Grid>
@@ -268,7 +281,7 @@
                             <TextBlock Name="BitrateWarningText" 
                                        Text="⚠ 警告：当前比特率高于原视频，文件可能会变大！" 
                                        Foreground="Orange" FontWeight="Bold"
-                                       FontSize="12" IsVisible="False"
+                                       FontSize="12" IsVisible="{Binding ShowBitrateWarning}"
                                        Margin="0,5,0,0" TextWrapping="Wrap"/>
 
                             <!-- 预估结果显示 -->
@@ -281,7 +294,8 @@
                                 <TextBlock Grid.Column="0" Text="预估结果:" 
                                            VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1" Name="EstimatedBitrateText" 
-                                           Text="请先选择视频文件" VerticalAlignment="Center"
+                                           Text="{Binding EstimatedResultText}"
+                                           VerticalAlignment="Center"
                                            Opacity="0.7" Margin="5,0,0,0" TextWrapping="Wrap"/>
                             </Grid>
 
@@ -295,7 +309,7 @@
                                 <TextBlock Grid.Column="0" Text="编码器:" 
                                            VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1" Name="CodecComboBox" 
-                                          SelectedIndex="0" SelectionChanged="CodecComboBox_SelectionChanged"
+                                          SelectedIndex="{Binding SelectedCodecIndex}"
                                           Margin="5,0,0,0" Height="32">
                                     <ComboBoxItem Content="H.264 (libx264) - 兼容性最好" Tag="libx264"/>
                                     <ComboBoxItem Content="H.265 (libx265) - 压缩率更高" Tag="libx265"/>
@@ -318,6 +332,7 @@
                                 </Grid.ColumnDefinitions>
                                 
                                 <TextBox Grid.Column="0" Name="OutputPathTextBox" 
+                                         Text="{Binding OutputPath}"
                                          Watermark="选择输出文件夹..." 
                                          IsReadOnly="True"/>
                                 <Button Grid.Column="1" Content="选择输出文件夹" 
@@ -345,6 +360,7 @@
                            FontWeight="Bold" Margin="0,0,0,5"/>
                 
                 <TextBox Grid.Row="1" Name="CommandTextBox" 
+                         Text="{Binding GeneratedCommand}"
                          Classes="command-box"
                          FontFamily="Consolas,Courier New,monospace" FontSize="12"
                          IsReadOnly="True" TextWrapping="Wrap"
@@ -359,11 +375,13 @@
                     </Grid.ColumnDefinitions>
                     
                     <ProgressBar Grid.Column="0" Name="ProgressBar" 
-                                 Height="30" IsVisible="False"/>
+                                 Value="{Binding ProcessingProgress}"
+                                 IsVisible="{Binding IsProcessing}" Height="30"/>
                     <Button Grid.Column="1" Content="执行" Name="ExecuteButton" 
                             Width="100" Height="30" Margin="10,0,0,0"
                             Classes="primary-button"
-                            Click="ExecuteButton_Click" IsEnabled="False"/>
+                            Command="{Binding ExecuteCompressionCommand}" 
+                            IsEnabled="{Binding CanExecute}"/>
                 </Grid>
             </Grid>
 

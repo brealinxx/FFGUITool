@@ -1,7 +1,14 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="using:FFGUITool.Converters"
              x:Class="FFGUITool.App"
              RequestedThemeVariant="Default">
+
+    <Application.Resources>
+        <!-- 注册转换器 -->
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converters:BoolToStatusTextConverter x:Key="BoolToStatusTextConverter"/>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
@@ -13,52 +20,9 @@
             <Setter Property="Padding" Value="8,4"/>
         </Style>
         
-        <Style Selector="Button.primary-button">
-            <Setter Property="Background" Value="#007ACC"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-        
-        <Style Selector="Button.primary-button:pointerover">
-            <Setter Property="Background" Value="#005A9B"/>
-        </Style>
-        
-        <Style Selector="Button.help-button">
-            <Setter Property="Background" Value="{DynamicResource HelpButtonBackground}"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-        
-        <Style Selector="Button.help-button:pointerover">
-            <Setter Property="Background" Value="{DynamicResource HelpButtonHoverBackground}"/>
-        </Style>
-        
-        <Style Selector="TextBox.command-box">
-            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource CommandBoxForeground}"/>
-        </Style>
-        
-        <Style Selector="Border.video-info">
-            <Setter Property="Background" Value="{DynamicResource VideoInfoBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource VideoInfoBorder}"/>
-        </Style>
-        
-        <Style Selector="Border.tooltip-card">
-            <Setter Property="Background" Value="{DynamicResource TooltipBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource TooltipBorder}"/>
+        <Style Selector="NumericUpDown">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
     </Application.Styles>
-    
-    <Application.Resources>
-        <!-- 浅色主题资源 -->
-        <SolidColorBrush x:Key="CardBackground" Color="#FAFAFA"/>
-        <SolidColorBrush x:Key="CardBorderBrush" Color="#E0E0E0"/>
-        <SolidColorBrush x:Key="HelpButtonBackground" Color="#87CEEB"/>
-        <SolidColorBrush x:Key="HelpButtonHoverBackground" Color="#5E9ED6"/>
-        <SolidColorBrush x:Key="CommandBoxBackground" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="CommandBoxForeground" Color="#00FF00"/>
-        <SolidColorBrush x:Key="VideoInfoBackground" Color="#F0F8FF"/>
-        <SolidColorBrush x:Key="VideoInfoBorder" Color="#4682B4"/>
-        <SolidColorBrush x:Key="TooltipBackground" Color="White"/>
-        <SolidColorBrush x:Key="TooltipBorder" Color="#E0E0E0"/>
-    </Application.Resources>
 </Application>

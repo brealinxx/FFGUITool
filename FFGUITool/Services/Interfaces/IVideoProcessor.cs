@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FFGUITool.Models;
+using FFGUITool.ViewModels;
 
 namespace FFGUITool.Services.Interfaces
 {
@@ -11,6 +12,7 @@ namespace FFGUITool.Services.Interfaces
         Task<bool> ConvertFormatAsync(string input, string output, VideoFormat format, CancellationToken cancellationToken = default);
         string GenerateCommand(VideoCompressionOptions options);
         long EstimateOutputSize(VideoCompressionOptions options);
+        Task CompressVideoAsync(VideoCompressionSettings settings, IProgress<double>? progress = null);
     }
 
     public class ProcessingProgress

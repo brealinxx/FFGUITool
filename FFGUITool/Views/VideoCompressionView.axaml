@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:FFGUITool.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="FFGUITool.Views.VideoCompressionView"
+             x:DataType="vm:VideoCompressionViewModel">
+    
+    <ScrollViewer Padding="20">
+        <StackPanel Spacing="20">
+            <!-- 文件选择 -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Padding="15">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="选择视频文件" FontWeight="Bold" FontSize="16"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBox Grid.Column="0" 
+                                 Text="{Binding InputFile}" 
+                                 Watermark="选择要压缩的视频文件..."
+                                 IsReadOnly="True"/>
+                        <Button Grid.Column="1" 
+                                Content="浏览" 
+                                Command="{Binding SelectFileCommand}"
+                                Margin="10,0,0,0"
+                                Width="80"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 压缩设置 -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Padding="15">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="压缩设置" FontWeight="Bold" FontSize="16"/>
+                    
+                    <!-- 压缩率 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="80"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="压缩率:" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" 
+                                Value="{Binding CompressionPercentage}"
+                                Minimum="10"
+                                Maximum="90"
+                                TickFrequency="10"
+                                IsSnapToTickEnabled="True"
+                                Margin="10,0"/>
+                        <TextBlock Grid.Column="2" 
+                                   Text="{Binding CompressionPercentage, StringFormat='{}{0}%'}"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- 目标比特率 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="200"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="目标比特率 (kbps):" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1"
+                                       Value="{Binding TargetBitrate}"
+                                       Minimum="100"
+                                       Maximum="50000"
+                                       Increment="100"/>
+                    </Grid>
+
+                    <!-- 视频编码器 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="200"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="视频编码器:" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" SelectedItem="{Binding SelectedCodec}">
+                            <ComboBoxItem>libx264</ComboBoxItem>
+                            <ComboBoxItem>libx265</ComboBoxItem>
+                            <ComboBoxItem>libvpx-vp9</ComboBoxItem>
+                        </ComboBox>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 输出设置 -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Padding="15">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="输出设置" FontWeight="Bold" FontSize="16"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBox Grid.Column="0" 
+                                 Text="{Binding OutputDirectory}" 
+                                 Watermark="选择输出目录..."
+                                 IsReadOnly="True"/>
+                        <Button Grid.Column="1" 
+                                Content="浏览" 
+                                Command="{Binding SelectOutputCommand}"
+                                Margin="10,0,0,0"
+                                Width="80"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 进度和操作按钮 -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <ProgressBar Grid.Column="0" 
+                             Value="{Binding Progress}"
+                             IsVisible="{Binding IsProcessing}"
+                             Height="30"
+                             ShowProgressText="True"/>
+                
+                <Button Grid.Column="1" 
+                        Content="开始压缩" 
+                        Command="{Binding StartCompressionCommand}"
+                        IsVisible="{Binding !IsProcessing}"
+                        Width="100"
+                        Height="30"
+                        Margin="10,0,0,0"/>
+                        
+                <Button Grid.Column="1" 
+                        Content="取消" 
+                        Command="{Binding CancelCommand}"
+                        IsVisible="{Binding IsProcessing}"
+                        Width="100"
+                        Height="30"
+                        Margin="10,0,0,0"/>
+            </Grid>
+
+            <!-- 状态消息 -->
+            <TextBlock Text="{Binding StatusMessage}"
+                       HorizontalAlignment="Center"
+                       Foreground="Gray"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

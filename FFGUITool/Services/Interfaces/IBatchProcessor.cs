@@ -18,8 +18,8 @@ namespace FFGUITool.Services.Interfaces
     public class BatchProgress
     {
         public int TotalTasks { get; set; }
-        public int CompletedTasks { get; set; }
-        public int FailedTasks { get; set; }
+        public int CompletedTasks;
+        public int FailedTasks;
         public ProcessingTask? CurrentTask { get; set; }
         public double OverallProgress { get; set; }
         public string CurrentFile { get; set; } = "";
@@ -28,8 +28,8 @@ namespace FFGUITool.Services.Interfaces
     public class BatchProcessResult
     {
         public int TotalProcessed { get; set; }
-        public int SuccessCount { get; set; }
-        public int FailureCount { get; set; }
+        public int SuccessCount;
+        public int FailureCount;
         public TimeSpan TotalDuration { get; set; }
         public List<ProcessingError> Errors { get; set; } = new();
     }

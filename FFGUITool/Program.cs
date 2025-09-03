@@ -6,6 +6,7 @@ using Serilog;
 using FFGUITool.Services;
 using FFGUITool.Services.Interfaces;
 using FFGUITool.ViewModels;
+using FFGUITool.Views;
 
 namespace FFGUITool
 {
@@ -26,6 +27,10 @@ namespace FFGUITool
             try
             {
                 Log.Information("Starting FFGUITool application");
+                
+                // Build and configure services before creating Avalonia app
+                ConfigureServices();
+                
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
             }
@@ -40,6 +45,12 @@ namespace FFGUITool
         }
 
         public static AppBuilder BuildAvaloniaApp()
+            => AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+                .WithInterFont()
+                .LogToTrace();
+
+        private static void ConfigureServices()
         {
             // Build configuration
             var configuration = new ConfigurationBuilder()
@@ -49,19 +60,9 @@ namespace FFGUITool
 
             // Configure services
             var services = new ServiceCollection();
-            ConfigureServices(services, configuration);
-            ServiceProvider = services.BuildServiceProvider();
-
-            return AppBuilder.Configure<App>()
-                .UsePlatformDetect()
-                .LogToTrace()
-                .WithInterFont();
-        }
-
-        private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
-        {
+            
             // Configuration
-            services.AddSingleton(configuration);
+            services.AddSingleton<IConfiguration>(configuration);
 
             // Core Services
             services.AddSingleton<IFFmpegService, FFmpegService>();
@@ -77,11 +78,30 @@ namespace FFGUITool
             services.AddTransient<BatchProcessViewModel>();
             services.AddTransient<SettingsViewModel>();
 
+            // Windows (if needed)
+            services.AddTransient<MainWindow>();
+            services.AddTransient<SetupWindow>();
+
             // Logging
             services.AddLogging(builder =>
             {
                 builder.AddSerilog();
             });
+
+            // Build service provider
+            ServiceProvider = services.BuildServiceProvider();
+        }
+
+        // 辅助方法来获取服务，提供类型安全的访问
+        public static T? GetService<T>() where T : class
+        {
+            return ServiceProvider?.GetService<T>();
+        }
+
+        // 非泛型版本，用于某些特殊情况
+        public static object? GetService(Type serviceType)
+        {
+            return ServiceProvider?.GetService(serviceType);
         }
     }
 }

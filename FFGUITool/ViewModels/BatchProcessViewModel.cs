@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using FFGUITool.Models;
 using FFGUITool.Services.Interfaces;
+using TaskStatus = FFGUITool.Models.TaskStatus;
 
 namespace FFGUITool.ViewModels
 {
@@ -113,8 +114,8 @@ namespace FFGUITool.ViewModels
         public int FailedTasks => Tasks.Count(t => t.Status == TaskStatus.Failed);
         public int PendingTasks => Tasks.Count(t => t.Status == TaskStatus.Pending);
 
-        public ICommand AddFilesCommand { get; }
-        public ICommand AddFolderCommand { get; }
+        public ICommand AddFilesCommand { get; set; }
+        public ICommand AddFolderCommand { get; set; }
         public ICommand RemoveSelectedCommand { get; }
         public ICommand ClearAllCommand { get; }
         public ICommand ClearCompletedCommand { get; }

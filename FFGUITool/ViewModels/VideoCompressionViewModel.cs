@@ -163,8 +163,8 @@ namespace FFGUITool.ViewModels
 
         public string EstimatedFileSizeFormatted => FormatFileSize(EstimatedFileSize);
 
-        public ICommand SelectFileCommand { get; }
-        public ICommand SelectOutputCommand { get; }
+        public ICommand SelectFileCommand { get; set; }
+        public ICommand SelectOutputCommand { get; set; }
         public ICommand StartCompressionCommand { get; }
         public ICommand CancelCommand { get; }
 
