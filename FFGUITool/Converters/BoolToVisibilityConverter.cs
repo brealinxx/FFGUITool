@@ -1,6 +1,6 @@
 namespace FFGUITool.Converters;
 
-public class StatusToColorConverter
+public class BoolToVisibilityConverter
 {
     
 }

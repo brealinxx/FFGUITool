@@ -1,6 +1,6 @@
 namespace FFGUITool.Helpers;
 
-public class MediaFormatHelper
+public class RelayCommand
 {
     
 }

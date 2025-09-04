@@ -1,6 +1,9 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+﻿<!-- Views/SetupWindow.axaml -->
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FFGUITool.ViewModels"
         x:Class="FFGUITool.Views.SetupWindow"
+        x:DataType="vm:SetupWindowViewModel"
         Title="FFmpeg 配置"
         Width="500" Height="400"
         MinWidth="450" MinHeight="350"
@@ -42,17 +45,19 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             
-                            <TextBox Grid.Column="0" Name="FFmpegPathTextBox" 
+                            <TextBox Grid.Column="0" 
+                                     Text="{Binding FfmpegPathText}"
                                      Watermark="选择ffmpeg.exe文件..." 
                                      IsReadOnly="True"/>
                             <Button Grid.Column="1" Content="浏览" 
-                                    Name="BrowseFFmpegButton" Margin="5,0,0,0"
-                                    Click="BrowseFFmpegButton_Click"/>
+                                    Command="{Binding BrowseFFmpegCommand}"
+                                    Margin="5,0,0,0"/>
                         </Grid>
                         
-                        <Button Content="设置此路径" Name="SetCustomPathButton" 
+                        <Button Content="设置此路径" 
+                                Command="{Binding SetCustomPathCommand}"
                                 HorizontalAlignment="Left" Width="120"
-                                Click="SetCustomPathButton_Click"/>
+                                IsEnabled="{Binding !IsProcessing}"/>
                     </StackPanel>
                 </Border>
 
@@ -71,17 +76,19 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             
-                            <TextBox Grid.Column="0" Name="ArchivePathTextBox" 
+                            <TextBox Grid.Column="0" 
+                                     Text="{Binding ArchivePathText}"
                                      Watermark="选择FFmpeg压缩包..." 
                                      IsReadOnly="True"/>
                             <Button Grid.Column="1" Content="浏览" 
-                                    Name="BrowseArchiveButton" Margin="5,0,0,0"
-                                    Click="BrowseArchiveButton_Click"/>
+                                    Command="{Binding BrowseArchiveCommand}"
+                                    Margin="5,0,0,0"/>
                         </Grid>
                         
-                        <Button Content="从压缩包安装" Name="InstallFromArchiveButton" 
+                        <Button Content="从压缩包安装" 
+                                Command="{Binding InstallFromArchiveCommand}"
                                 HorizontalAlignment="Left" Width="120"
-                                Click="InstallFromArchiveButton_Click"/>
+                                IsEnabled="{Binding !IsProcessing}"/>
                     </StackPanel>
                 </Border>
 
@@ -106,9 +113,11 @@
         </ScrollViewer>
 
         <!-- 状态文本 -->
-        <TextBlock Grid.Row="2" Name="StatusText" 
+        <TextBlock Grid.Row="2" 
+                   Text="{Binding StatusText}"
                    HorizontalAlignment="Center" Margin="0,10,0,0"
-                   FontStyle="Italic" Foreground="Blue"/>
+                   FontStyle="Italic" Foreground="Blue"
+                   IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
         <!-- 底部按钮 -->
         <Grid Grid.Row="3" Margin="0,20,0,0">
@@ -121,22 +130,23 @@
             <TextBlock Grid.Column="0" Text="稍后可以通过菜单重新配置" 
                        VerticalAlignment="Center" Foreground="Gray"/>
             
-            <!-- 跳过按钮 - 灰色样式 -->
-            <Button Grid.Column="1" Content="跳过" Name="SkipButton" 
+            <!-- 跳过按钮 -->
+            <Button Grid.Column="1" Content="跳过" 
+                    Command="{Binding SkipCommand}"
                     Width="80" Height="32" Margin="0,0,10,0"
                     Background="#F5F5F5" 
                     Foreground="#666666"
-                    BorderBrush="#CCCCCC"
-                    Click="SkipButton_Click"/>
+                    BorderBrush="#CCCCCC"/>
             
-            <!-- 确定按钮 - 强调色样式 -->
-            <Button Grid.Column="2" Content="确定" Name="ConfirmButton" 
+            <!-- 确定按钮 -->
+            <Button Grid.Column="2" Content="确定" 
+                    Command="{Binding ConfirmCommand}"
                     Width="80" Height="32"
                     Background="#007ACC" 
                     Foreground="White"
                     BorderBrush="#005A9B"
                     FontWeight="Bold"
-                    Click="ConfirmButton_Click"/>
+                    IsEnabled="{Binding !IsProcessing}"/>
         </Grid>
 
     </Grid>

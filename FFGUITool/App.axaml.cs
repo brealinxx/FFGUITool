@@ -1,50 +1,48 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Microsoft.Extensions.DependencyInjection;
 using FFGUITool.Views;
-using FFGUITool.ViewModels;
+using FFGUITool.Services;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace FFGUITool
 {
     public partial class App : Application
     {
+        public static IServiceProvider? ServiceProvider { get; private set; }
+
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
+            ConfigureServices();
         }
 
         public override void OnFrameworkInitializationCompleted()
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // Try to get MainWindow from DI container
-                MainWindow? mainWindow = null;
-                
-                if (Program.ServiceProvider != null)
-                {
-                    try
-                    {
-                        // Get ViewModel from DI
-                        var viewModel = Program.ServiceProvider.GetRequiredService<MainWindowViewModel>();
-                        mainWindow = new MainWindow(viewModel);
-                    }
-                    catch
-                    {
-                        // Fallback to parameterless constructor
-                        mainWindow = new MainWindow();
-                    }
-                }
-                else
-                {
-                    // Create without DI
-                    mainWindow = new MainWindow();
-                }
-                
-                desktop.MainWindow = mainWindow;
+                desktop.MainWindow = new MainWindow();
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        private void ConfigureServices()
+        {
+            var services = new ServiceCollection();
+
+            // 注册服务
+            services.AddSingleton<FFmpegManager>();
+            services.AddSingleton<IDialogService, DialogService>();
+            services.AddTransient<VideoAnalyzer>();
+            services.AddTransient<CommandBuilder>();
+
+            // 注册ViewModels
+            services.AddTransient<ViewModels.MainWindowViewModel>();
+            services.AddTransient<ViewModels.SetupWindowViewModel>();
+
+            ServiceProvider = services.BuildServiceProvider();
         }
     }
 }

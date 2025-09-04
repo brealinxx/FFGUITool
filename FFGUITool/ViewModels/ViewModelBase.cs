@@ -1,66 +1,61 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Input;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace FFGUITool.ViewModels
 {
-    public abstract class ViewModelBase : INotifyPropertyChanged
+    /// <summary>
+    /// ViewModel基类，提供属性通知功能
+    /// </summary>
+    public abstract class ViewModelBase : ObservableObject
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
+        private bool _isInitialized;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        /// <summary>
+        /// 指示ViewModel是否已初始化
+        /// </summary>
+        public bool IsInitialized
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            get => _isInitialized;
+            protected set => SetProperty(ref _isInitialized, value);
         }
 
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        /// <summary>
+        /// 初始化ViewModel
+        /// </summary>
+        public virtual void Initialize()
         {
-            if (EqualityComparer<T>.Default.Equals(field, value))
-                return false;
-
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
-    }
-
-    public class RelayCommand : ICommand
-    {
-        private readonly Action<object?> _execute;
-        private readonly Predicate<object?>? _canExecute;
-
-        public RelayCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
-        {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute;
+            if (!IsInitialized)
+            {
+                OnInitialize();
+                IsInitialized = true;
+            }
         }
 
-        public event EventHandler? CanExecuteChanged
+        /// <summary>
+        /// 异步初始化ViewModel
+        /// </summary>
+        public virtual async Task InitializeAsync()
         {
-            add { CommandManager.RequerySuggested += value; }
-            remove { CommandManager.RequerySuggested -= value; }
+            if (!IsInitialized)
+            {
+                await OnInitializeAsync();
+                IsInitialized = true;
+            }
         }
 
-        public bool CanExecute(object? parameter)
-        {
-            return _canExecute?.Invoke(parameter) ?? true;
-        }
+        /// <summary>
+        /// 同步初始化逻辑，由子类重写
+        /// </summary>
+        protected virtual void OnInitialize() { }
 
-        public void Execute(object? parameter)
-        {
-            _execute(parameter);
-        }
-    }
+        /// <summary>
+        /// 异步初始化逻辑，由子类重写
+        /// </summary>
+        protected virtual Task OnInitializeAsync() => Task.CompletedTask;
 
-    public static class CommandManager
-    {
-        public static event EventHandler? RequerySuggested;
-
-        public static void InvalidateRequerySuggested()
-        {
-            RequerySuggested?.Invoke(null, EventArgs.Empty);
-        }
+        /// <summary>
+        /// 清理资源
+        /// </summary>
+        public virtual void Dispose() { }
     }
 }

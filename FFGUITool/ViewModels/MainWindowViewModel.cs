@@ -1,653 +1,514 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using FFGUITool.Services.Interfaces;
-using FFGUITool.Models;
 using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Avalonia.Platform.Storage;
+using Avalonia.Styling;
+using FFGUITool.Models;
+using FFGUITool.Services;
 
 namespace FFGUITool.ViewModels
 {
-    public class MainWindowViewModel : ViewModelBase
+    /// <summary>
+    /// 主窗口视图模型
+    /// </summary>
+    public partial class MainWindowViewModel : ViewModelBase
     {
-        private readonly IFFmpegService _ffmpegService;
-        private readonly IMediaAnalyzer _mediaAnalyzer;
-        private readonly IVideoProcessor _videoProcessor;
+        private readonly FFmpegManager _ffmpegManager;
+        private readonly VideoAnalyzer _videoAnalyzer;
+        private readonly CommandBuilder _commandBuilder;
+        private readonly IDialogService _dialogService;
 
-        // FFmpeg状态相关
-        private string _ffmpegStatusText = "正在检测FFmpeg...";
-        private bool _isFFmpegAvailable;
-        private bool _isDarkTheme;
-        private bool _isSystemTheme = true;
-        private bool _isLightTheme;
+        #region 可观察属性
 
-        // 文件相关
-        private string _inputPath = "";
-        private string _outputPath = "";
-        private bool _hasVideoInfo;
-        private bool _isFolder;
+        [ObservableProperty]
+        private string _title = "FFmpeg 视频压缩工具";
 
-        // 视频信息
-        private string _originalFileSize = "-";
-        private string _videoDuration = "-";
-        private string _originalBitrate = "-";
-        private string _videoResolution = "-";
-        private string _videoFramerate = "-";
+        [ObservableProperty]
+        private string _ffmpegStatusText = " - FFmpeg状态检测中...";
 
-        // 压缩设置
-        private int _compressionRatio = 70;
-        private double _targetBitrate = 2000;
-        private int _selectedCodecIndex = 0;
-        private string _bitrateDisplayText = "2000k";
-        private bool _showBitrateWarning = false;
-        private string _estimatedResultText = "请先选择视频文件";
+        [ObservableProperty]
+        private string _ffmpegStatusColor = "Gray";
 
-        // 命令和进度
-        private string _generatedCommand = "";
-        private bool _isProcessing = false;
-        private double _processingProgress = 0;
-        private bool _canExecute = false;
+        [ObservableProperty]
+        private VideoInfo? _currentVideoInfo;
 
-        public MainWindowViewModel(
-            IFFmpegService ffmpegService,
-            IMediaAnalyzer mediaAnalyzer,
-            IVideoProcessor videoProcessor)
+        [ObservableProperty]
+        private bool _isVideoInfoVisible;
+
+        [ObservableProperty]
+        private CompressionSettings _compressionSettings = new();
+
+        [ObservableProperty]
+        private string _commandText = "请先选择输入文件或文件夹";
+
+        [ObservableProperty]
+        private bool _canExecute;
+
+        [ObservableProperty]
+        private bool _isProcessing;
+
+        [ObservableProperty]
+        private double _progressValue;
+
+        [ObservableProperty]
+        private bool _isProgressVisible;
+
+        [ObservableProperty]
+        private string _inputPathText = "";
+
+        [ObservableProperty]
+        private string _outputPathText = "";
+
+        [ObservableProperty]
+        private int _compressionPercentage = 70;
+
+        [ObservableProperty]
+        private int _bitrate = 2000;
+
+        [ObservableProperty]
+        private string _selectedCodec = "libx264";
+
+        [ObservableProperty]
+        private string _estimatedBitrateText = "请先选择视频文件";
+
+        [ObservableProperty]
+        private string _estimatedBitrateColor = "Black";
+
+        [ObservableProperty]
+        private bool _isBitrateWarningVisible;
+
+        [ObservableProperty]
+        private string _bitrateValueText = "2000k";
+
+        [ObservableProperty]
+        private double _bitrateSliderValue = 2000;
+
+        [ObservableProperty]
+        private double _bitrateSliderMinimum = 1;
+
+        [ObservableProperty]
+        private double _bitrateSliderMaximum = 50000;
+
+        [ObservableProperty]
+        private ThemeVariant _currentTheme = ThemeVariant.Default;
+
+        [ObservableProperty]
+        private bool _isThemeDark;
+
+        [ObservableProperty]
+        private List<CodecOption> _codecOptions = new()
         {
-            _ffmpegService = ffmpegService;
-            _mediaAnalyzer = mediaAnalyzer;
-            _videoProcessor = videoProcessor;
+            new CodecOption("H.264 (libx264)", "libx264", "兼容性最好"),
+            new CodecOption("H.265 (libx265)", "libx265", "压缩率更高"),
+            new CodecOption("VP9 (libvpx-vp9)", "libvpx-vp9", "开源编码")
+        };
 
-            // 初始化所有命令
-            InitializeCommand = new RelayCommand(async _ => await InitializeAsync());
-            SelectInputFileCommand = new RelayCommand(async _ => await SelectInputFileAsync());
-            SelectInputFolderCommand = new RelayCommand(async _ => await SelectInputFolderAsync());
-            SelectOutputFolderCommand = new RelayCommand(async _ => await SelectOutputFolderAsync());
-            ExecuteCompressionCommand = new RelayCommand(async _ => await ExecuteCompressionAsync(), _ => CanExecute);
-            UpdateCodecCommand = new RelayCommand(codec => UpdateCodec(codec?.ToString()));
-            UpdateBitrateCommand = new RelayCommand(bitrate => UpdateBitrate(Convert.ToDouble(bitrate)));
-            SetThemeCommand = new RelayCommand(theme => SetTheme(theme?.ToString()));
-            ToggleThemeCommand = new RelayCommand(_ => ToggleTheme());
-            OpenFFmpegSettingsCommand = new RelayCommand(_ => OpenFFmpegSettings());
-            RedetectFFmpegCommand = new RelayCommand(async _ => await RedetectFFmpegAsync());
-            ShowAboutCommand = new RelayCommand(_ => ShowAbout());
-            ExitCommand = new RelayCommand(_ => Exit());
-        }
-
-        #region Properties
-
-        // FFmpeg状态
-        public string FFmpegStatusText
-        {
-            get => _ffmpegStatusText;
-            set => SetProperty(ref _ffmpegStatusText, value);
-        }
-
-        public bool IsFFmpegAvailable
-        {
-            get => _isFFmpegAvailable;
-            set => SetProperty(ref _isFFmpegAvailable, value);
-        }
-
-        public bool IsDarkTheme
-        {
-            get => _isDarkTheme;
-            set => SetProperty(ref _isDarkTheme, value);
-        }
-
-        public bool IsSystemTheme
-        {
-            get => _isSystemTheme;
-            set => SetProperty(ref _isSystemTheme, value);
-        }
-
-        public bool IsLightTheme
-        {
-            get => _isLightTheme;
-            set => SetProperty(ref _isLightTheme, value);
-        }
-
-        // 文件路径
-        public string InputPath
-        {
-            get => _inputPath;
-            set => SetProperty(ref _inputPath, value);
-        }
-
-        public string OutputPath
-        {
-            get => _outputPath;
-            set => SetProperty(ref _outputPath, value);
-        }
-
-        public bool HasVideoInfo
-        {
-            get => _hasVideoInfo;
-            set => SetProperty(ref _hasVideoInfo, value);
-        }
-
-        // 视频信息
-        public string OriginalFileSize
-        {
-            get => _originalFileSize;
-            set => SetProperty(ref _originalFileSize, value);
-        }
-
-        public string VideoDuration
-        {
-            get => _videoDuration;
-            set => SetProperty(ref _videoDuration, value);
-        }
-
-        public string OriginalBitrate
-        {
-            get => _originalBitrate;
-            set => SetProperty(ref _originalBitrate, value);
-        }
-
-        public string VideoResolution
-        {
-            get => _videoResolution;
-            set => SetProperty(ref _videoResolution, value);
-        }
-
-        public string VideoFramerate
-        {
-            get => _videoFramerate;
-            set => SetProperty(ref _videoFramerate, value);
-        }
-
-        // 压缩设置
-        public int CompressionRatio
-        {
-            get => _compressionRatio;
-            set
-            {
-                if (SetProperty(ref _compressionRatio, value))
-                {
-                    UpdateEstimatedResult();
-                    UpdateFFmpegCommand();
-                }
-            }
-        }
-
-        public double TargetBitrate
-        {
-            get => _targetBitrate;
-            set
-            {
-                if (SetProperty(ref _targetBitrate, value))
-                {
-                    BitrateDisplayText = $"{value:F0}k";
-                    UpdateBitrateWarning();
-                    UpdateEstimatedResult();
-                    UpdateFFmpegCommand();
-                }
-            }
-        }
-
-        public int SelectedCodecIndex
-        {
-            get => _selectedCodecIndex;
-            set
-            {
-                if (SetProperty(ref _selectedCodecIndex, value))
-                {
-                    UpdateFFmpegCommand();
-                }
-            }
-        }
-
-        public string BitrateDisplayText
-        {
-            get => _bitrateDisplayText;
-            set => SetProperty(ref _bitrateDisplayText, value);
-        }
-
-        public bool ShowBitrateWarning
-        {
-            get => _showBitrateWarning;
-            set => SetProperty(ref _showBitrateWarning, value);
-        }
-
-        public string EstimatedResultText
-        {
-            get => _estimatedResultText;
-            set => SetProperty(ref _estimatedResultText, value);
-        }
-
-        // 命令和进度
-        public string GeneratedCommand
-        {
-            get => _generatedCommand;
-            set => SetProperty(ref _generatedCommand, value);
-        }
-
-        public bool IsProcessing
-        {
-            get => _isProcessing;
-            set => SetProperty(ref _isProcessing, value);
-        }
-
-        public double ProcessingProgress
-        {
-            get => _processingProgress;
-            set => SetProperty(ref _processingProgress, value);
-        }
-
-        public bool CanExecute
-        {
-            get => _canExecute;
-            set => SetProperty(ref _canExecute, value);
-        }
+        [ObservableProperty]
+        private CodecOption? _selectedCodecOption;
 
         #endregion
 
-        #region Commands
+        #region 命令
 
-        public ICommand InitializeCommand { get; }
-        public ICommand SelectInputFileCommand { get; }
-        public ICommand SelectInputFolderCommand { get; }
-        public ICommand SelectOutputFolderCommand { get; }
-        public ICommand ExecuteCompressionCommand { get; }
-        public ICommand UpdateCodecCommand { get; }
-        public ICommand UpdateBitrateCommand { get; }
-        public ICommand SetThemeCommand { get; }
-        public ICommand ToggleThemeCommand { get; }
-        public ICommand OpenFFmpegSettingsCommand { get; }
-        public ICommand RedetectFFmpegCommand { get; }
-        public ICommand ShowAboutCommand { get; }
-        public ICommand ExitCommand { get; }
-
-        #endregion
-
-        #region Methods
-
-        private async Task InitializeAsync()
+        [RelayCommand]
+        private async Task SelectFile()
         {
-            FFmpegStatusText = "正在检测FFmpeg...";
-            
-            var result = await _ffmpegService.InitializeAsync();
-            IsFFmpegAvailable = result;
-
-            if (result)
+            var file = await _dialogService.OpenFileDialog("选择视频文件", new[]
             {
-                var version = await _ffmpegService.GetVersionAsync();
-                FFmpegStatusText = $" - FFmpeg已就绪 ({version})";
-            }
-            else
-            {
-                FFmpegStatusText = " - FFmpeg未配置";
-            }
-
-            UpdateCanExecute();
-        }
-
-        private async Task SelectInputFileAsync()
-        {
-            // 这个方法将由View通过文件选择对话框调用SetInputFile
-            // 保持为空实现，实际逻辑在SetInputFile中
-            await Task.CompletedTask;
-        }
-
-        private async Task SelectInputFolderAsync()
-        {
-            // 这个方法将由View通过文件夹选择对话框调用SetInputFolder
-            // 保持为空实现，实际逻辑在SetInputFolder中
-            await Task.CompletedTask;
-        }
-
-        private async Task SelectOutputFolderAsync()
-        {
-            // 这个方法将由View通过文件夹选择对话框调用SetOutputFolder
-            // 保持为空实现，实际逻辑在SetOutputFolder中
-            await Task.CompletedTask;
-        }
-
-        public async Task SetInputFile(string filePath)
-        {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
-                return;
-
-            InputPath = filePath;
-            _isFolder = false;
-            
-            try
-            {
-                // 分析视频文件
-                var mediaInfo = await _mediaAnalyzer.AnalyzeAsync(filePath);
-                
-                // 更新视频信息
-                var fileInfo = new FileInfo(filePath);
-                OriginalFileSize = FormatFileSize(fileInfo.Length);
-                VideoDuration = FormatDuration(mediaInfo.Duration);
-                OriginalBitrate = $"{mediaInfo.Bitrate / 1000:F0} kbps";
-                VideoResolution = $"{mediaInfo.Width}×{mediaInfo.Height}";
-                VideoFramerate = $"{mediaInfo.FrameRate:F1} fps";
-                
-                HasVideoInfo = true;
-                
-                // 设置默认输出路径
-                if (string.IsNullOrEmpty(OutputPath))
+                new FilePickerFileType("视频文件")
                 {
-                    OutputPath = Path.GetDirectoryName(filePath) ?? "";
-                }
-                
-                UpdateBitrateWarning();
-                UpdateEstimatedResult();
-                UpdateFFmpegCommand();
-                UpdateCanExecute();
-            }
-            catch (Exception ex)
-            {
-                // 处理错误
-                HasVideoInfo = false;
-                FFmpegStatusText = $" - 分析视频失败: {ex.Message}";
-            }
-        }
-
-        public void SetInputFolder(string folderPath)
-        {
-            if (!Directory.Exists(folderPath))
-                return;
-
-            InputPath = folderPath;
-            _isFolder = true;
-            HasVideoInfo = false;
-            
-            // 统计文件夹中的视频文件
-            var videoExtensions = new[] { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm" };
-            var videoFiles = Directory.GetFiles(folderPath)
-                .Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLower()))
-                .ToArray();
-            
-            if (videoFiles.Length > 0)
-            {
-                EstimatedResultText = $"找到 {videoFiles.Length} 个视频文件";
-                
-                // 设置默认输出路径
-                if (string.IsNullOrEmpty(OutputPath))
+                    Patterns = new[] { "*.mp4", "*.avi", "*.mkv", "*.mov", "*.wmv", "*.flv", "*.webm" }
+                },
+                new FilePickerFileType("所有文件")
                 {
-                    OutputPath = folderPath;
+                    Patterns = new[] { "*.*" }
                 }
-                
-                UpdateFFmpegCommand();
-                UpdateCanExecute();
-            }
-            else
+            });
+
+            if (file != null)
             {
-                EstimatedResultText = "文件夹中没有找到视频文件";
+                await ProcessSelectedInput(file.Path.LocalPath);
             }
         }
 
-        public void SetOutputFolder(string folderPath)
+        [RelayCommand]
+        private async Task SelectFolder()
         {
-            if (Directory.Exists(folderPath))
+            var folder = await _dialogService.OpenFolderDialog("选择文件夹");
+            if (folder != null)
             {
-                OutputPath = folderPath;
-                UpdateFFmpegCommand();
-                UpdateCanExecute();
+                await ProcessSelectedInput(folder.Path.LocalPath);
             }
         }
 
-        private void UpdateCodec(string codecTag)
+        [RelayCommand]
+        private async Task SelectOutputFolder()
         {
-            // 更新编码器选择
-            UpdateFFmpegCommand();
-        }
-
-        private void UpdateBitrate(double bitrate)
-        {
-            TargetBitrate = bitrate;
-        }
-
-        private void UpdateBitrateWarning()
-        {
-            if (HasVideoInfo && !string.IsNullOrEmpty(OriginalBitrate))
+            var folder = await _dialogService.OpenFolderDialog("选择输出文件夹");
+            if (folder != null)
             {
-                // 从原始比特率字符串中提取数值
-                if (double.TryParse(OriginalBitrate.Replace(" kbps", ""), out double originalKbps))
-                {
-                    ShowBitrateWarning = TargetBitrate > originalKbps;
-                }
+                CompressionSettings.OutputPath = folder.Path.LocalPath;
+                OutputPathText = folder.Path.LocalPath;
+                UpdateCommand();
             }
         }
 
-        private void UpdateEstimatedResult()
+        [RelayCommand]
+        private async Task Execute()
         {
-            if (!HasVideoInfo && !_isFolder)
-            {
-                EstimatedResultText = "请先选择视频文件";
-                return;
-            }
+            if (IsProcessing || !_ffmpegManager.IsFFmpegAvailable) return;
 
-            if (_isFolder)
-            {
-                var videoExtensions = new[] { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm" };
-                var videoFiles = Directory.GetFiles(InputPath)
-                    .Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLower()))
-                    .ToArray();
-                EstimatedResultText = $"批量处理 {videoFiles.Length} 个文件，比特率: {TargetBitrate:F0} kbps";
-            }
-            else
-            {
-                var compressionPercent = CompressionRatio / 100.0;
-                var estimatedSizeText = $"预计压缩到原文件的 {CompressionRatio}%";
-                EstimatedResultText = $"{estimatedSizeText}，比特率: {TargetBitrate:F0} kbps";
-            }
-        }
-
-        private void UpdateFFmpegCommand()
-        {
-            if (string.IsNullOrEmpty(InputPath) || string.IsNullOrEmpty(OutputPath))
-            {
-                GeneratedCommand = "请先选择输入文件和输出文件夹";
-                return;
-            }
-
-            var codecMap = new[] { "libx264", "libx265", "libvpx-vp9" };
-            var codec = codecMap[Math.Min(SelectedCodecIndex, codecMap.Length - 1)];
-            
-            if (_isFolder)
-            {
-                GeneratedCommand = $"批量处理模式: ffmpeg -i [输入文件] -c:v {codec} -b:v {TargetBitrate}k -c:a copy [输出文件]";
-            }
-            else
-            {
-                var inputFileName = Path.GetFileNameWithoutExtension(InputPath);
-                var outputFileName = $"{inputFileName}_compressed.mp4";
-                var outputFilePath = Path.Combine(OutputPath, outputFileName);
-
-                GeneratedCommand = $"ffmpeg -i \"{InputPath}\" -c:v {codec} -b:v {TargetBitrate}k -c:a copy \"{outputFilePath}\"";
-            }
-        }
-
-        private void UpdateCanExecute()
-        {
-            CanExecute = IsFFmpegAvailable && 
-                        !string.IsNullOrEmpty(InputPath) && 
-                        !string.IsNullOrEmpty(OutputPath) && 
-                        !IsProcessing;
-        }
-
-        private async Task ExecuteCompressionAsync()
-        {
-            if (!CanExecute) return;
+            IsProcessing = true;
+            CanExecute = false;
+            IsProgressVisible = true;
 
             try
             {
-                IsProcessing = true;
-                ProcessingProgress = 0;
-                UpdateCanExecute();
-
-                if (_isFolder)
-                {
-                    await ProcessFolderAsync();
-                }
-                else
-                {
-                    await ProcessSingleFileAsync();
-                }
-                
-                FFmpegStatusText = " - 压缩完成";
+                await ExecuteFFmpegCommand();
+                await _dialogService.ShowMessage("完成", "视频处理完成！");
             }
             catch (Exception ex)
             {
-                FFmpegStatusText = $" - 压缩失败: {ex.Message}";
+                await _dialogService.ShowMessage("错误", $"执行FFmpeg命令时出错:\n{ex.Message}");
             }
             finally
             {
                 IsProcessing = false;
-                ProcessingProgress = 0;
-                UpdateCanExecute();
+                CanExecute = true;
+                IsProgressVisible = false;
             }
         }
 
-        private async Task ProcessSingleFileAsync()
-        {
-            var compressionSettings = new VideoCompressionSettings
-            {
-                InputPath = InputPath,
-                OutputPath = OutputPath,
-                TargetBitrate = (int)TargetBitrate,
-                Codec = GetSelectedCodec(),
-                CompressionRatio = CompressionRatio / 100.0
-            };
-
-            var progress = new Progress<double>(value => ProcessingProgress = value * 100);
-            
-            await _videoProcessor.CompressVideoAsync(compressionSettings, progress);
-        }
-
-        private async Task ProcessFolderAsync()
-        {
-            var videoExtensions = new[] { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm" };
-            var videoFiles = Directory.GetFiles(InputPath)
-                .Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLower()))
-                .ToArray();
-
-            var totalFiles = videoFiles.Length;
-            var processedFiles = 0;
-
-            foreach (var file in videoFiles)
-            {
-                var compressionSettings = new VideoCompressionSettings
-                {
-                    InputPath = file,
-                    OutputPath = OutputPath,
-                    TargetBitrate = (int)TargetBitrate,
-                    Codec = GetSelectedCodec(),
-                    CompressionRatio = CompressionRatio / 100.0
-                };
-
-                var fileProgress = new Progress<double>(value =>
-                {
-                    var overallProgress = (processedFiles + value) / totalFiles * 100;
-                    ProcessingProgress = overallProgress;
-                });
-
-                await _videoProcessor.CompressVideoAsync(compressionSettings, fileProgress);
-                processedFiles++;
-            }
-        }
-
-        private string GetSelectedCodec()
-        {
-            return SelectedCodecIndex switch
-            {
-                1 => "libx265",
-                2 => "libvpx-vp9",
-                _ => "libx264"
-            };
-        }
-
-        private void SetTheme(string theme)
-        {
-            IsSystemTheme = theme?.ToLower() == "system";
-            IsLightTheme = theme?.ToLower() == "light";
-            IsDarkTheme = theme?.ToLower() == "dark";
-            
-            var app = Avalonia.Application.Current;
-            if (app != null)
-            {
-                app.RequestedThemeVariant = theme?.ToLower() switch
-                {
-                    "light" => Avalonia.Styling.ThemeVariant.Light,
-                    "dark" => Avalonia.Styling.ThemeVariant.Dark,
-                    _ => Avalonia.Styling.ThemeVariant.Default
-                };
-            }
-        }
-
+        [RelayCommand]
         private void ToggleTheme()
         {
-            if (IsDarkTheme)
+            IsThemeDark = !IsThemeDark;
+            CurrentTheme = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
+            Application.Current!.RequestedThemeVariant = CurrentTheme;
+        }
+
+        [RelayCommand]
+        private async Task ShowFFmpegSettings()
+        {
+            var setupViewModel = new SetupWindowViewModel(_ffmpegManager);
+            var setupWindow = new Views.SetupWindow
             {
-                SetTheme("light");
-            }
-            else
+                DataContext = setupViewModel
+            };
+
+            var mainWindow = _dialogService.GetMainWindow();
+            if (mainWindow != null)
             {
-                SetTheme("dark");
-            }
-        }
+                await setupWindow.ShowDialog(mainWindow);
 
-        private void OpenFFmpegSettings()
-        {
-            // TODO: 打开 FFmpeg 设置对话框
-            FFmpegStatusText = " - FFmpeg设置功能开发中...";
-        }
-
-        private async Task RedetectFFmpegAsync()
-        {
-            await InitializeAsync();
-        }
-
-        private void ShowAbout()
-        {
-            // TODO: 显示关于对话框
-            FFmpegStatusText = " - FFGUITool v1.0 - FFmpeg视频压缩工具";
-        }
-
-        private void Exit()
-        {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                desktop.Shutdown();
+                if (setupViewModel.SetupCompleted)
+                {
+                    await _ffmpegManager.InitializeAsync();
+                    UpdateFFmpegStatus();
+                    await _dialogService.ShowMessage("成功", "FFmpeg配置已更新！");
+                }
             }
         }
 
-        private static string FormatFileSize(long bytes)
+        [RelayCommand]
+        private async Task RedetectFFmpeg()
         {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len = len / 1024;
-            }
-            return $"{len:0.##} {sizes[order]}";
+            FfmpegStatusText = " - 重新检测中...";
+            FfmpegStatusColor = "Gray";
+
+            await _ffmpegManager.InitializeAsync();
+            UpdateFFmpegStatus();
+
+            var message = _ffmpegManager.IsFFmpegAvailable
+                ? "FFmpeg检测成功！"
+                : "未找到FFmpeg，请通过菜单手动配置。";
+
+            await _dialogService.ShowMessage("检测完成", message);
         }
 
-        private static string FormatDuration(TimeSpan duration)
+        [RelayCommand]
+        private async Task ShowAbout()
         {
-            if (duration.TotalHours >= 1)
-                return $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
-            else
-                return $"{duration.Minutes:D2}:{duration.Seconds:D2}";
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+            var ffmpegVersion = await _ffmpegManager.GetFFmpegVersion();
+
+            var message = $"FFGUITool v{version}\n" +
+                         $"FFmpeg视频压缩工具\n\n" +
+                         $"FFmpeg版本: {ffmpegVersion}\n\n" +
+                         $"© 2025 FFGUITool\n" +
+                         $"Powered by FFmpeg and Avalonia\n" +
+                         $"Assembled by brealin";
+
+            await _dialogService.ShowMessage("关于 FFGUITool", message);
         }
 
         #endregion
-    }
 
-    // 辅助类
-    public class VideoCompressionSettings
-    {
-        public string InputPath { get; set; } = "";
-        public string OutputPath { get; set; } = "";
-        public int TargetBitrate { get; set; }
-        public string Codec { get; set; } = "";
-        public double CompressionRatio { get; set; }
+        #region 构造函数和初始化
+
+        public MainWindowViewModel() : this(
+            new FFmpegManager(),
+            new DialogService())
+        {
+        }
+
+        public MainWindowViewModel(
+            FFmpegManager ffmpegManager,
+            IDialogService dialogService)
+        {
+            _ffmpegManager = ffmpegManager;
+            _dialogService = dialogService;
+            _videoAnalyzer = new VideoAnalyzer(_ffmpegManager);
+            _commandBuilder = new CommandBuilder();
+
+            // 设置默认编码器选项
+            SelectedCodecOption = CodecOptions[0];
+
+            // 监听属性变化
+            PropertyChanged += OnPropertyChanged;
+        }
+
+        protected override async Task OnInitializeAsync()
+        {
+            await InitializeFFmpeg();
+        }
+
+        private async Task InitializeFFmpeg()
+        {
+            FfmpegStatusText = " - 检测FFmpeg中...";
+
+            await _ffmpegManager.InitializeAsync();
+
+            if (!_ffmpegManager.IsFFmpegAvailable)
+            {
+                var setupViewModel = new SetupWindowViewModel(_ffmpegManager);
+                var setupWindow = new Views.SetupWindow
+                {
+                    DataContext = setupViewModel
+                };
+
+                var mainWindow = _dialogService.GetMainWindow();
+                if (mainWindow != null)
+                {
+                    await setupWindow.ShowDialog(mainWindow);
+
+                    if (setupViewModel.SetupCompleted)
+                    {
+                        await _ffmpegManager.InitializeAsync();
+                    }
+
+                    if (!_ffmpegManager.IsFFmpegAvailable)
+                    {
+                        await _dialogService.ShowMessage("警告", 
+                            "FFmpeg未正确配置，某些功能可能无法使用。\n您可以通过菜单重新配置。");
+                    }
+                }
+            }
+
+            UpdateFFmpegStatus();
+        }
+
+        #endregion
+
+        #region 私有方法
+
+        private void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(CompressionPercentage):
+                    OnCompressionPercentageChanged();
+                    break;
+                case nameof(Bitrate):
+                    OnBitrateChanged();
+                    break;
+                case nameof(BitrateSliderValue):
+                    OnBitrateSliderChanged();
+                    break;
+                case nameof(SelectedCodecOption):
+                    OnCodecChanged();
+                    break;
+            }
+        }
+
+        private async void OnCompressionPercentageChanged()
+        {
+            CompressionSettings.CompressionPercentage = CompressionPercentage;
+            await CalculateOptimalBitrate();
+        }
+
+        private void OnBitrateChanged()
+        {
+            CompressionSettings.Bitrate = Bitrate;
+            BitrateSliderValue = Bitrate;
+            BitrateValueText = $"{Bitrate}k";
+            UpdateBitrateWarningAndEstimation();
+            UpdateCommand();
+        }
+
+        private void OnBitrateSliderChanged()
+        {
+            Bitrate = (int)BitrateSliderValue;
+        }
+
+        private async void OnCodecChanged()
+        {
+            if (SelectedCodecOption != null)
+            {
+                SelectedCodec = SelectedCodecOption.Value;
+                CompressionSettings.Codec = SelectedCodec;
+                await CalculateOptimalBitrate();
+                UpdateCommand();
+            }
+        }
+
+        private async Task ProcessSelectedInput(string path)
+        {
+            CompressionSettings.InputPath = path;
+            InputPathText = path;
+
+            // 分析视频文件
+            if (Path.GetExtension(path).ToLower() is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm")
+            {
+                EstimatedBitrateText = "分析视频中...";
+                EstimatedBitrateColor = "Blue";
+
+                CurrentVideoInfo = await _videoAnalyzer.AnalyzeVideo(path);
+
+                if (CurrentVideoInfo != null)
+                {
+                    IsVideoInfoVisible = true;
+                    await CalculateOptimalBitrate();
+                }
+            }
+            else
+            {
+                CurrentVideoInfo = null;
+                IsVideoInfoVisible = false;
+                EstimatedBitrateText = "非视频文件";
+                EstimatedBitrateColor = "Gray";
+            }
+
+            UpdateCommand();
+        }
+
+        private async Task CalculateOptimalBitrate()
+        {
+            if (CurrentVideoInfo == null)
+            {
+                EstimatedBitrateText = "请先选择视频文件";
+                return;
+            }
+
+            EstimatedBitrateText = "计算中...";
+
+            var targetBitrate = _commandBuilder.CalculateRecommendedBitrate(
+                CurrentVideoInfo, 
+                CompressionPercentage, 
+                SelectedCodec);
+
+            // 动态调整滑动条范围
+            UpdateBitrateControlsRange(CurrentVideoInfo.Bitrate);
+
+            // 更新比特率
+            Bitrate = targetBitrate;
+            BitrateSliderValue = targetBitrate;
+
+            UpdateBitrateWarningAndEstimation();
+        }
+
+        private void UpdateBitrateControlsRange(int originalBitrate)
+        {
+            BitrateSliderMaximum = Math.Max(originalBitrate * 3 / 2, 50000);
+            BitrateSliderMinimum = 1;
+        }
+
+        private void UpdateBitrateWarningAndEstimation()
+        {
+            if (CurrentVideoInfo == null) return;
+
+            IsBitrateWarningVisible = Bitrate > CurrentVideoInfo.Bitrate;
+
+            var estimatedSize = _commandBuilder.CalculateEstimatedFileSize(Bitrate, CurrentVideoInfo.Duration);
+            var originalSizeMB = CurrentVideoInfo.FileSize / 1024.0 / 1024.0;
+            var estimatedSizeMB = estimatedSize / 1024.0 / 1024.0;
+
+            if (estimatedSizeMB > originalSizeMB)
+            {
+                var increaseRatio = (estimatedSizeMB / originalSizeMB - 1) * 100;
+                EstimatedBitrateText = $"{Bitrate}k (预估: {estimatedSizeMB:F1}MB, 增大: {increaseRatio:F1}%)";
+                EstimatedBitrateColor = "Orange";
+            }
+            else
+            {
+                var compressionRatio = (1 - estimatedSizeMB / originalSizeMB) * 100;
+                EstimatedBitrateText = $"{Bitrate}k (预估: {estimatedSizeMB:F1}MB, 压缩: {compressionRatio:F1}%)";
+                EstimatedBitrateColor = "Green";
+            }
+        }
+
+        private void UpdateCommand()
+        {
+            CompressionSettings.Bitrate = Bitrate;
+            var command = _commandBuilder.BuildCommand(CompressionSettings, CurrentVideoInfo);
+            CommandText = command.BuildCommand();
+            
+            CanExecute = CompressionSettings.IsValid && _ffmpegManager.IsFFmpegAvailable;
+        }
+
+        private void UpdateFFmpegStatus()
+        {
+            if (_ffmpegManager.IsFFmpegAvailable)
+            {
+                Title = "FFmpeg 视频压缩工具 - FFmpeg已就绪";
+                FfmpegStatusText = " - FFmpeg已就绪";
+                FfmpegStatusColor = "Green";
+            }
+            else
+            {
+                Title = "FFmpeg 视频压缩工具 - FFmpeg未配置";
+                FfmpegStatusText = " - FFmpeg未配置";
+                FfmpegStatusColor = "Red";
+            }
+        }
+
+        private async Task ExecuteFFmpegCommand()
+        {
+            if (!_ffmpegManager.IsFFmpegAvailable)
+            {
+                throw new Exception("FFmpeg未配置或不可用，请先配置FFmpeg路径");
+            }
+
+            var command = _commandBuilder.BuildCommand(CompressionSettings);
+            var arguments = command.BuildCommand().Replace("ffmpeg ", "");
+
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = _ffmpegManager.FFmpegPath,
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = new Process { StartInfo = processInfo };
+            process.Start();
+
+            var output = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                throw new Exception($"FFmpeg执行失败，退出代码: {process.ExitCode}\n错误信息: {output}");
+            }
+        }
+
+        #endregion
     }
 }

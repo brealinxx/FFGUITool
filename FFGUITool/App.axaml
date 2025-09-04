@@ -6,8 +6,8 @@
 
     <Application.Resources>
         <!-- 注册转换器 -->
-        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
-        <converters:BoolToStatusTextConverter x:Key="BoolToStatusTextConverter"/>
+        <!-- <converters:BoolToColorConverter x:Key="BoolToColorConverter"/> -->
+        <!-- <converters:BoolToStatusTextConverter x:Key="BoolToStatusTextConverter"/> -->
     </Application.Resources>
 
     <Application.Styles>
