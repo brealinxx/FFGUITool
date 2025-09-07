@@ -333,6 +333,9 @@ namespace FFGUITool.ViewModels
                 case nameof(SelectedCodecOption):
                     OnCodecChanged();
                     break;
+                case nameof(IsThemeDark):
+                    // 当IsThemeDark改变时不需要额外处理，ToggleTheme命令会处理
+                    break;
             }
         }
 

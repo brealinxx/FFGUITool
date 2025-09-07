@@ -234,7 +234,7 @@
                                 <TextBlock Grid.Column="0" Text="预估结果:" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1" 
                                            Text="{Binding EstimatedBitrateText}"
-                                           Foreground="{Binding EstimatedBitrateColor}"
+                                           Foreground="{Binding EstimatedBitrateColor, Converter={StaticResource StringToColorConverter}}"
                                            VerticalAlignment="Center"
                                            Margin="5,0,0,0" TextWrapping="Wrap"/>
                             </Grid>

@@ -1,32 +1,28 @@
-using System;
+﻿using System;
 using System.Globalization;
-using Avalonia;
 using Avalonia.Data.Converters;
 
 namespace FFGUITool.Converters
 {
     /// <summary>
-    /// 布尔值转可见性转换器
+    /// 反转布尔值转换器
     /// </summary>
-    public class BoolToVisibilityConverter : IValueConverter
+    public class InverseBoolConverter : IValueConverter
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is bool boolValue)
             {
-                // 如果参数为"Inverted"，则反转逻辑
-                bool invert = parameter?.ToString()?.Equals("Inverted", StringComparison.OrdinalIgnoreCase) ?? false;
-                return (boolValue ^ invert);
+                return !boolValue;
             }
-            return false;
+            return true;
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is bool boolValue)
             {
-                bool invert = parameter?.ToString()?.Equals("Inverted", StringComparison.OrdinalIgnoreCase) ?? false;
-                return boolValue ^ invert;
+                return !boolValue;
             }
             return false;
         }
