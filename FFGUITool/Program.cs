@@ -1,21 +1,31 @@
 ﻿using Avalonia;
 using System;
+using Avalonia.Themes.Fluent;
 
 namespace FFGUITool
 {
     internal class Program
     {
-        // 程序入口点
         [STAThread]
-        public static void Main(string[] args) 
-            => BuildAvaloniaApp()
-                .StartWithClassicDesktopLifetime(args);
+        public static void Main(string[] args)
+        {
+            try
+            {
+                BuildAvaloniaApp()
+                    .StartWithClassicDesktopLifetime(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to start: {ex}");
+                throw;
+            }
+        }
 
-        // 配置 Avalonia
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
-                .WithInterFont()   // 使用内置字体（可选）
+                .With(new FluentTheme())
+                .WithInterFont()
                 .LogToTrace();
     }
 }

@@ -2,10 +2,117 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="using:FFGUITool.Converters"
              x:Class="FFGUITool.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Global Button Styles -->
+        <Style Selector="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="MinHeight" Value="32"/>
+        </Style>
+        <Style Selector="Button.primary-button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.primary-button:pointerover">
+            <Setter Property="Background" Value="#005A9B"/>
+        </Style>
+        <Style Selector="Button.primary-button:pressed">
+            <Setter Property="Background" Value="#004578"/>
+        </Style>
+        <Style Selector="Button.help-button">
+            <Setter Property="Background" Value="{DynamicResource HelpButtonBackground}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="20"/>
+        </Style>
+        <Style Selector="Button.help-button:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HelpButtonHoverBackground}"/>
+        </Style>
+
+        <!-- TextBox Styles -->
+        <Style Selector="TextBox.command-box">
+            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource CommandBoxForeground}"/>
+            <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+        </Style>
+        <Style Selector="TextBox.command-box:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CommandBoxBackground}"/>
+        </Style>
+        <Style Selector="TextBox.command-box:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CommandBoxBackground}"/>
+        </Style>
+
+        <!-- Border Styles -->
+        <Style Selector="Border.video-info">
+            <Setter Property="Background" Value="{DynamicResource VideoInfoBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource VideoInfoBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="15"/>
+        </Style>
+        <Style Selector="Border.tooltip-card">
+            <Setter Property="Background" Value="{DynamicResource TooltipBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TooltipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Border.info-card">
+            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="15"/>
+        </Style>
+
+        <!-- TextBlock Styles -->
+        <Style Selector="TextBlock.section-title">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+        </Style>
+        <Style Selector="TextBlock.value">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Other Control Styles -->
+        <Style Selector="NumericUpDown">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="ProgressBar">
+            <Setter Property="MinHeight" Value="20"/>
+        </Style>
+        <Style Selector="ToggleButton.theme-toggle">
+            <Setter Property="Width" Value="50"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </Application.Styles>
 
     <Application.Resources>
-        <!-- 注册转换器 -->
+        <!-- Converters -->
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:FileSizeConverter x:Key="FileSizeConverter"/>
         <converters:StringToColorConverter x:Key="StringToColorConverter"/>
@@ -15,33 +122,9 @@
         <converters:BitrateConverter x:Key="BitrateConverter"/>
         <converters:AllTrueConverter x:Key="AllTrueConverter"/>
         <converters:AnyTrueConverter x:Key="AnyTrueConverter"/>
-        
-        <!-- 颜色资源 -->
-        <!-- 浅色主题 -->
-        <SolidColorBrush x:Key="CardBackgroundLight" Color="#FAFAFA"/>
-        <SolidColorBrush x:Key="CardBorderBrushLight" Color="#E0E0E0"/>
-        <SolidColorBrush x:Key="HelpButtonBackgroundLight" Color="#87CEEB"/>
-        <SolidColorBrush x:Key="HelpButtonHoverBackgroundLight" Color="#5E9ED6"/>
-        <SolidColorBrush x:Key="CommandBoxBackgroundLight" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="CommandBoxForegroundLight" Color="#00FF00"/>
-        <SolidColorBrush x:Key="VideoInfoBackgroundLight" Color="#F0F8FF"/>
-        <SolidColorBrush x:Key="VideoInfoBorderLight" Color="#4682B4"/>
-        <SolidColorBrush x:Key="TooltipBackgroundLight" Color="White"/>
-        <SolidColorBrush x:Key="TooltipBorderLight" Color="#E0E0E0"/>
-        
-        <!-- 深色主题 -->
-        <SolidColorBrush x:Key="CardBackgroundDark" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="CardBorderBrushDark" Color="#3F3F46"/>
-        <SolidColorBrush x:Key="HelpButtonBackgroundDark" Color="#5E81AC"/>
-        <SolidColorBrush x:Key="HelpButtonHoverBackgroundDark" Color="#81A1C1"/>
-        <SolidColorBrush x:Key="CommandBoxBackgroundDark" Color="#1E1E1E"/>
-        <SolidColorBrush x:Key="CommandBoxForegroundDark" Color="#00FF00"/>
-        <SolidColorBrush x:Key="VideoInfoBackgroundDark" Color="#1E3A5F"/>
-        <SolidColorBrush x:Key="VideoInfoBorderDark" Color="#5E9ED6"/>
-        <SolidColorBrush x:Key="TooltipBackgroundDark" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="TooltipBorderDark" Color="#3F3F46"/>
-        
-        <!-- 动态资源（会根据主题切换） -->
+
+        <!-- Theme Resources -->
+        <!-- Light Theme -->
         <SolidColorBrush x:Key="CardBackground" Color="#FAFAFA"/>
         <SolidColorBrush x:Key="CardBorderBrush" Color="#E0E0E0"/>
         <SolidColorBrush x:Key="HelpButtonBackground" Color="#87CEEB"/>
@@ -52,129 +135,17 @@
         <SolidColorBrush x:Key="VideoInfoBorder" Color="#4682B4"/>
         <SolidColorBrush x:Key="TooltipBackground" Color="White"/>
         <SolidColorBrush x:Key="TooltipBorder" Color="#E0E0E0"/>
-    </Application.Resources>
 
-    <Application.Styles>
-        <FluentTheme />
-        
-        <!-- 全局样式 -->
-        <Style Selector="Button">
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="MinHeight" Value="32"/>
-        </Style>
-        
-        <Style Selector="Button.primary-button">
-            <Setter Property="Background" Value="#007ACC"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-        
-        <Style Selector="Button.primary-button:pointerover">
-            <Setter Property="Background" Value="#005A9B"/>
-        </Style>
-        
-        <Style Selector="Button.primary-button:pressed">
-            <Setter Property="Background" Value="#004578"/>
-        </Style>
-        
-        <Style Selector="Button.help-button">
-            <Setter Property="Background" Value="{DynamicResource HelpButtonBackground}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Width" Value="20"/>
-            <Setter Property="Height" Value="20"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="MinHeight" Value="20"/>
-        </Style>
-        
-        <Style Selector="Button.help-button:pointerover">
-            <Setter Property="Background" Value="{DynamicResource HelpButtonHoverBackground}"/>
-        </Style>
-        
-        <Style Selector="TextBox.command-box">
-            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource CommandBoxForeground}"/>
-            <Setter Property="FontFamily" Value="Consolas, 'Courier New', monospace"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="IsReadOnly" Value="True"/>
-        </Style>
-        
-        <!-- 防止命令框在鼠标悬停时变色 -->
-        <Style Selector="TextBox.command-box:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource CommandBoxBackground}"/>
-        </Style>
-        
-        <Style Selector="TextBox.command-box:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource CommandBoxBackground}"/>
-        </Style>
-        
-        <Style Selector="Border.video-info">
-            <Setter Property="Background" Value="{DynamicResource VideoInfoBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource VideoInfoBorder}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Padding" Value="15"/>
-        </Style>
-        
-        <Style Selector="Border.tooltip-card">
-            <Setter Property="Background" Value="{DynamicResource TooltipBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource TooltipBorder}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="5"/>
-        </Style>
-        
-        <Style Selector="Border.info-card">
-            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Padding" Value="15"/>
-        </Style>
-        
-        <!-- TextBlock样式 -->
-        <Style Selector="TextBlock.section-title">
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-        
-        <Style Selector="TextBlock.label">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="0,0,5,0"/>
-        </Style>
-        
-        <Style Selector="TextBlock.value">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        
-        <!-- NumericUpDown样式 -->
-        <Style Selector="NumericUpDown">
-            <Setter Property="MinHeight" Value="32"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        
-        <!-- ComboBox样式 -->
-        <Style Selector="ComboBox">
-            <Setter Property="MinHeight" Value="32"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        
-        <!-- ProgressBar样式 -->
-        <Style Selector="ProgressBar">
-            <Setter Property="MinHeight" Value="20"/>
-        </Style>
-        
-        <!-- ToggleButton样式 -->
-        <Style Selector="ToggleButton.theme-toggle">
-            <Setter Property="Width" Value="50"/>
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-    </Application.Styles>
+        <!-- Dark Theme (for reference, not applied unless theme is toggled) -->
+        <SolidColorBrush x:Key="CardBackgroundDark" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="CardBorderBrushDark" Color="#3F3F46"/>
+        <SolidColorBrush x:Key="HelpButtonBackgroundDark" Color="#5E81AC"/>
+        <SolidColorBrush x:Key="HelpButtonHoverBackgroundDark" Color="#81A1C1"/>
+        <SolidColorBrush x:Key="CommandBoxBackgroundDark" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="CommandBoxForegroundDark" Color="#00FF00"/>
+        <SolidColorBrush x:Key="VideoInfoBackgroundDark" Color="#1E3A5F"/>
+        <SolidColorBrush x:Key="VideoInfoBorderDark" Color="#5E9ED6"/>
+        <SolidColorBrush x:Key="TooltipBackgroundDark" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="TooltipBorderDark" Color="#3F3F46"/>
+    </Application.Resources>
 </Application>

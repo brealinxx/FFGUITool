@@ -8,15 +8,37 @@
         Width="900" Height="750"
         MinWidth="700" MinHeight="650">
     
-    <Window.Resources>
-        <!-- 浅色主题资源 -->
-        <SolidColorBrush x:Key="CardBackgroundLight" Color="#FAFAFA"/>
-        <SolidColorBrush x:Key="CardBorderBrushLight" Color="#E0E0E0"/>
-        
-        <!-- 深色主题资源 -->
-        <SolidColorBrush x:Key="CardBackgroundDark" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="CardBorderBrushDark" Color="#3F3F46"/>
-    </Window.Resources>
+    <Window.Styles>
+        <!-- Remove ActualThemeVariant selectors and use dynamic resources -->
+        <Style Selector="Border.info-card">
+            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="15"/>
+        </Style>
+        <Style Selector="Border.video-info">
+            <Setter Property="Background" Value="{DynamicResource VideoInfoBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource VideoInfoBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="15"/>
+        </Style>
+        <Style Selector="TextBox.command-box">
+            <Setter Property="Background" Value="{DynamicResource CommandBoxBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource CommandBoxForeground}"/>
+            <Setter Property="FontFamily" Value="Consolas, 'Courier New', monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+        </Style>
+        <Style Selector="TextBox.command-box:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.command-box:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </Window.Styles>
     
     <Grid>
         <Grid.RowDefinitions>
@@ -67,7 +89,6 @@
                 <!-- 右侧主题切换按钮 -->
                 <ToggleButton Grid.Column="2" 
                               IsChecked="{Binding IsThemeDark}"
-                              Command="{Binding ToggleThemeCommand}"
                               HorizontalAlignment="Right"
                               Width="50" Height="30"
                               ToolTip.Tip="切换深色/浅色主题">
@@ -83,9 +104,7 @@
                 <StackPanel Spacing="15">
                     
                     <!-- 文件选择区域 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            Background="{DynamicResource CardBackgroundLight}"
-                            BorderBrush="{DynamicResource CardBorderBrushLight}">
+                    <Border Classes="info-card" BorderThickness="1" CornerRadius="5" Padding="15">
                         <StackPanel Spacing="10">
                             <TextBlock Text="文件选择" FontWeight="Bold" FontSize="16"/>
                             
@@ -111,9 +130,8 @@
                     </Border>
 
                     <!-- 原视频信息显示 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            IsVisible="{Binding IsVideoInfoVisible}"
-                            Background="#F0F8FF" BorderBrush="#4682B4">
+                    <Border Classes="video-info" BorderThickness="1" CornerRadius="5" Padding="15"
+                            IsVisible="{Binding IsVideoInfoVisible}">
                         <StackPanel Spacing="8" DataContext="{Binding CurrentVideoInfo}">
                             <TextBlock Text="原视频信息" FontWeight="Bold" FontSize="16"/>
                             <Grid>
@@ -149,9 +167,7 @@
                     </Border>
 
                     <!-- 压缩参数设置 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            Background="{DynamicResource CardBackgroundLight}"
-                            BorderBrush="{DynamicResource CardBorderBrushLight}">
+                    <Border Classes="info-card" BorderThickness="1" CornerRadius="5" Padding="15">
                         <StackPanel Spacing="12">
                             <TextBlock Text="压缩设置" FontWeight="Bold" FontSize="16"/>
                             
@@ -257,9 +273,7 @@
                     </Border>
 
                     <!-- 输出设置 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            Background="{DynamicResource CardBackgroundLight}"
-                            BorderBrush="{DynamicResource CardBorderBrushLight}">
+                    <Border Classes="info-card" BorderThickness="1" CornerRadius="5" Padding="15">
                         <StackPanel Spacing="10">
                             <TextBlock Text="输出设置" FontWeight="Bold" FontSize="16"/>
                             
@@ -285,7 +299,7 @@
 
             <!-- 分隔线 -->
             <Border Grid.Row="2" Height="1" Opacity="0.3" 
-                    Background="{DynamicResource CardBorderBrushLight}" 
+                    Background="Gray" 
                     Margin="0,10"/>
 
             <!-- CLI命令显示和执行区域 -->
@@ -300,11 +314,9 @@
                            FontWeight="Bold" Margin="0,0,0,5"/>
                 
                 <TextBox Grid.Row="1" 
+                         Classes="command-box"
                          Text="{Binding CommandText}"
-                         Background="#2D2D30"
-                         Foreground="#00FF00"
-                         FontFamily="Consolas,Courier New,monospace" FontSize="12"
-                         IsReadOnly="True" TextWrapping="Wrap"
+                         TextWrapping="Wrap"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          LineHeight="18"
                          Padding="8,6,8,4"/>

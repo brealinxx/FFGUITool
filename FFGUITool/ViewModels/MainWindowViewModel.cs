@@ -4,10 +4,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FFGUITool.Models;
 using FFGUITool.Services;
 
@@ -93,9 +94,6 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private double _bitrateSliderMaximum = 50000;
-
-        [ObservableProperty]
-        private ThemeVariant _currentTheme = ThemeVariant.Default;
 
         [ObservableProperty]
         private bool _isThemeDark;
@@ -188,8 +186,7 @@ namespace FFGUITool.ViewModels
         private void ToggleTheme()
         {
             IsThemeDark = !IsThemeDark;
-            CurrentTheme = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
-            Application.Current!.RequestedThemeVariant = CurrentTheme;
+            UpdateTheme();
         }
 
         [RelayCommand]
@@ -271,6 +268,10 @@ namespace FFGUITool.ViewModels
 
             // 监听属性变化
             PropertyChanged += OnPropertyChanged;
+
+            // 初始化主题
+            IsThemeDark = Application.Current?.RequestedThemeVariant == ThemeVariant.Dark;
+            UpdateTheme();
         }
 
         protected override async Task OnInitializeAsync()
@@ -332,9 +333,6 @@ namespace FFGUITool.ViewModels
                     break;
                 case nameof(SelectedCodecOption):
                     OnCodecChanged();
-                    break;
-                case nameof(IsThemeDark):
-                    // 当IsThemeDark改变时不需要额外处理，ToggleTheme命令会处理
                     break;
             }
         }
@@ -509,6 +507,43 @@ namespace FFGUITool.ViewModels
             if (process.ExitCode != 0)
             {
                 throw new Exception($"FFmpeg执行失败，退出代码: {process.ExitCode}\n错误信息: {output}");
+            }
+        }
+
+        private void UpdateTheme()
+        {
+            if (Application.Current == null) return;
+
+            // Update the application theme variant
+            Application.Current.RequestedThemeVariant = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
+
+            // Update dynamic resources based on theme
+            var resources = Application.Current.Resources;
+            if (IsThemeDark)
+            {
+                resources["CardBackground"] = resources["CardBackgroundDark"];
+                resources["CardBorderBrush"] = resources["CardBorderBrushDark"];
+                resources["HelpButtonBackground"] = resources["HelpButtonBackgroundDark"];
+                resources["HelpButtonHoverBackground"] = resources["HelpButtonHoverBackgroundDark"];
+                resources["CommandBoxBackground"] = resources["CommandBoxBackgroundDark"];
+                resources["CommandBoxForeground"] = resources["CommandBoxForegroundDark"];
+                resources["VideoInfoBackground"] = resources["VideoInfoBackgroundDark"];
+                resources["VideoInfoBorder"] = resources["VideoInfoBorderDark"];
+                resources["TooltipBackground"] = resources["TooltipBackgroundDark"];
+                resources["TooltipBorder"] = resources["TooltipBorderDark"];
+            }
+            else
+            {
+                resources["CardBackground"] = resources["CardBackgroundLight"];
+                resources["CardBorderBrush"] = resources["CardBorderBrushLight"];
+                resources["HelpButtonBackground"] = resources["HelpButtonBackgroundLight"];
+                resources["HelpButtonHoverBackground"] = resources["HelpButtonHoverBackgroundLight"];
+                resources["CommandBoxBackground"] = resources["CommandBoxBackgroundLight"];
+                resources["CommandBoxForeground"] = resources["CommandBoxForegroundLight"];
+                resources["VideoInfoBackground"] = resources["VideoInfoBackgroundLight"];
+                resources["VideoInfoBorder"] = resources["VideoInfoBorderLight"];
+                resources["TooltipBackground"] = resources["TooltipBackgroundLight"];
+                resources["TooltipBorder"] = resources["TooltipBorderLight"];
             }
         }
 
