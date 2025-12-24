@@ -1,329 +1,364 @@
-<!-- Views/MainWindow.axaml -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FFGUITool.ViewModels"
         x:Class="FFGUITool.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Title}"
-        Width="900" Height="750"
-        MinWidth="700" MinHeight="650">
-    
-    <Window.Resources>
-        <!-- 浅色主题资源 -->
-        <SolidColorBrush x:Key="CardBackgroundLight" Color="#FAFAFA"/>
-        <SolidColorBrush x:Key="CardBorderBrushLight" Color="#E0E0E0"/>
-        
-        <!-- 深色主题资源 -->
-        <SolidColorBrush x:Key="CardBackgroundDark" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="CardBorderBrushDark" Color="#3F3F46"/>
-    </Window.Resources>
-    
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        Width="960" Height="800"
+        MinWidth="800" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PageBackgroundBrush}"
+        Icon="/Resources/icon.ico">
 
-        <!-- 菜单栏 -->
-        <Menu Grid.Row="0">
-            <MenuItem Header="文件(_F)">
-                <MenuItem Header="退出(_X)" Command="{Binding ExitCommand}"/>
+    <!-- <Window.Resources> -->
+    <!--     <ResourceDictionary> -->
+    <!--         <ResourceDictionary.ThemeDictionaries> -->
+    <!--             <ResourceDictionary x:Key="Light"> -->
+    <!--                 <Color x:Key="PageBackgroundColor">#F3F4F6</Color> -->
+    <!--                 <Color x:Key="CardBackgroundColor">#FFFFFF</Color> -->
+    <!--                 <Color x:Key="PrimaryTextColor">#1F2937</Color> -->
+    <!--                 <Color x:Key="SecondaryTextColor">#6B7280</Color> -->
+    <!--                 <Color x:Key="AccentColor">#3B82F6</Color> -->
+    <!--                 <Color x:Key="AccentHoverColor">#2563EB</Color> -->
+    <!--                 <Color x:Key="BorderColor">#E5E7EB</Color> -->
+    <!--                 <Color x:Key="ConsoleBgColor">#111827</Color> -->
+    <!-- -->
+    <!--                 <SolidColorBrush x:Key="PageBackgroundBrush" Color="{StaticResource PageBackgroundColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" /> -->
+    <!-- -->
+    <!--                 <BoxShadows x:Key="CardShadow">0 4 6 -1 #1A000000, 0 2 4 -1 #0D000000, 0 2 10 0 #15000000, 0 4 12 0 #40000000</BoxShadows> -->
+    <!--             </ResourceDictionary> -->
+    <!-- -->
+    <!--             <ResourceDictionary x:Key="Dark"> -->
+    <!--                 <Color x:Key="PageBackgroundColor">#121212</Color> -->
+    <!--                 <Color x:Key="CardBackgroundColor">#1E1E1E</Color> -->
+    <!--                 <Color x:Key="PrimaryTextColor">#E5E7EB</Color> -->
+    <!--                 <Color x:Key="SecondaryTextColor">#9CA3AF</Color> -->
+    <!--                 <Color x:Key="AccentColor">#60A5FA</Color> -->
+    <!--                 <Color x:Key="AccentHoverColor">#3B82F6</Color> -->
+    <!--                 <Color x:Key="BorderColor">#374151</Color> -->
+    <!--                 <Color x:Key="ConsoleBgColor">#000000</Color> -->
+    <!-- -->
+    <!--                 <SolidColorBrush x:Key="PageBackgroundBrush" Color="{StaticResource PageBackgroundColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" /> -->
+    <!--                 <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" /> -->
+    <!-- -->
+    <!--                 <BoxShadows x:Key="CardShadow">0 4 6 -1 #66000000</BoxShadows> -->
+    <!--             </ResourceDictionary> -->
+    <!--         </ResourceDictionary.ThemeDictionaries> -->
+    <!--     </ResourceDictionary> -->
+    <!-- </Window.Resources> -->
+
+    <Window.Styles>
+        <Style Selector="Border.Card">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}" />
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="TextBlock.H1">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        </Style>
+
+        <Style Selector="Button.Accent">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="Button.Accent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+
+        <Style Selector="Button.Accent:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+        <Menu Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}">
+            <MenuItem Header="文件(_F)" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="退出(_X)" Command="{Binding ExitCommand}" />
             </MenuItem>
-            <MenuItem Header="工具(_T)">
-                <MenuItem Header="FFmpeg设置(_S)" Command="{Binding ShowFFmpegSettingsCommand}"/>
-                <Separator/>
-                <MenuItem Header="重新检测FFmpeg(_R)" Command="{Binding RedetectFFmpegCommand}"/>
+            <MenuItem Header="工具(_T)" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="FFmpeg设置(_S)" Command="{Binding ShowFFmpegSettingsCommand}" />
+                <Separator />
+                <MenuItem Header="重新检测FFmpeg(_R)" Command="{Binding RedetectFFmpegCommand}" />
             </MenuItem>
-            <MenuItem Header="帮助(_H)">
-                <MenuItem Header="关于(_A)" Command="{Binding ShowAboutCommand}"/>
+            <MenuItem Header="帮助(_H)" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="关于(_A)" Command="{Binding ShowAboutCommand}" />
             </MenuItem>
         </Menu>
 
-        <!-- 主要内容区域 -->
-        <Grid Grid.Row="1" Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="120"/>
-            </Grid.RowDefinitions>
+        <Grid Grid.Row="1" Margin="24" RowDefinitions="Auto, *, Auto">
 
-            <!-- 顶部标题和主题切换 -->
-            <Grid Grid.Row="0" Margin="0,0,0,20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <!-- 中间标题区域 -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                    <TextBlock Text="FFGUITool" FontSize="24" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding FfmpegStatusText}" 
-                               FontSize="14" VerticalAlignment="Bottom" 
-                               Margin="10,0,0,2" Foreground="{Binding FfmpegStatusColor}"/>
+            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="FFGUITool" FontSize="28" FontWeight="ExtraBold"
+                               Foreground="{DynamicResource AccentBrush}" LetterSpacing="1" />
+                    <Border Background="{DynamicResource BorderBrush}" CornerRadius="4" Margin="12,0,0,0" Padding="8,2"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FfmpegStatusText}" FontSize="12"
+                                   Foreground="{Binding FfmpegStatusColor}" />
+                    </Border>
                 </StackPanel>
-                
-                <!-- 右侧主题切换按钮 -->
-                <ToggleButton Grid.Column="2" 
-                              IsChecked="{Binding IsThemeDark}"
-                              Command="{Binding ToggleThemeCommand}"
-                              HorizontalAlignment="Right"
-                              Width="50" Height="30"
-                              ToolTip.Tip="切换深色/浅色主题">
-                    <Panel>
-                        <TextBlock Text="🌙" IsVisible="{Binding !IsThemeDark}"/>
-                        <TextBlock Text="☀️" IsVisible="{Binding IsThemeDark}"/>
+
+                <Button Grid.Column="1" Command="{Binding ToggleThemeCommand}"
+                        Classes="Icon" BorderThickness="0" Background="Transparent"
+                        ToolTip.Tip="切换主题">
+                    <Panel Width="24" Height="24">
+                        <TextBlock Text="🌙" FontSize="18" IsVisible="{Binding !IsThemeDark}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="☀️" FontSize="18" IsVisible="{Binding IsThemeDark}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Panel>
-                </ToggleButton>
+                </Button>
             </Grid>
 
-            <!-- 主要操作区域 -->
-            <ScrollViewer Grid.Row="1">
-                <StackPanel Spacing="15">
-                    
-                    <!-- 文件选择区域 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            Background="{DynamicResource CardBackgroundLight}"
-                            BorderBrush="{DynamicResource CardBorderBrushLight}">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="文件选择" FontWeight="Bold" FontSize="16"/>
-                            
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBox Grid.Column="0" 
-                                         Text="{Binding InputPathText}"
-                                         Watermark="选择视频文件或文件夹..." 
-                                         IsReadOnly="True"/>
-                                <Button Grid.Column="1" Content="选择文件" 
-                                        Command="{Binding SelectFileCommand}"
-                                        Margin="5,0,0,0"/>
-                                <Button Grid.Column="2" Content="选择文件夹" 
-                                        Command="{Binding SelectFolderCommand}"
-                                        Margin="5,0,0,0"/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+            <ScrollViewer Grid.Row="1" Padding="0,0,16,0">
+                <StackPanel>
 
-                    <!-- 原视频信息显示 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            IsVisible="{Binding IsVideoInfoVisible}"
-                            Background="#F0F8FF" BorderBrush="#4682B4">
-                        <StackPanel Spacing="8" DataContext="{Binding CurrentVideoInfo}">
-                            <TextBlock Text="原视频信息" FontWeight="Bold" FontSize="16"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" MinWidth="100"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto" MinWidth="100"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                
-                                <!-- 第一行 -->
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="文件大小:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding FormattedFileSize}" Margin="5,0,15,0"/>
-                                <TextBlock Grid.Row="0" Grid.Column="2" Text="时长:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding FormattedDuration}" Margin="5,0,0,0"/>
-                                
-                                <!-- 第二行 -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="原比特率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Bitrate, StringFormat='{}{0} kbps'}" Margin="5,5,15,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="2" Text="分辨率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Resolution}" Margin="5,5,0,0"/>
-                                
-                                <!-- 第三行 -->
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="帧率:" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Framerate, StringFormat='{}{0:F1} fps'}" Margin="5,5,15,0"/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- 压缩参数设置 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            Background="{DynamicResource CardBackgroundLight}"
-                            BorderBrush="{DynamicResource CardBorderBrushLight}">
+                    <Border Classes="Card">
                         <StackPanel Spacing="12">
-                            <TextBlock Text="压缩设置" FontWeight="Bold" FontSize="16"/>
-                            
-                            <!-- 压缩百分比输入框 -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBlock Grid.Column="0" Text="压缩率:" VerticalAlignment="Center"/>
-                                <NumericUpDown Grid.Column="1" 
-                                               Value="{Binding CompressionPercentage}"
-                                               Minimum="10" Maximum="100"
-                                               Increment="1" FormatString="0"
-                                               Margin="5,0,0,0" Height="32"/>
-                                <TextBlock Grid.Column="2" Text="%" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                <TextBlock Grid.Column="3" Text="（数值越小压缩越多）" 
-                                           VerticalAlignment="Center" Margin="15,0,0,0"
-                                           Opacity="0.7" FontSize="12"/>
-                            </Grid>
-
-                            <!-- 手动比特率控制 -->
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                
-                                <!-- 第一行：标签 -->
-                                <TextBlock Grid.Row="0" Text="手动比特率:" Margin="0,0,0,8"/>
-                                
-                                <!-- 第二行：输入框、滑动条和显示值 -->
-                                <Grid Grid.Row="1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="150"/>
-                                        <ColumnDefinition Width="*" MinWidth="200"/>
-                                        <ColumnDefinition Width="80"/>
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <!-- 手动输入框 -->
-                                    <NumericUpDown Grid.Column="0" 
-                                                   Value="{Binding Bitrate}"
-                                                   Minimum="1" Maximum="50000"
-                                                   Increment="100" FormatString="0"
-                                                   Height="32" Margin="0,0,10,0"/>
-                                    
-                                    <!-- 滑动条 -->
-                                    <Slider Grid.Column="1" 
-                                            Value="{Binding BitrateSliderValue}"
-                                            Minimum="{Binding BitrateSliderMinimum}"
-                                            Maximum="{Binding BitrateSliderMaximum}"
-                                            TickFrequency="500" IsSnapToTickEnabled="False"
-                                            Margin="0,0,10,0"/>
-                                            
-                                    <!-- 显示值 -->
-                                    <TextBlock Grid.Column="2" 
-                                               Text="{Binding BitrateValueText}"
-                                               VerticalAlignment="Center" 
-                                               TextAlignment="Right" FontWeight="SemiBold"/>
-                                </Grid>
-                            </Grid>
-
-                            <!-- 比特率警告信息 -->
-                            <TextBlock Text="⚠ 警告：当前比特率高于原视频，文件可能会变大！" 
-                                       Foreground="Orange" FontWeight="Bold"
-                                       FontSize="12" 
-                                       IsVisible="{Binding IsBitrateWarningVisible}"
-                                       Margin="0,5,0,0" TextWrapping="Wrap"/>
-
-                            <!-- 预估结果显示 -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBlock Grid.Column="0" Text="预估结果:" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" 
-                                           Text="{Binding EstimatedBitrateText}"
-                                           Foreground="{Binding EstimatedBitrateColor, Converter={StaticResource StringToColorConverter}}"
-                                           VerticalAlignment="Center"
-                                           Margin="5,0,0,0" TextWrapping="Wrap"/>
-                            </Grid>
-
-                            <!-- 编码器选择 -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBlock Grid.Column="0" Text="编码器:" VerticalAlignment="Center"/>
-                                <ComboBox Grid.Column="1" 
-                                          ItemsSource="{Binding CodecOptions}"
-                                          SelectedItem="{Binding SelectedCodecOption}"
-                                          DisplayMemberBinding="{Binding Name}"
-                                          Margin="5,0,0,0" Height="32"/>
+                            <TextBlock Classes="H1" Text="输入源" />
+                            <Grid ColumnDefinitions="*, 10, Auto, 10, Auto">
+                                <TextBox Grid.Column="0" Text="{Binding InputPathText}"
+                                         Watermark="拖入文件或点击右侧按钮..." IsReadOnly="True" Height="38"
+                                         VerticalContentAlignment="Center" />
+                                <Button Grid.Column="2" Content="选择文件" Command="{Binding SelectFileCommand}"
+                                        Height="38" />
+                                <Button Grid.Column="4" Content="选择文件夹" Command="{Binding SelectFolderCommand}"
+                                        Height="38" />
                             </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- 输出设置 -->
-                    <Border BorderThickness="1" CornerRadius="5" Padding="15"
-                            Background="{DynamicResource CardBackgroundLight}"
-                            BorderBrush="{DynamicResource CardBorderBrushLight}">
+                    <Border Classes="Card" IsVisible="{Binding IsVideoInfoVisible}">
                         <StackPanel Spacing="10">
-                            <TextBlock Text="输出设置" FontWeight="Bold" FontSize="16"/>
-                            
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <TextBox Grid.Column="0" 
-                                         Text="{Binding OutputPathText}"
-                                         Watermark="选择输出文件夹..." 
-                                         IsReadOnly="True"/>
-                                <Button Grid.Column="1" Content="选择输出文件夹" 
-                                        Command="{Binding SelectOutputFolderCommand}"
-                                        Margin="5,0,0,0"/>
+                            <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                                <TextBlock Classes="H1" Text="源文件信息" DockPanel.Dock="Left" Margin="0"
+                                           VerticalAlignment="Center" />
+
+                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="8,4"
+                                        DockPanel.Dock="Right" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentVideoInfo.Resolution}"
+                                               Foreground="White" FontSize="12" FontWeight="SemiBold" />
+                                </Border>
+                            </DockPanel>
+
+                            <UniformGrid Columns="3" Rows="1" HorizontalAlignment="Stretch">
+                                <StackPanel>
+                                    <TextBlock Text="大小" Classes="Label" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding CurrentVideoInfo.FormattedFileSize}" FontSize="16"
+                                               FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="时长" Classes="Label" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding CurrentVideoInfo.FormattedDuration}" FontSize="16"
+                                               FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="原比特率" Classes="Label" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding CurrentVideoInfo.Bitrate, StringFormat='{}{0} kbps'}"
+                                               FontSize="16" FontWeight="Medium"
+                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                </StackPanel>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="Card">
+                        <StackPanel Spacing="20">
+                            <TextBlock Classes="H1" Text="压缩参数" />
+
+                            <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16">
+                                <TextBlock Grid.Column="0" Text="压缩强度" Classes="Label" VerticalAlignment="Center"/>
+    
+                                <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Slider Grid.Column="0" 
+                                                Value="{Binding CompressionPercentage}" 
+                                                Minimum="1" 
+                                                Maximum="100" 
+                                                TickFrequency="1" 
+                                                IsSnapToTickEnabled="True"
+                                                VerticalAlignment="Center" 
+                                                Margin="0,0,12,0"/>
+            
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <TextBox Text="{Binding CompressionPercentage, Mode=TwoWay}" 
+                                                     Width="60" 
+                                                     Height="34"
+                                                     VerticalContentAlignment="Center" 
+                                                     HorizontalContentAlignment="Center"/>
+                                            <TextBlock Text="%" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+        
+                                    <TextBlock Text="支持手动输入 1-100 之间的数值，步进精度为 1%" 
+                                               FontSize="12" 
+                                               Foreground="{DynamicResource SecondaryTextBrush}" 
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Separator Background="{DynamicResource BorderBrush}" Height="1" Opacity="0.5"
+                                       Margin="0,0,0,16" />
+
+                            <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16">
+                                <TextBlock Grid.Column="0" Text="目标码率" Classes="Label" VerticalAlignment="Top"
+                                           Margin="0,6,0,0" />
+
+                                <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Slider Grid.Column="0" Value="{Binding BitrateSliderValue}"
+                                                Minimum="{Binding BitrateSliderMinimum}"
+                                                Maximum="{Binding BitrateSliderMaximum}"
+                                                VerticalAlignment="Center" Margin="0,0,12,0" />
+
+                                        <TextBox Grid.Column="1" Text="{Binding Bitrate}" Width="80"
+                                                 VerticalContentAlignment="Center" 
+                                                 HorizontalContentAlignment="Center"/>
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding BitrateValueText, StringFormat='当前选择: {0}'}"
+                                               FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Margin="0,4,0,0" />
+
+                                    <Border Background="#33FF9800" CornerRadius="4" Padding="8"
+                                            IsVisible="{Binding IsBitrateWarningVisible}" Margin="0,8,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="⚠" Foreground="#F59E0B" VerticalAlignment="Center" />
+                                            <TextBlock Text="警告：当前比特率高于原视频，文件可能会变大" Foreground="#D97706" FontSize="12"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="100, *">
+                                <TextBlock Text="编码器" Classes="Label" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding CodecOptions}" SelectedItem="{Binding SelectedCodecOption}" 
+                                          HorizontalAlignment="Left" Width="300">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="100, *">
+                                <TextBlock Text="预估结果" Classes="Label" />
+                                <TextBlock Grid.Column="1" Text="{Binding EstimatedBitrateText}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{Binding EstimatedBitrateColor, Converter={StaticResource StringToColorConverter}}" />
                             </Grid>
                         </StackPanel>
                     </Border>
 
+                    <Border Classes="Card">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="H1" Text="输出设置" />
+                            <Grid ColumnDefinitions="*, 10, Auto">
+                                <TextBox Grid.Column="0" Text="{Binding OutputPathText}"
+                                         Watermark="默认保存在源文件同目录下" IsReadOnly="True" Height="38"
+                                         VerticalContentAlignment="Center" />
+                                <Button Grid.Column="2" Content="更改保存位置" Command="{Binding SelectOutputFolderCommand}"
+                                        Height="38" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- 分隔线 -->
-            <Border Grid.Row="2" Height="1" Opacity="0.3" 
-                    Background="{DynamicResource CardBorderBrushLight}" 
-                    Margin="0,10"/>
+            <Grid Grid.Row="2" Margin="0,10,0,0" RowDefinitions="Auto, Auto">
 
-            <!-- CLI命令显示和执行区域 -->
-            <Grid Grid.Row="3">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+                <Border Grid.Row="0" CornerRadius="8" Background="{StaticResource ConsoleBgColor}"
+                        Padding="12" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                    <Grid RowDefinitions="Auto, *">
+                        <TextBlock Text="CLI COMMAND PREVIEW" Foreground="#6B7280" FontSize="10" FontWeight="Bold"
+                                   Margin="0,0,0,4" />
+                        <SelectableTextBlock Grid.Row="1" Text="{Binding CommandText}"
+                                             FontFamily="Consolas, Cascadia Code, Monospace" FontSize="12"
+                                             Foreground="#10B981" TextWrapping="Wrap" />
+                    </Grid>
+                </Border>
 
-                <TextBlock Grid.Row="0" Text="生成的FFmpeg命令:" 
-                           FontWeight="Bold" Margin="0,0,0,5"/>
-                
-                <TextBox Grid.Row="1" 
-                         Text="{Binding CommandText}"
-                         Background="#2D2D30"
-                         Foreground="#00FF00"
-                         FontFamily="Consolas,Courier New,monospace" FontSize="12"
-                         IsReadOnly="True" TextWrapping="Wrap"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         LineHeight="18"
-                         Padding="8,6,8,4"/>
-                
-                <Grid Grid.Row="2" Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <ProgressBar Grid.Column="0" 
-                                 Height="30" 
-                                 IsVisible="{Binding IsProgressVisible}"
-                                 IsIndeterminate="True"/>
-                    <Button Grid.Column="1" Content="执行" 
-                            Command="{Binding ExecuteCommand}"
+                <Grid Grid.Row="1" ColumnDefinitions="*, 20, Auto">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="5">
+                        <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}" IsIndeterminate="True"
+                                     Foreground="{DynamicResource AccentBrush}"
+                                     Background="{DynamicResource BorderBrush}" CornerRadius="3" />
+                        <TextBlock Text="正在处理中..." IsVisible="{Binding IsProcessing}"
+                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Classes="Accent" Command="{Binding ExecuteCommand}"
                             IsEnabled="{Binding CanExecute}"
-                            Width="100" Height="30" Margin="10,0,0,0"
-                            Background="#007ACC" Foreground="White" FontWeight="SemiBold"/>
+                            Height="44" Width="140" FontSize="16">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="▶" />
+                            <TextBlock Text="开始转换" />
+                        </StackPanel>
+                    </Button>
                 </Grid>
             </Grid>
 

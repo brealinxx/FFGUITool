@@ -17,21 +17,29 @@ namespace FFGUITool.Views
         {
             InitializeComponent();
             
-            // 创建并设置ViewModel
             _viewModel = new MainWindowViewModel();
             DataContext = _viewModel;
             
-            // 窗口加载时初始化ViewModel
-            Loaded += async (sender, e) =>
+            _viewModel.PropertyChanged += (s, e) =>
             {
-                if (_viewModel != null)
+                if (e.PropertyName == nameof(MainWindowViewModel.IsThemeDark))
                 {
-                    await _viewModel.InitializeAsync();
+                    UpdateTheme(_viewModel.IsThemeDark);
                 }
             };
-            
-            // 监听主题变化
-            ActualThemeVariantChanged += OnThemeChanged;
+
+            Loaded += async (sender, e) =>
+            {
+                await _viewModel.InitializeAsync();
+                // 初始化时应用一次主题
+                UpdateTheme(_viewModel.IsThemeDark);
+            };
+        }
+        
+        private void UpdateTheme(bool isDark)
+        {
+            // 强制更改窗口的请求主题
+            this.RequestedThemeVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
         }
         
         private void OnThemeChanged(object? sender, EventArgs e)

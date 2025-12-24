@@ -1,153 +1,187 @@
-﻿<!-- Views/SetupWindow.axaml -->
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FFGUITool.ViewModels"
         x:Class="FFGUITool.Views.SetupWindow"
         x:DataType="vm:SetupWindowViewModel"
-        Title="FFmpeg 配置"
-        Width="500" Height="400"
-        MinWidth="450" MinHeight="350"
+        Title="FFmpeg 引导设置"
+        Width="540" Height="650"
         WindowStartupLocation="CenterOwner"
-        CanResize="false">
-    
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        Background="{DynamicResource PageBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}"
+        CanResize="False">
 
-        <!-- 标题和说明 -->
-        <StackPanel Grid.Row="0" Spacing="10" Margin="0,0,0,20">
-            <TextBlock Text="FFmpeg 配置" FontSize="18" FontWeight="Bold" 
-                       HorizontalAlignment="Center"/>
-            <TextBlock Text="请选择以下方式之一来配置FFmpeg：" 
-                       TextWrapping="Wrap" HorizontalAlignment="Center"/>
+    <Window.Styles>
+        <Style Selector="Border.SetupCard">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="4,0,4,16"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        </Style>
+        <Style Selector="Button:disabled /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <Style Selector="Button.Accent">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.Accent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Opacity" Value="0.9"/>
+        </Style>
+
+        <Style Selector="TextBlock.Caption">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="LineHeight" Value="18"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto" Margin="24,30,24,24">
+
+        <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,24">
+            <TextBlock Text="初始化 FFmpeg" FontSize="26" FontWeight="ExtraBold"
+                       Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center"/>
+            <TextBlock Text="为了正常处理视频，请选择一种方式配置核心组件"
+                       Classes="Caption" HorizontalAlignment="Center"/>
         </StackPanel>
 
-        <!-- 配置选项 -->
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="20">
-                
-                <!-- 方式1：指定现有的FFmpeg路径 -->
-                <Border BorderBrush="Gray" BorderThickness="1" 
-                        CornerRadius="5" Padding="15">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="方式1：指定现有的FFmpeg路径" 
-                                   FontWeight="Bold" FontSize="14"/>
-                        <TextBlock Text="如果您已经安装了FFmpeg，请选择ffmpeg可执行文件" 
-                                   TextWrapping="Wrap" Foreground="Gray"/>
-                        
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBox Grid.Column="0" 
-                                     Text="{Binding FfmpegPathText}"
-                                     Watermark="选择ffmpeg.exe文件..." 
-                                     IsReadOnly="True"/>
-                            <Button Grid.Column="1" Content="浏览" 
-                                    Command="{Binding BrowseFFmpegCommand}"
-                                    Margin="5,0,0,0"/>
+        <ScrollViewer Grid.Row="1" Padding="0,0,10,0">
+            <StackPanel>
+                <Border Classes="SetupCard">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
+                                <TextBlock Text="📂" FontSize="18"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="手动指定路径" FontWeight="Bold" FontSize="15"/>
+                                <TextBlock Text="直接指向现有的 ffmpeg.exe" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*, 10, Auto">
+                            <TextBox Grid.Column="0" Text="{Binding FfmpegPathText}"
+                                     Watermark="请选择文件..." IsReadOnly="True"/>
+                            <Button Grid.Column="2" Content="浏览" Command="{Binding BrowseFFmpegCommand}"/>
                         </Grid>
-                        
-                        <Button Content="设置此路径" 
-                                Command="{Binding SetCustomPathCommand}"
-                                HorizontalAlignment="Left" Width="120"
-                                IsEnabled="{Binding !IsProcessing}"/>
+
+                        <Button Content="应用此路径" Classes="Accent" HorizontalAlignment="Stretch"
+                                Command="{Binding SetCustomPathCommand}" IsEnabled="{Binding !IsProcessing}"/>
                     </StackPanel>
                 </Border>
 
-                <!-- 方式2：从压缩包安装 -->
-                <Border BorderBrush="Gray" BorderThickness="1" 
-                        CornerRadius="5" Padding="15">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="方式2：从压缩包安装FFmpeg" 
-                                   FontWeight="Bold" FontSize="14"/>
-                        <TextBlock Text="选择FFmpeg的zip压缩包，程序将自动解压并安装到应用目录" 
-                                   TextWrapping="Wrap" Foreground="Gray"/>
-                        
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBox Grid.Column="0" 
-                                     Text="{Binding ArchivePathText}"
-                                     Watermark="选择FFmpeg压缩包..." 
-                                     IsReadOnly="True"/>
-                            <Button Grid.Column="1" Content="浏览" 
-                                    Command="{Binding BrowseArchiveCommand}"
-                                    Margin="5,0,0,0"/>
+                <Border Classes="SetupCard">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
+                                <TextBlock Text="📦" FontSize="18"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="从压缩包安装" FontWeight="Bold" FontSize="15"/>
+                                <TextBlock Text="自动解压并配置环境" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*, 10, Auto">
+                            <TextBox Grid.Column="0" Text="{Binding ArchivePathText}"
+                                     Watermark="请选择 .zip 压缩包..." IsReadOnly="True"/>
+                            <Button Grid.Column="2" Content="浏览" Command="{Binding BrowseArchiveCommand}"/>
                         </Grid>
-                        
-                        <Button Content="从压缩包安装" 
-                                Command="{Binding InstallFromArchiveCommand}"
-                                HorizontalAlignment="Left" Width="120"
-                                IsEnabled="{Binding !IsProcessing}"/>
+
+                        <Button Content="立即解压并安装" Classes="Accent" HorizontalAlignment="Stretch"
+                                Command="{Binding InstallFromArchiveCommand}" IsEnabled="{Binding !IsProcessing}"/>
                     </StackPanel>
                 </Border>
 
-                <!-- 下载提示 -->
-                <Border BorderBrush="LightBlue" BorderThickness="1" 
-                        CornerRadius="5" Padding="15" Background="#F0F8FF">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="💡 获取FFmpeg" FontWeight="Bold" FontSize="14"/>
-                        <TextBlock TextWrapping="Wrap">
-                            <Run Text="如果您还没有FFmpeg，可以从官方网站下载："/>
+                <Border Classes="SetupCard" BorderThickness="0" Margin="4,8,4,8">
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.1"/>
+                    </Border.Background>
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="💡" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="如何获取 FFmpeg？" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                        </StackPanel>
+                        <TextBlock FontSize="13" LineHeight="22" Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap">
+                            <Run Text="访问 "/>
+                            <Run Text="ffmpeg.org" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            <Run Text=" 下载 Windows builds 静态版本 (Static)。" Foreground="{DynamicResource SecondaryTextBrush}"/>
                             <LineBreak/>
-                            <Run Text="• Windows: https://ffmpeg.org/download.html"/>
-                            <LineBreak/>
-                            <Run Text="• 建议下载 'Windows builds' 中的静态版本"/>
-                            <LineBreak/>
-                            <Run Text="• 解压后找到 bin/ffmpeg.exe 文件"/>
+                            <Run Text="推荐直接下载压缩包并使用上方“从压缩包安装”功能。" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
                         </TextBlock>
                     </StackPanel>
                 </Border>
-
             </StackPanel>
         </ScrollViewer>
 
-        <!-- 状态文本 -->
-        <TextBlock Grid.Row="2" 
-                   Text="{Binding StatusText}"
-                   HorizontalAlignment="Center" Margin="0,10,0,0"
-                   FontStyle="Italic" Foreground="Blue"
-                   IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <Border IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Background="{DynamicResource PageBackgroundBrush}" 
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Padding="12,8" CornerRadius="6" Margin="0,0,0,16">
+                <Grid ColumnDefinitions="Auto, *">
+                    <ProgressBar Grid.Column="0" IsIndeterminate="True" Width="20" Height="20" 
+                                 IsVisible="{Binding IsProcessing}" Margin="0,0,10,0" Foreground="{DynamicResource AccentBrush}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding StatusText}" VerticalAlignment="Center"
+                               FontSize="13" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                </Grid>
+            </Border>
 
-        <!-- 底部按钮 -->
-        <Grid Grid.Row="3" Margin="0,20,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            
-            <TextBlock Grid.Column="0" Text="稍后可以通过菜单重新配置" 
-                       VerticalAlignment="Center" Foreground="Gray"/>
-            
-            <!-- 跳过按钮 -->
-            <Button Grid.Column="1" Content="跳过" 
-                    Command="{Binding SkipCommand}"
-                    Width="80" Height="32" Margin="0,0,10,0"
-                    Background="#F5F5F5" 
-                    Foreground="#666666"
-                    BorderBrush="#CCCCCC"/>
-            
-            <!-- 确定按钮 -->
-            <Button Grid.Column="2" Content="确定" 
-                    Command="{Binding ConfirmCommand}"
-                    Width="80" Height="32"
-                    Background="#007ACC" 
-                    Foreground="White"
-                    BorderBrush="#005A9B"
-                    FontWeight="Bold"
-                    IsEnabled="{Binding !IsProcessing}"/>
-        </Grid>
+            <Grid ColumnDefinitions="*, Auto, Auto">
+                <TextBlock Grid.Column="0" Text="稍后可在菜单中修改" VerticalAlignment="Center" Classes="Caption"/>
 
+                <Button Grid.Column="1" Content="跳过" Command="{Binding SkipCommand}"
+                        Background="Transparent" BorderThickness="0" Margin="0,0,8,0"/>
+
+                <Button Grid.Column="2"
+                        Content="完成配置"
+                        Command="{Binding ConfirmCommand}"
+                        Classes="Accent"
+                        Width="120"
+                        CornerRadius="20"
+                        IsEnabled="{Binding !IsProcessing}"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"/>
+            </Grid>
+        </StackPanel>
     </Grid>
 </Window>
