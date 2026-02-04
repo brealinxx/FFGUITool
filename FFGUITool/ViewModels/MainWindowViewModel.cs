@@ -101,6 +101,11 @@ namespace FFGUITool.ViewModels
         private bool _isThemeDark;
 
         [ObservableProperty]
+        private bool _isFollowSystemTheme;
+
+        private ThemeVariant _manualThemeVariant = ThemeVariant.Light;
+
+        [ObservableProperty]
         private List<CodecOption> _codecOptions = new()
         {
             new CodecOption("H.264 (libx264)", "libx264", "兼容性最好"),
@@ -187,9 +192,15 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private void ToggleTheme()
         {
+            if (IsFollowSystemTheme)
+            {
+                return;
+            }
+
             IsThemeDark = !IsThemeDark;
-            CurrentTheme = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
-            Application.Current!.RequestedThemeVariant = CurrentTheme;
+            _manualThemeVariant = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
+            CurrentTheme = _manualThemeVariant;
+            Application.Current!.RequestedThemeVariant = _manualThemeVariant;
         }
 
         [RelayCommand]
@@ -271,6 +282,8 @@ namespace FFGUITool.ViewModels
 
             // 监听属性变化
             PropertyChanged += OnPropertyChanged;
+
+            InitializeThemeState();
         }
 
         protected override async Task OnInitializeAsync()
@@ -336,6 +349,28 @@ namespace FFGUITool.ViewModels
                 case nameof(IsThemeDark):
                     // 当IsThemeDark改变时不需要额外处理，ToggleTheme命令会处理
                     break;
+            }
+        }
+
+        partial void OnIsFollowSystemThemeChanged(bool value)
+        {
+            if (Application.Current == null)
+            {
+                return;
+            }
+
+            if (value)
+            {
+                _manualThemeVariant = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
+                CurrentTheme = ThemeVariant.Default;
+                Application.Current.RequestedThemeVariant = ThemeVariant.Default;
+                IsThemeDark = Application.Current.ActualThemeVariant == ThemeVariant.Dark;
+            }
+            else
+            {
+                CurrentTheme = _manualThemeVariant;
+                Application.Current.RequestedThemeVariant = _manualThemeVariant;
+                IsThemeDark = _manualThemeVariant == ThemeVariant.Dark;
             }
         }
 
@@ -477,6 +512,33 @@ namespace FFGUITool.ViewModels
                 Title = "FFmpeg 视频压缩工具 - FFmpeg未配置";
                 FfmpegStatusText = " - FFmpeg未配置";
                 FfmpegStatusColor = "Red";
+            }
+        }
+
+        private void InitializeThemeState()
+        {
+            if (Application.Current == null)
+            {
+                return;
+            }
+
+            var requested = Application.Current.RequestedThemeVariant;
+            var actual = Application.Current.ActualThemeVariant;
+
+            if (requested == ThemeVariant.Default)
+            {
+                IsThemeDark = actual == ThemeVariant.Dark;
+                _manualThemeVariant = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
+                CurrentTheme = _manualThemeVariant;
+                Application.Current.RequestedThemeVariant = _manualThemeVariant;
+                IsFollowSystemTheme = false;
+            }
+            else
+            {
+                IsThemeDark = requested == ThemeVariant.Dark;
+                _manualThemeVariant = requested;
+                CurrentTheme = requested;
+                IsFollowSystemTheme = false;
             }
         }
 

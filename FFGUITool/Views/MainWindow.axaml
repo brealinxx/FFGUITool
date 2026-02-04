@@ -115,6 +115,10 @@
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
         </Style>
 
+        <Style Selector="Button.ThemeToggle:disabled /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+
         <Style Selector="TextBox">
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -138,6 +142,15 @@
                 <Separator />
                 <MenuItem Header="重新检测FFmpeg(_R)" Command="{Binding RedetectFFmpegCommand}" />
             </MenuItem>
+            <MenuItem Header="外观(_V)" Foreground="{DynamicResource PrimaryTextBrush}">
+
+
+                <CheckBox Content="跟随系统颜色"
+                          IsChecked="{Binding IsFollowSystemTheme}"
+                          VerticalAlignment="Center" />
+
+
+            </MenuItem>
             <MenuItem Header="帮助(_H)" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="关于(_A)" Command="{Binding ShowAboutCommand}" />
             </MenuItem>
@@ -157,7 +170,8 @@
                 </StackPanel>
 
                 <Button Grid.Column="1" Command="{Binding ToggleThemeCommand}"
-                        Classes="Icon" BorderThickness="0" Background="Transparent"
+                        IsEnabled="{Binding !IsFollowSystemTheme}"
+                        Classes="Icon ThemeToggle" BorderThickness="0" Background="Transparent"
                         ToolTip.Tip="切换主题">
                     <Panel Width="24" Height="24">
                         <TextBlock Text="🌙" FontSize="18" IsVisible="{Binding !IsThemeDark}"
@@ -225,33 +239,34 @@
                             <TextBlock Classes="H1" Text="压缩参数" />
 
                             <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16">
-                                <TextBlock Grid.Column="0" Text="压缩强度" Classes="Label" VerticalAlignment="Center"/>
-    
+                                <TextBlock Grid.Column="0" Text="压缩强度" Classes="Label" VerticalAlignment="Center" />
+
                                 <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
                                     <Grid ColumnDefinitions="*, Auto">
-                                        <Slider Grid.Column="0" 
-                                                Value="{Binding CompressionPercentage}" 
-                                                Minimum="1" 
-                                                Maximum="100" 
-                                                TickFrequency="1" 
+                                        <Slider Grid.Column="0"
+                                                Value="{Binding CompressionPercentage}"
+                                                Minimum="1"
+                                                Maximum="100"
+                                                TickFrequency="1"
                                                 IsSnapToTickEnabled="True"
-                                                VerticalAlignment="Center" 
-                                                Margin="0,0,12,0"/>
-            
+                                                VerticalAlignment="Center"
+                                                Margin="0,0,12,0" />
+
                                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                            <TextBox Text="{Binding CompressionPercentage, Mode=TwoWay}" 
-                                                     Width="60" 
+                                            <TextBox Text="{Binding CompressionPercentage, Mode=TwoWay}"
+                                                     Width="60"
                                                      Height="34"
-                                                     VerticalContentAlignment="Center" 
-                                                     HorizontalContentAlignment="Center"/>
-                                            <TextBlock Text="%" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                                     VerticalContentAlignment="Center"
+                                                     HorizontalContentAlignment="Center" />
+                                            <TextBlock Text="%" VerticalAlignment="Center" Margin="5,0,0,0"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
                                         </StackPanel>
                                     </Grid>
-        
-                                    <TextBlock Text="支持手动输入 1-100 之间的数值，步进精度为 1%" 
-                                               FontSize="12" 
-                                               Foreground="{DynamicResource SecondaryTextBrush}" 
-                                               Margin="0,4,0,0"/>
+
+                                    <TextBlock Text="支持手动输入 1-100 之间的数值，步进精度为 1%"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Margin="0,4,0,0" />
                                 </StackPanel>
                             </Grid>
 
@@ -270,8 +285,8 @@
                                                 VerticalAlignment="Center" Margin="0,0,12,0" />
 
                                         <TextBox Grid.Column="1" Text="{Binding Bitrate}" Width="80"
-                                                 VerticalContentAlignment="Center" 
-                                                 HorizontalContentAlignment="Center"/>
+                                                 VerticalContentAlignment="Center"
+                                                 HorizontalContentAlignment="Center" />
                                     </Grid>
 
                                     <TextBlock Text="{Binding BitrateValueText, StringFormat='当前选择: {0}'}"
@@ -290,14 +305,17 @@
                             </Grid>
 
                             <Grid ColumnDefinitions="100, *">
-                                <TextBlock Text="编码器" Classes="Label" VerticalAlignment="Center"/>
-                                <ComboBox Grid.Column="1" ItemsSource="{Binding CodecOptions}" SelectedItem="{Binding SelectedCodecOption}" 
+                                <TextBlock Text="编码器" Classes="Label" VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding CodecOptions}"
+                                          SelectedItem="{Binding SelectedCodecOption}"
                                           HorizontalAlignment="Left" Width="300">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                                <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                <TextBlock Text="{Binding Name}" FontWeight="Medium" />
+                                                <TextBlock Text="{Binding Description}"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           FontStyle="Italic" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
