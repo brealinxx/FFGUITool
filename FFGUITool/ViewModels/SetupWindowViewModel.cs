@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -32,6 +34,13 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private bool _isProcessing;
 
+        [ObservableProperty]
+        private IReadOnlyList<LanguageOption> _languageOptions = LocalizationService.AvailableLanguages;
+
+        [ObservableProperty]
+        private LanguageOption? _selectedLanguage = LocalizationService.AvailableLanguages
+            .FirstOrDefault(language => language.Code == LocalizationService.CurrentLanguage);
+
         #endregion
 
         #region 命令
@@ -39,13 +48,13 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task BrowseFFmpeg()
         {
-            var file = await _dialogService.OpenFileDialog("选择FFmpeg可执行文件", new[]
+            var file = await _dialogService.OpenFileDialog(LocalizationService.T("Picker.SelectFFmpeg"), new[]
             {
-                new FilePickerFileType("可执行文件")
+                new FilePickerFileType(LocalizationService.T("Picker.Executable"))
                 {
                     Patterns = new[] { "*.exe", "ffmpeg", "ffmpeg.exe" }
                 },
-                new FilePickerFileType("所有文件")
+                new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
                 {
                     Patterns = new[] { "*.*" }
                 }
@@ -60,13 +69,13 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task BrowseArchive()
         {
-            var file = await _dialogService.OpenFileDialog("选择FFmpeg压缩包", new[]
+            var file = await _dialogService.OpenFileDialog(LocalizationService.T("Picker.SelectArchive"), new[]
             {
-                new FilePickerFileType("压缩包文件")
+                new FilePickerFileType(LocalizationService.T("Picker.Archive"))
                 {
                     Patterns = new[] { "*.zip", "*.7z", "*.tar.gz", "*.tar" }
                 },
-                new FilePickerFileType("所有文件")
+                new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
                 {
                     Patterns = new[] { "*.*" }
                 }
@@ -83,7 +92,7 @@ namespace FFGUITool.ViewModels
         {
             if (string.IsNullOrWhiteSpace(FfmpegPathText))
             {
-                await _dialogService.ShowMessage("错误", "请先选择FFmpeg可执行文件路径");
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.SelectFFmpegFirst"));
                 return;
             }
 
@@ -95,7 +104,7 @@ namespace FFGUITool.ViewModels
         {
             if (string.IsNullOrWhiteSpace(ArchivePathText))
             {
-                await _dialogService.ShowMessage("错误", "请先选择FFmpeg压缩包");
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.SelectArchiveFirst"));
                 return;
             }
 
@@ -116,8 +125,9 @@ namespace FFGUITool.ViewModels
             }
             else
             {
-                await _dialogService.ShowMessage("提示", 
-                    "请先选择FFmpeg路径或压缩包，或点击跳过继续使用程序");
+                await _dialogService.ShowMessage(
+                    LocalizationService.T("Dialog.Info"),
+                    LocalizationService.T("Setup.SelectPathOrSkip"));
             }
         }
 
@@ -149,6 +159,7 @@ namespace FFGUITool.ViewModels
         {
             _ffmpegManager = ffmpegManager;
             _dialogService = dialogService;
+            LocalizationService.LanguageChanged += OnLanguageChanged;
         }
 
         #endregion
@@ -159,33 +170,35 @@ namespace FFGUITool.ViewModels
         {
             if (!System.IO.File.Exists(path))
             {
-                await _dialogService.ShowMessage("错误", "指定的文件不存在");
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.FileMissing"));
                 return;
             }
 
             try
             {
                 IsProcessing = true;
-                StatusText = "验证FFmpeg路径...";
+                StatusText = LocalizationService.T("Setup.Validating");
                 
                 var success = await _ffmpegManager.SetCustomPath(path);
                 
                 if (success)
                 {
                     SetupCompleted = true;
-                    await _dialogService.ShowMessage("成功", "FFmpeg路径设置成功！");
+                    await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Setup.PathSuccess"));
                     OnCloseRequested?.Invoke();
                 }
                 else
                 {
-                    await _dialogService.ShowMessage("错误", 
-                        "指定的文件不是有效的FFmpeg可执行文件");
+                    await _dialogService.ShowMessage(
+                        LocalizationService.T("Dialog.Error"),
+                        LocalizationService.T("Setup.InvalidFFmpeg"));
                 }
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowMessage("错误", 
-                    $"设置FFmpeg路径时出错: {ex.Message}");
+                await _dialogService.ShowMessage(
+                    LocalizationService.T("Dialog.Error"),
+                    LocalizationService.Format("Setup.PathError", ex.Message));
             }
             finally
             {
@@ -198,38 +211,58 @@ namespace FFGUITool.ViewModels
         {
             if (!System.IO.File.Exists(archivePath))
             {
-                await _dialogService.ShowMessage("错误", "指定的压缩包文件不存在");
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.ArchiveMissing"));
                 return;
             }
 
             try
             {
                 IsProcessing = true;
-                StatusText = "正在安装FFmpeg...";
+                StatusText = LocalizationService.T("Setup.Installing");
                 
                 var success = await _ffmpegManager.InstallFFmpegFromArchive(archivePath);
                 
                 if (success)
                 {
                     SetupCompleted = true;
-                    await _dialogService.ShowMessage("成功", "FFmpeg安装成功！");
+                    await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Setup.InstallSuccess"));
                     OnCloseRequested?.Invoke();
                 }
                 else
                 {
-                    await _dialogService.ShowMessage("错误", "FFmpeg安装失败");
+                    await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.InstallFailed"));
                 }
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowMessage("错误", 
-                    $"安装FFmpeg时出错: {ex.Message}");
+                await _dialogService.ShowMessage(
+                    LocalizationService.T("Dialog.Error"),
+                    LocalizationService.Format("Setup.InstallError", ex.Message));
             }
             finally
             {
                 IsProcessing = false;
                 StatusText = "";
             }
+        }
+
+        partial void OnSelectedLanguageChanged(LanguageOption? value)
+        {
+            if (value != null)
+            {
+                LocalizationService.SetLanguage(value.Code);
+            }
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            SelectedLanguage = LanguageOptions.FirstOrDefault(language => language.Code == LocalizationService.CurrentLanguage);
+        }
+
+        public override void Dispose()
+        {
+            LocalizationService.LanguageChanged -= OnLanguageChanged;
+            base.Dispose();
         }
 
         #endregion

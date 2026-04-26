@@ -130,16 +130,20 @@
 
     <Grid RowDefinitions="Auto, *">
         <Menu Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}">
-            <MenuItem Header="文件(_F)" Foreground="{DynamicResource PrimaryTextBrush}">
-                <MenuItem Header="退出(_X)" Command="{Binding ExitCommand}" />
+            <MenuItem Header="{DynamicResource Menu.File}" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="{DynamicResource Menu.Exit}" Command="{Binding ExitCommand}" />
             </MenuItem>
-            <MenuItem Header="工具(_T)" Foreground="{DynamicResource PrimaryTextBrush}">
-                <MenuItem Header="FFmpeg设置(_S)" Command="{Binding ShowFFmpegSettingsCommand}" />
+            <MenuItem Header="{DynamicResource Menu.Tools}" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="{DynamicResource Menu.FFmpegSettings}" Command="{Binding ShowFFmpegSettingsCommand}" />
                 <Separator />
-                <MenuItem Header="重新检测FFmpeg(_R)" Command="{Binding RedetectFFmpegCommand}" />
+                <MenuItem Header="{DynamicResource Menu.RedetectFFmpeg}" Command="{Binding RedetectFFmpegCommand}" />
             </MenuItem>
-            <MenuItem Header="帮助(_H)" Foreground="{DynamicResource PrimaryTextBrush}">
-                <MenuItem Header="关于(_A)" Command="{Binding ShowAboutCommand}" />
+            <MenuItem Header="{DynamicResource Menu.Language}" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="{DynamicResource Menu.Language.Chinese}" Command="{Binding SetLanguageCommand}" CommandParameter="zh-CN" />
+                <MenuItem Header="{DynamicResource Menu.Language.English}" Command="{Binding SetLanguageCommand}" CommandParameter="en-US" />
+            </MenuItem>
+            <MenuItem Header="{DynamicResource Menu.Help}" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="{DynamicResource Menu.About}" Command="{Binding ShowAboutCommand}" />
             </MenuItem>
         </Menu>
 
@@ -158,7 +162,7 @@
 
                 <Button Grid.Column="1" Command="{Binding ToggleThemeCommand}"
                         Classes="Icon" BorderThickness="0" Background="Transparent"
-                        ToolTip.Tip="切换主题">
+                        ToolTip.Tip="{DynamicResource Theme.Toggle}">
                     <Panel Width="24" Height="24">
                         <TextBlock Text="🌙" FontSize="18" IsVisible="{Binding !IsThemeDark}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -173,14 +177,14 @@
 
                     <Border Classes="Card">
                         <StackPanel Spacing="12">
-                            <TextBlock Classes="H1" Text="输入源" />
+                            <TextBlock Classes="H1" Text="{DynamicResource Main.InputSource}" />
                             <Grid ColumnDefinitions="*, 10, Auto, 10, Auto">
                                 <TextBox Grid.Column="0" Text="{Binding InputPathText}"
-                                         Watermark="拖入文件或点击右侧按钮..." IsReadOnly="True" Height="38"
+                                         Watermark="{DynamicResource Main.InputWatermark}" IsReadOnly="True" Height="38"
                                          VerticalContentAlignment="Center" />
-                                <Button Grid.Column="2" Content="选择文件" Command="{Binding SelectFileCommand}"
+                                <Button Grid.Column="2" Content="{DynamicResource Main.SelectFile}" Command="{Binding SelectFileCommand}"
                                         Height="38" />
-                                <Button Grid.Column="4" Content="选择文件夹" Command="{Binding SelectFolderCommand}"
+                                <Button Grid.Column="4" Content="{DynamicResource Main.SelectFolder}" Command="{Binding SelectFolderCommand}"
                                         Height="38" />
                             </Grid>
                         </StackPanel>
@@ -189,7 +193,7 @@
                     <Border Classes="Card" IsVisible="{Binding IsVideoInfoVisible}">
                         <StackPanel Spacing="10">
                             <DockPanel LastChildFill="False" Margin="0,0,0,4">
-                                <TextBlock Classes="H1" Text="源文件信息" DockPanel.Dock="Left" Margin="0"
+                                <TextBlock Classes="H1" Text="{DynamicResource Main.SourceInfo}" DockPanel.Dock="Left" Margin="0"
                                            VerticalAlignment="Center" />
 
                                 <Border Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="8,4"
@@ -201,17 +205,17 @@
 
                             <UniformGrid Columns="3" Rows="1" HorizontalAlignment="Stretch">
                                 <StackPanel>
-                                    <TextBlock Text="大小" Classes="Label" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBlock Text="{DynamicResource Main.Size}" Classes="Label" FontSize="12" Margin="0,0,0,4" />
                                     <TextBlock Text="{Binding CurrentVideoInfo.FormattedFileSize}" FontSize="16"
                                                FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}" />
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="时长" Classes="Label" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBlock Text="{DynamicResource Main.Duration}" Classes="Label" FontSize="12" Margin="0,0,0,4" />
                                     <TextBlock Text="{Binding CurrentVideoInfo.FormattedDuration}" FontSize="16"
                                                FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}" />
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="原比特率" Classes="Label" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBlock Text="{DynamicResource Main.OriginalBitrate}" Classes="Label" FontSize="12" Margin="0,0,0,4" />
                                     <TextBlock Text="{Binding CurrentVideoInfo.Bitrate, StringFormat='{}{0} kbps'}"
                                                FontSize="16" FontWeight="Medium"
                                                Foreground="{DynamicResource PrimaryTextBrush}" />
@@ -222,10 +226,10 @@
 
                     <Border Classes="Card">
                         <StackPanel Spacing="20">
-                            <TextBlock Classes="H1" Text="压缩参数" />
+                            <TextBlock Classes="H1" Text="{DynamicResource Main.CompressionParams}" />
 
                             <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16">
-                                <TextBlock Grid.Column="0" Text="压缩强度" Classes="Label" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="{DynamicResource Main.CompressionStrength}" Classes="Label" VerticalAlignment="Center"/>
     
                                 <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
                                     <Grid ColumnDefinitions="*, Auto">
@@ -248,7 +252,7 @@
                                         </StackPanel>
                                     </Grid>
         
-                                    <TextBlock Text="支持手动输入 1-100 之间的数值，步进精度为 1%" 
+                                    <TextBlock Text="{DynamicResource Main.CompressionHint}" 
                                                FontSize="12" 
                                                Foreground="{DynamicResource SecondaryTextBrush}" 
                                                Margin="0,4,0,0"/>
@@ -259,7 +263,7 @@
                                        Margin="0,0,0,16" />
 
                             <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16">
-                                <TextBlock Grid.Column="0" Text="目标码率" Classes="Label" VerticalAlignment="Top"
+                                <TextBlock Grid.Column="0" Text="{DynamicResource Main.TargetBitrate}" Classes="Label" VerticalAlignment="Top"
                                            Margin="0,6,0,0" />
 
                                 <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
@@ -274,7 +278,7 @@
                                                  HorizontalContentAlignment="Center"/>
                                     </Grid>
 
-                                    <TextBlock Text="{Binding BitrateValueText, StringFormat='当前选择: {0}'}"
+                                    <TextBlock Text="{Binding BitrateSelectionText}"
                                                FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
                                                Margin="0,4,0,0" />
 
@@ -282,7 +286,7 @@
                                             IsVisible="{Binding IsBitrateWarningVisible}" Margin="0,8,0,0">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <TextBlock Text="⚠" Foreground="#F59E0B" VerticalAlignment="Center" />
-                                            <TextBlock Text="警告：当前比特率高于原视频，文件可能会变大" Foreground="#D97706" FontSize="12"
+                                            <TextBlock Text="{DynamicResource Main.BitrateWarning}" Foreground="#D97706" FontSize="12"
                                                        VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Border>
@@ -290,7 +294,7 @@
                             </Grid>
 
                             <Grid ColumnDefinitions="100, *">
-                                <TextBlock Text="编码器" Classes="Label" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource Main.Codec}" Classes="Label" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding CodecOptions}" SelectedItem="{Binding SelectedCodecOption}" 
                                           HorizontalAlignment="Left" Width="300">
                                     <ComboBox.ItemTemplate>
@@ -305,7 +309,7 @@
                             </Grid>
 
                             <Grid ColumnDefinitions="100, *">
-                                <TextBlock Text="预估结果" Classes="Label" />
+                                <TextBlock Text="{DynamicResource Main.EstimatedResult}" Classes="Label" />
                                 <TextBlock Grid.Column="1" Text="{Binding EstimatedBitrateText}"
                                            FontWeight="SemiBold"
                                            Foreground="{Binding EstimatedBitrateColor, Converter={StaticResource StringToColorConverter}}" />
@@ -315,12 +319,12 @@
 
                     <Border Classes="Card">
                         <StackPanel Spacing="12">
-                            <TextBlock Classes="H1" Text="输出设置" />
+                            <TextBlock Classes="H1" Text="{DynamicResource Main.OutputSettings}" />
                             <Grid ColumnDefinitions="*, 10, Auto">
                                 <TextBox Grid.Column="0" Text="{Binding OutputPathText}"
-                                         Watermark="默认保存在源文件同目录下" IsReadOnly="True" Height="38"
+                                         Watermark="{DynamicResource Main.OutputWatermark}" IsReadOnly="True" Height="38"
                                          VerticalContentAlignment="Center" />
-                                <Button Grid.Column="2" Content="更改保存位置" Command="{Binding SelectOutputFolderCommand}"
+                                <Button Grid.Column="2" Content="{DynamicResource Main.ChangeOutput}" Command="{Binding SelectOutputFolderCommand}"
                                         Height="38" />
                             </Grid>
                         </StackPanel>
@@ -333,8 +337,20 @@
                 <Border Grid.Row="0" CornerRadius="8" Background="{StaticResource ConsoleBgColor}"
                         Padding="12" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <Grid RowDefinitions="Auto, *">
-                        <TextBlock Text="CLI COMMAND PREVIEW" Foreground="#6B7280" FontSize="10" FontWeight="Bold"
-                                   Margin="0,0,0,4" />
+                        <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,6">
+                            <TextBlock Text="{DynamicResource Main.CliPreview}" Foreground="#6B7280" FontSize="10" FontWeight="Bold"
+                                       VerticalAlignment="Center" />
+                            <Button Grid.Column="1"
+                                    Command="{Binding CopyCommandTextCommand}"
+                                    Content="{DynamicResource Main.Copy}"
+                                    Height="26"
+                                    Padding="10,0"
+                                    FontSize="12"
+                                    Foreground="#D1D5DB"
+                                    BorderBrush="#374151"
+                                    Background="#1F2937"
+                                    ToolTip.Tip="{DynamicResource Main.CopyCommand}"/>
+                        </Grid>
                         <SelectableTextBlock Grid.Row="1" Text="{Binding CommandText}"
                                              FontFamily="Consolas, Cascadia Code, Monospace" FontSize="12"
                                              Foreground="#10B981" TextWrapping="Wrap" />
@@ -346,17 +362,21 @@
                         <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}" IsIndeterminate="True"
                                      Foreground="{DynamicResource AccentBrush}"
                                      Background="{DynamicResource BorderBrush}" CornerRadius="3" />
-                        <TextBlock Text="正在处理中..." IsVisible="{Binding IsProcessing}"
+                        <TextBlock Text="{DynamicResource Main.Processing}" IsVisible="{Binding IsProcessing}"
                                    FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
 
                     <Button Grid.Column="2" Classes="Accent" Command="{Binding ExecuteCommand}"
                             IsEnabled="{Binding CanExecute}"
-                            Height="44" Width="140" FontSize="16">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            Height="44" Width="140" FontSize="16"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
                             <TextBlock Text="▶" />
-                            <TextBlock Text="开始转换" />
+                            <TextBlock Text="{DynamicResource Main.StartConvert}" />
                         </StackPanel>
                     </Button>
                 </Grid>

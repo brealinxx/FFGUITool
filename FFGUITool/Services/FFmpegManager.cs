@@ -140,7 +140,7 @@ namespace FFGUITool.Services
                 var ffmpegExe = FindFFmpegExecutable(_embeddedFFmpegPath);
                 if (string.IsNullOrEmpty(ffmpegExe))
                 {
-                    throw new Exception("在压缩包中未找到ffmpeg可执行文件");
+                    throw new Exception(LocalizationService.T("FFmpeg.NotFoundInArchive"));
                 }
 
                 // 在Unix系统上设置执行权限
@@ -162,7 +162,7 @@ namespace FFGUITool.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"安装FFmpeg失败: {ex.Message}");
+                throw new Exception(LocalizationService.Format("FFmpeg.InstallFailed", ex.Message));
             }
         }
 
@@ -186,7 +186,7 @@ namespace FFGUITool.Services
         /// </summary>
         public async Task<string> GetFFmpegVersion()
         {
-            if (!IsFFmpegAvailable) return "FFmpeg未安装";
+            if (!IsFFmpegAvailable) return LocalizationService.T("FFmpeg.NotInstalled");
 
             try
             {
@@ -214,7 +214,7 @@ namespace FFGUITool.Services
             }
             catch { }
 
-            return "无法获取版本信息";
+            return LocalizationService.T("FFmpeg.VersionUnavailable");
         }
 
         /// <summary>
@@ -224,7 +224,7 @@ namespace FFGUITool.Services
         {
             if (!IsFFmpegAvailable)
             {
-                return (false, "", "FFmpeg未配置或不可用");
+                return (false, "", LocalizationService.T("FFmpeg.NotConfigured"));
             }
 
             try
@@ -465,6 +465,12 @@ namespace FFGUITool.Services
         private async Task ExtractArchive(string archivePath, string extractPath)
         {
             var extension = Path.GetExtension(archivePath).ToLower();
+
+            if (extension == ".7z")
+            {
+                await ExtractTarArchive(archivePath, extractPath);
+                return;
+            }
             
             switch (extension)
             {
@@ -474,7 +480,7 @@ namespace FFGUITool.Services
                     
                 case ".7z":
                     // 如果需要支持7z，可以使用第三方库如SharpCompress
-                    throw new NotSupportedException("暂不支持7z格式，请使用zip格式的压缩包");
+                    throw new NotSupportedException(LocalizationService.T("FFmpeg.Unsupported7z"));
                     
                 case ".tar":
                 case ".gz":
@@ -486,12 +492,12 @@ namespace FFGUITool.Services
                     }
                     else
                     {
-                        throw new NotSupportedException($"Windows系统暂不支持{extension}格式");
+                        throw new NotSupportedException(LocalizationService.Format("FFmpeg.WindowsUnsupportedArchive", extension));
                     }
                     break;
                     
                 default:
-                    throw new NotSupportedException($"不支持的压缩包格式: {extension}");
+                    throw new NotSupportedException(LocalizationService.Format("FFmpeg.UnsupportedArchive", extension));
             }
         }
 
@@ -502,16 +508,30 @@ namespace FFGUITool.Services
                 FileName = "tar",
                 Arguments = $"-xf \"{archivePath}\" -C \"{extractPath}\"",
                 UseShellExecute = false,
+                RedirectStandardError = true,
                 CreateNoWindow = true
             };
 
             using var process = new Process { StartInfo = processInfo };
-            process.Start();
+            try
+            {
+                process.Start();
+            }
+            catch (Exception ex)
+            {
+                throw new NotSupportedException(LocalizationService.T("FFmpeg.TarMissing"), ex);
+            }
+
+            var error = await process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
 
             if (process.ExitCode != 0)
             {
-                throw new Exception("解压tar文件失败");
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    throw new Exception(LocalizationService.Format("FFmpeg.ExtractFailed", error));
+                }
+                throw new Exception(LocalizationService.T("FFmpeg.ExtractTarFailed"));
             }
         }
 

@@ -11,31 +11,58 @@ namespace FFGUITool.Views
     /// </summary>
     public partial class SetupWindow : Window
     {
+        private SetupWindowViewModel? _viewModel;
+
         public SetupWindow()
         {
             InitializeComponent();
-            
+
             // 如果DataContext没有在外部设置，创建默认的ViewModel
             if (DataContext == null)
             {
                 DataContext = new SetupWindowViewModel();
             }
-            
-            // 监听ViewModel的关闭请求
-            if (DataContext is SetupWindowViewModel viewModel)
+
+            SubscribeCloseRequest(DataContext as SetupWindowViewModel);
+        }
+
+        protected override void OnDataContextChanged(EventArgs e)
+        {
+            base.OnDataContextChanged(e);
+
+            SubscribeCloseRequest(DataContext as SetupWindowViewModel);
+        }
+
+        private void SubscribeCloseRequest(SetupWindowViewModel? viewModel)
+        {
+            if (_viewModel == viewModel)
             {
-                viewModel.OnCloseRequested += Close;
+                return;
+            }
+
+            if (_viewModel != null)
+            {
+                _viewModel.OnCloseRequested -= Close;
+            }
+
+            _viewModel = viewModel;
+
+            if (_viewModel != null)
+            {
+                _viewModel.OnCloseRequested += Close;
             }
         }
-        
+
         protected override void OnClosed(EventArgs e)
         {
             // 清理事件订阅
-            if (DataContext is SetupWindowViewModel viewModel)
+            if (_viewModel != null)
             {
-                viewModel.OnCloseRequested -= Close;
+                _viewModel.OnCloseRequested -= Close;
+                _viewModel.Dispose();
+                _viewModel = null;
             }
-            
+
             base.OnClosed(e);
         }
     }

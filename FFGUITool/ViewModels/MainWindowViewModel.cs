@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia.Platform.Storage;
@@ -26,10 +27,10 @@ namespace FFGUITool.ViewModels
         #region 可观察属性
 
         [ObservableProperty]
-        private string _title = "FFmpeg 视频压缩工具";
+        private string _title = LocalizationService.T("App.Title");
 
         [ObservableProperty]
-        private string _ffmpegStatusText = " - FFmpeg状态检测中...";
+        private string _ffmpegStatusText = LocalizationService.T("Status.Detecting");
 
         [ObservableProperty]
         private string _ffmpegStatusColor = "Gray";
@@ -44,7 +45,7 @@ namespace FFGUITool.ViewModels
         private CompressionSettings _compressionSettings = new();
 
         [ObservableProperty]
-        private string _commandText = "请先选择输入文件或文件夹";
+        private string _commandText = LocalizationService.T("Command.SelectInput");
 
         [ObservableProperty]
         private bool _canExecute;
@@ -74,7 +75,7 @@ namespace FFGUITool.ViewModels
         private string _selectedCodec = "libx264";
 
         [ObservableProperty]
-        private string _estimatedBitrateText = "请先选择视频文件";
+        private string _estimatedBitrateText = LocalizationService.T("Estimate.SelectVideo");
 
         [ObservableProperty]
         private string _estimatedBitrateColor = "Black";
@@ -84,6 +85,9 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private string _bitrateValueText = "2000k";
+
+        [ObservableProperty]
+        private string _bitrateSelectionText = "";
 
         [ObservableProperty]
         private double _bitrateSliderValue = 2000;
@@ -101,11 +105,17 @@ namespace FFGUITool.ViewModels
         private bool _isThemeDark;
 
         [ObservableProperty]
+        private bool _isChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
+
+        [ObservableProperty]
+        private bool _isEnglishLanguage = LocalizationService.CurrentLanguage == "en-US";
+
+        [ObservableProperty]
         private List<CodecOption> _codecOptions = new()
         {
-            new CodecOption("H.264 (libx264)", "libx264", "兼容性最好"),
-            new CodecOption("H.265 (libx265)", "libx265", "压缩率更高"),
-            new CodecOption("VP9 (libvpx-vp9)", "libvpx-vp9", "开源编码")
+            new CodecOption("H.264 (libx264)", "libx264", LocalizationService.T("Codec.H264.Desc")),
+            new CodecOption("H.265 (libx265)", "libx265", LocalizationService.T("Codec.H265.Desc")),
+            new CodecOption("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc"))
         };
 
         [ObservableProperty]
@@ -118,13 +128,13 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task SelectFile()
         {
-            var file = await _dialogService.OpenFileDialog("选择视频文件", new[]
+            var file = await _dialogService.OpenFileDialog(LocalizationService.T("Picker.SelectVideo"), new[]
             {
-                new FilePickerFileType("视频文件")
+                new FilePickerFileType(LocalizationService.T("Picker.VideoFiles"))
                 {
                     Patterns = new[] { "*.mp4", "*.avi", "*.mkv", "*.mov", "*.wmv", "*.flv", "*.webm" }
                 },
-                new FilePickerFileType("所有文件")
+                new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
                 {
                     Patterns = new[] { "*.*" }
                 }
@@ -139,7 +149,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task SelectFolder()
         {
-            var folder = await _dialogService.OpenFolderDialog("选择文件夹");
+            var folder = await _dialogService.OpenFolderDialog(LocalizationService.T("Picker.SelectFolder"));
             if (folder != null)
             {
                 await ProcessSelectedInput(folder.Path.LocalPath);
@@ -149,7 +159,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task SelectOutputFolder()
         {
-            var folder = await _dialogService.OpenFolderDialog("选择输出文件夹");
+            var folder = await _dialogService.OpenFolderDialog(LocalizationService.T("Picker.SelectOutput"));
             if (folder != null)
             {
                 CompressionSettings.OutputPath = folder.Path.LocalPath;
@@ -170,11 +180,11 @@ namespace FFGUITool.ViewModels
             try
             {
                 await ExecuteFFmpegCommand();
-                await _dialogService.ShowMessage("完成", "视频处理完成！");
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Done"), LocalizationService.T("Dialog.VideoComplete"));
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowMessage("错误", $"执行FFmpeg命令时出错:\n{ex.Message}");
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.Format("Dialog.ExecuteError", ex.Message));
             }
             finally
             {
@@ -190,6 +200,24 @@ namespace FFGUITool.ViewModels
             IsThemeDark = !IsThemeDark;
             CurrentTheme = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
             Application.Current!.RequestedThemeVariant = CurrentTheme;
+        }
+
+        [RelayCommand]
+        private void SetLanguage(string languageCode)
+        {
+            LocalizationService.SetLanguage(languageCode);
+        }
+
+        [RelayCommand]
+        private async Task CopyCommandText()
+        {
+            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
+                desktop.MainWindow?.Clipboard == null)
+            {
+                return;
+            }
+
+            await desktop.MainWindow.Clipboard.SetTextAsync(CommandText);
         }
 
         [RelayCommand]
@@ -210,7 +238,7 @@ namespace FFGUITool.ViewModels
                 {
                     await _ffmpegManager.InitializeAsync();
                     UpdateFFmpegStatus();
-                    await _dialogService.ShowMessage("成功", "FFmpeg配置已更新！");
+                    await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Dialog.FFmpegConfigUpdated"));
                 }
             }
         }
@@ -218,17 +246,17 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task RedetectFFmpeg()
         {
-            FfmpegStatusText = " - 重新检测中...";
+            FfmpegStatusText = LocalizationService.T("Status.Redetecting");
             FfmpegStatusColor = "Gray";
 
             await _ffmpegManager.InitializeAsync();
             UpdateFFmpegStatus();
 
             var message = _ffmpegManager.IsFFmpegAvailable
-                ? "FFmpeg检测成功！"
-                : "未找到FFmpeg，请通过菜单手动配置。";
+                ? LocalizationService.T("Dialog.FFmpegDetected")
+                : LocalizationService.T("Dialog.FFmpegMissing");
 
-            await _dialogService.ShowMessage("检测完成", message);
+            await _dialogService.ShowMessage(LocalizationService.T("Dialog.DetectComplete"), message);
         }
 
         [RelayCommand]
@@ -237,14 +265,9 @@ namespace FFGUITool.ViewModels
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
             var ffmpegVersion = await _ffmpegManager.GetFFmpegVersion();
 
-            var message = $"FFGUITool v{version}\n" +
-                         $"FFmpeg视频压缩工具\n\n" +
-                         $"FFmpeg版本: {ffmpegVersion}\n\n" +
-                         $"© 2025 FFGUITool\n" +
-                         $"Powered by FFmpeg and Avalonia\n" +
-                         $"Assembled by brealin";
+            var message = LocalizationService.Format("Dialog.AboutMessage", version, ffmpegVersion);
 
-            await _dialogService.ShowMessage("关于 FFGUITool", message);
+            await _dialogService.ShowMessage(LocalizationService.T("Dialog.AboutTitle"), message);
         }
 
         #endregion
@@ -268,9 +291,11 @@ namespace FFGUITool.ViewModels
 
             // 设置默认编码器选项
             SelectedCodecOption = CodecOptions[0];
+            UpdateBitrateTexts();
 
             // 监听属性变化
             PropertyChanged += OnPropertyChanged;
+            LocalizationService.LanguageChanged += OnLanguageChanged;
         }
 
         protected override async Task OnInitializeAsync()
@@ -280,7 +305,7 @@ namespace FFGUITool.ViewModels
 
         private async Task InitializeFFmpeg()
         {
-            FfmpegStatusText = " - 检测FFmpeg中...";
+            FfmpegStatusText = LocalizationService.T("Status.Checking");
 
             await _ffmpegManager.InitializeAsync();
 
@@ -304,8 +329,9 @@ namespace FFGUITool.ViewModels
 
                     if (!_ffmpegManager.IsFFmpegAvailable)
                     {
-                        await _dialogService.ShowMessage("警告", 
-                            "FFmpeg未正确配置，某些功能可能无法使用。\n您可以通过菜单重新配置。");
+                        await _dialogService.ShowMessage(
+                            LocalizationService.T("Dialog.Warning"),
+                            LocalizationService.T("Dialog.FFmpegWarn"));
                     }
                 }
             }
@@ -349,7 +375,7 @@ namespace FFGUITool.ViewModels
         {
             CompressionSettings.Bitrate = Bitrate;
             BitrateSliderValue = Bitrate;
-            BitrateValueText = $"{Bitrate}k";
+            UpdateBitrateTexts();
             UpdateBitrateWarningAndEstimation();
             UpdateCommand();
         }
@@ -378,7 +404,7 @@ namespace FFGUITool.ViewModels
             // 分析视频文件
             if (Path.GetExtension(path).ToLower() is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm")
             {
-                EstimatedBitrateText = "分析视频中...";
+                EstimatedBitrateText = LocalizationService.T("Estimate.Analyzing");
                 EstimatedBitrateColor = "Blue";
 
                 CurrentVideoInfo = await _videoAnalyzer.AnalyzeVideo(path);
@@ -393,7 +419,7 @@ namespace FFGUITool.ViewModels
             {
                 CurrentVideoInfo = null;
                 IsVideoInfoVisible = false;
-                EstimatedBitrateText = "非视频文件";
+                EstimatedBitrateText = LocalizationService.T("Estimate.NonVideo");
                 EstimatedBitrateColor = "Gray";
             }
 
@@ -404,11 +430,11 @@ namespace FFGUITool.ViewModels
         {
             if (CurrentVideoInfo == null)
             {
-                EstimatedBitrateText = "请先选择视频文件";
+                EstimatedBitrateText = LocalizationService.T("Estimate.SelectVideo");
                 return;
             }
 
-            EstimatedBitrateText = "计算中...";
+            EstimatedBitrateText = LocalizationService.T("Estimate.Calculating");
 
             var targetBitrate = _commandBuilder.CalculateRecommendedBitrate(
                 CurrentVideoInfo, 
@@ -444,13 +470,23 @@ namespace FFGUITool.ViewModels
             if (estimatedSizeMB > originalSizeMB)
             {
                 var increaseRatio = (estimatedSizeMB / originalSizeMB - 1) * 100;
-                EstimatedBitrateText = $"{Bitrate}k (预估: {estimatedSizeMB:F1}MB, 增大: {increaseRatio:F1}%)";
+                EstimatedBitrateText = LocalizationService.Format(
+                    "Estimate.Current",
+                    Bitrate,
+                    estimatedSizeMB,
+                    LocalizationService.T("Estimate.Increase"),
+                    increaseRatio);
                 EstimatedBitrateColor = "Orange";
             }
             else
             {
                 var compressionRatio = (1 - estimatedSizeMB / originalSizeMB) * 100;
-                EstimatedBitrateText = $"{Bitrate}k (预估: {estimatedSizeMB:F1}MB, 压缩: {compressionRatio:F1}%)";
+                EstimatedBitrateText = LocalizationService.Format(
+                    "Estimate.Current",
+                    Bitrate,
+                    estimatedSizeMB,
+                    LocalizationService.T("Estimate.Compress"),
+                    compressionRatio);
                 EstimatedBitrateColor = "Green";
             }
         }
@@ -468,23 +504,61 @@ namespace FFGUITool.ViewModels
         {
             if (_ffmpegManager.IsFFmpegAvailable)
             {
-                Title = "FFmpeg 视频压缩工具 - FFmpeg已就绪";
-                FfmpegStatusText = " - FFmpeg已就绪";
+                Title = LocalizationService.T("App.Title.Ready");
+                FfmpegStatusText = LocalizationService.T("Status.Ready");
                 FfmpegStatusColor = "Green";
             }
             else
             {
-                Title = "FFmpeg 视频压缩工具 - FFmpeg未配置";
-                FfmpegStatusText = " - FFmpeg未配置";
+                Title = LocalizationService.T("App.Title.NotConfigured");
+                FfmpegStatusText = LocalizationService.T("Status.NotConfigured");
                 FfmpegStatusColor = "Red";
             }
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            IsChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
+            IsEnglishLanguage = LocalizationService.CurrentLanguage == "en-US";
+            UpdateCodecOptions();
+            UpdateBitrateTexts();
+            UpdateFFmpegStatus();
+
+            if (CurrentVideoInfo == null && string.IsNullOrWhiteSpace(CompressionSettings.InputPath))
+            {
+                EstimatedBitrateText = LocalizationService.T("Estimate.SelectVideo");
+                CommandText = LocalizationService.T("Command.SelectInput");
+            }
+            else
+            {
+                UpdateBitrateWarningAndEstimation();
+                UpdateCommand();
+            }
+        }
+
+        private void UpdateCodecOptions()
+        {
+            var selectedValue = SelectedCodecOption?.Value ?? SelectedCodec;
+            CodecOptions = new List<CodecOption>
+            {
+                new("H.264 (libx264)", "libx264", LocalizationService.T("Codec.H264.Desc")),
+                new("H.265 (libx265)", "libx265", LocalizationService.T("Codec.H265.Desc")),
+                new("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc"))
+            };
+            SelectedCodecOption = CodecOptions.Find(option => option.Value == selectedValue) ?? CodecOptions[0];
+        }
+
+        private void UpdateBitrateTexts()
+        {
+            BitrateValueText = $"{Bitrate}k";
+            BitrateSelectionText = LocalizationService.Format("Main.CurrentSelection", BitrateValueText);
         }
 
         private async Task ExecuteFFmpegCommand()
         {
             if (!_ffmpegManager.IsFFmpegAvailable)
             {
-                throw new Exception("FFmpeg未配置或不可用，请先配置FFmpeg路径");
+                throw new Exception(LocalizationService.T("Status.NotConfigured"));
             }
 
             var command = _commandBuilder.BuildCommand(CompressionSettings);
@@ -513,5 +587,11 @@ namespace FFGUITool.ViewModels
         }
 
         #endregion
+
+        public override void Dispose()
+        {
+            LocalizationService.LanguageChanged -= OnLanguageChanged;
+            base.Dispose();
+        }
     }
 }
