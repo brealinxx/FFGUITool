@@ -1,7 +1,10 @@
+using System.Collections.Generic;
+using System.Text;
+
 namespace FFGUITool.Models
 {
     /// <summary>
-    /// FFmpeg命令模型
+    /// FFmpeg command model.
     /// </summary>
     public class FFmpegCommand
     {
@@ -10,20 +13,25 @@ namespace FFGUITool.Models
         public string Codec { get; set; } = "libx264";
         public int Bitrate { get; set; } = 2000;
         public string AudioCodec { get; set; } = "aac";
+        public int AudioBitrate { get; set; } = 96;
+        public bool UseCrf { get; set; }
+        public int Crf { get; set; } = 23;
+        public int MaxHeight { get; set; }
+        public int MaxFramerate { get; set; }
+        public bool AudioOnly { get; set; }
+        public bool GifOutput { get; set; }
         public string AdditionalParameters { get; set; } = "";
 
-        /// <summary>
-        /// 构建完整的FFmpeg命令
-        /// </summary>
         public string BuildCommand()
         {
             if (string.IsNullOrEmpty(InputPath))
+            {
                 return "请先选择输入文件或文件夹";
+            }
 
-            var command = new System.Text.StringBuilder();
+            var command = new StringBuilder();
             command.Append("ffmpeg ");
 
-            // 输入文件
             if (System.IO.File.Exists(InputPath))
             {
                 command.Append($"-i \"{InputPath}\" ");
@@ -33,22 +41,69 @@ namespace FFGUITool.Models
                 command.Append($"-i \"{InputPath}/*.mp4\" ");
             }
 
-            // 视频编码器
+            if (AudioOnly)
+            {
+                command.Append("-vn ");
+                command.Append($"-c:a {AudioCodec} ");
+                command.Append($"-b:a {AudioBitrate}k ");
+                AppendAdditionalParameters(command);
+                AppendOutputPath(command);
+                return command.ToString();
+            }
+
+            var filters = new List<string>();
+            if (MaxHeight > 0)
+            {
+                filters.Add($"scale=-2:min({MaxHeight}\\,ih)");
+            }
+
+            if (MaxFramerate > 0)
+            {
+                filters.Add($"fps={MaxFramerate}");
+            }
+
+            if (filters.Count > 0)
+            {
+                command.Append($"-vf \"{string.Join(",", filters)}\" ");
+            }
+
+            if (GifOutput)
+            {
+                command.Append("-an ");
+                AppendAdditionalParameters(command);
+                AppendOutputPath(command);
+                return command.ToString();
+            }
+
             command.Append($"-c:v {Codec} ");
 
-            // 比特率
-            command.Append($"-b:v {Bitrate}k ");
+            if (UseCrf)
+            {
+                command.Append($"-crf {Crf} ");
+            }
+            else
+            {
+                command.Append($"-b:v {Bitrate}k ");
+            }
 
-            // 音频编码器
             command.Append($"-c:a {AudioCodec} ");
+            command.Append($"-b:a {AudioBitrate}k ");
+            AppendAdditionalParameters(command);
+            AppendOutputPath(command);
 
-            // 额外参数
+            return command.ToString();
+        }
+
+        private void AppendAdditionalParameters(StringBuilder command)
+        {
             if (!string.IsNullOrEmpty(AdditionalParameters))
             {
                 command.Append($"{AdditionalParameters} ");
             }
+        }
 
-            // 输出文件
+        private void AppendOutputPath(StringBuilder command)
+        {
             if (!string.IsNullOrEmpty(OutputPath))
             {
                 command.Append($"\"{OutputPath}\"");
@@ -57,8 +112,6 @@ namespace FFGUITool.Models
             {
                 command.Append("\"[输出路径]/output.mp4\"");
             }
-
-            return command.ToString();
         }
     }
 }

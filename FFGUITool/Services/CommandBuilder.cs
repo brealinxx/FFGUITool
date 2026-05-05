@@ -17,20 +17,99 @@ namespace FFGUITool.Services
             var command = new FFmpegCommand
             {
                 InputPath = settings.InputPath,
-                Codec = settings.Codec,
+                Codec = GetVideoCodec(settings),
                 Bitrate = settings.Bitrate,
-                AudioCodec = "aac"
+                AudioBitrate = settings.AudioBitrate,
+                UseCrf = settings.UseCrf,
+                Crf = settings.Crf,
+                MaxHeight = GetEffectiveMaxHeight(settings),
+                MaxFramerate = settings.EnableFormatConversion && settings.OutputFormat == "gif" && settings.MaxFramerate <= 0
+                    ? 12
+                    : settings.MaxFramerate,
+                AudioOnly = settings.EnableAudioConversion,
+                GifOutput = settings.EnableFormatConversion && settings.OutputFormat == "gif",
+                AudioCodec = GetCommandAudioCodec(settings)
             };
 
             // 生成输出路径
             if (!string.IsNullOrEmpty(settings.OutputPath))
             {
                 var inputFileName = Path.GetFileNameWithoutExtension(settings.InputPath);
-                var outputFileName = $"{inputFileName}_compressed_{settings.CompressionPercentage}%.mp4";
+                var outputFormat = GetOutputFormat(settings);
+                var targetSize = settings.TargetSizeMB > 0 ? $"{settings.TargetSizeMB:F0}MB" : $"{settings.CompressionPercentage}%";
+                var outputFileName = $"{inputFileName}_compressed_{targetSize}.{outputFormat}";
                 command.OutputPath = Path.Combine(settings.OutputPath, outputFileName);
             }
 
             return command;
+        }
+
+        private static string GetOutputFormat(CompressionSettings settings)
+        {
+            if (settings.EnableAudioConversion)
+            {
+                return settings.AudioOutputFormat;
+            }
+
+            if (settings.EnableFormatConversion)
+            {
+                return settings.OutputFormat;
+            }
+
+            return "mp4";
+        }
+
+        private static string GetVideoCodec(CompressionSettings settings)
+        {
+            if (settings.EnableFormatConversion && settings.OutputFormat == "webm")
+            {
+                return "libvpx-vp9";
+            }
+
+            return settings.Codec;
+        }
+
+        private static string GetAudioCodec(string format)
+        {
+            return format switch
+            {
+                "mp3" => "libmp3lame",
+                "aac" or "m4a" => "aac",
+                "wav" => "pcm_s16le",
+                "flac" => "flac",
+                "ogg" => "libvorbis",
+                _ => "aac"
+            };
+        }
+
+        private static string GetCommandAudioCodec(CompressionSettings settings)
+        {
+            if (settings.EnableAudioConversion)
+            {
+                return GetAudioCodec(settings.AudioOutputFormat);
+            }
+
+            if (settings.EnableFormatConversion && settings.OutputFormat == "webm")
+            {
+                return "libopus";
+            }
+
+            return "aac";
+        }
+
+        private static int GetEffectiveMaxHeight(CompressionSettings settings)
+        {
+            if (!settings.EnableResolutionConversion)
+            {
+                return settings.MaxHeight;
+            }
+
+            if (settings.MaxHeight <= 0)
+            {
+                return settings.ResolutionHeight;
+            }
+
+            return Math.Min(settings.MaxHeight, settings.ResolutionHeight);
         }
 
         /// <summary>
@@ -46,6 +125,20 @@ namespace FFGUITool.Services
 
             // 确保比特率在合理范围内
             return Math.Max(1, Math.Min(targetBitrate, videoInfo.Bitrate));
+        }
+
+        public int CalculateBitrateForTargetSize(VideoInfo videoInfo, double targetSizeMB)
+        {
+            if (videoInfo.Duration <= 0 || targetSizeMB <= 0)
+            {
+                return Math.Max(1, videoInfo.Bitrate);
+            }
+
+            var targetBytes = targetSizeMB * 1024 * 1024;
+            var totalBitrateKbps = targetBytes * 8 / videoInfo.Duration / 1024;
+            var videoBitrateKbps = totalBitrateKbps / 1.12;
+
+            return Math.Max(80, (int)Math.Round(videoBitrateKbps));
         }
 
         private int AdjustBitrateForCodec(int baseBitrate, string codec)
