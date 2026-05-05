@@ -45,6 +45,57 @@ Run locally:
 dotnet run --project FFGUITool/FFGUITool.csproj
 ```
 
+## Publish Packages
+
+Publish all preset Windows and macOS targets:
+
+```bash
+./publish.sh
+```
+
+Publish macOS targets only on a Mac:
+
+```bash
+./publish-macos.sh
+```
+
+Publish a single macOS target:
+
+```bash
+./publish-macos.sh osx-arm64
+./publish-macos.sh osx-x64
+```
+
+On Windows PowerShell:
+
+```powershell
+.\publish.ps1
+```
+
+Publish a single target:
+
+```bash
+./publish.sh win-x64
+```
+
+```powershell
+.\publish.ps1 -Runtime win-x64
+```
+
+Outputs are written to `FFGUITool/bin/publish/` using these folder names:
+
+- `FFGUITool-win-x86`
+- `FFGUITool-win-x64`
+- `FFGUITool-win-arm64`
+- `FFGUITool-osx-x64`
+- `FFGUITool-osx-arm64`
+
+On macOS/Linux, make the shell scripts executable first if needed:
+
+```bash
+chmod +x publish.sh publish-macos.sh
+```
+
 ## License
 
 See [LICENSE](LICENSE).

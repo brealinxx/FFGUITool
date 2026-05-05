@@ -10,7 +10,10 @@
         <AssemblyTitle>FFmpeg视频压缩工具</AssemblyTitle>
         <AssemblyDescription>基于FFmpeg的跨平台视频压缩GUI工具</AssemblyDescription>
         <LangVersion>latest</LangVersion>
-        <Version>1.0.0</Version>
+        <Version>1.1.0</Version>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
+        <InformationalVersion>1.1.0</InformationalVersion>
         <Authors>brealin</Authors>
     </PropertyGroup>
 
