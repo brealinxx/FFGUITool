@@ -28,7 +28,11 @@ namespace FFGUITool.Services
                     : settings.MaxFramerate,
                 AudioOnly = settings.EnableAudioConversion,
                 GifOutput = settings.EnableFormatConversion && settings.OutputFormat == "gif",
-                AudioCodec = GetCommandAudioCodec(settings)
+                AudioCodec = GetCommandAudioCodec(settings),
+                ImageOutput = settings.IsImageProcessing,
+                ImageQuality = settings.ImageQuality,
+                ImageTargetSizeKB = settings.ImageTargetSizeKB,
+                ImageFormat = settings.IsImageProcessing ? settings.ImageOutputFormat : GetOutputFormat(settings)
             };
 
             command.OutputPath = BuildOutputPath(settings);
@@ -54,7 +58,9 @@ namespace FFGUITool.Services
 
             var inputFileName = Path.GetFileNameWithoutExtension(settings.InputPath);
             var outputFormat = GetOutputFormat(settings);
-            var targetSize = settings.TargetSizeMB > 0
+            var targetSize = settings.IsImageProcessing && settings.ImageTargetSizeKB > 0
+                ? $"{settings.ImageTargetSizeKB:F0}KB"
+                : settings.TargetSizeMB > 0
                 ? $"{settings.TargetSizeMB:F0}MB"
                 : $"{settings.CompressionPercentage}%";
             var outputFileName = $"{inputFileName}_compressed_{targetSize}.{outputFormat}";
@@ -79,6 +85,13 @@ namespace FFGUITool.Services
 
         private static string GetOutputFormat(CompressionSettings settings)
         {
+            if (settings.IsImageProcessing)
+            {
+                return settings.EnableFormatConversion
+                    ? settings.ImageOutputFormat
+                    : GetImageOutputFormatFromInput(settings.InputPath);
+            }
+
             if (settings.EnableAudioConversion)
             {
                 return settings.AudioOutputFormat;
@@ -90,6 +103,19 @@ namespace FFGUITool.Services
             }
 
             return "mp4";
+        }
+
+        private static string GetImageOutputFormatFromInput(string inputPath)
+        {
+            var extension = Path.GetExtension(inputPath).TrimStart('.').ToLowerInvariant();
+            return extension switch
+            {
+                "jpeg" => "jpg",
+                "jpg" or "png" or "webp" => extension,
+                "bmp" => "png",
+                "heic" => "jpg",
+                _ => "jpg"
+            };
         }
 
         private static string GetVideoCodec(CompressionSettings settings)

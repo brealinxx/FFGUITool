@@ -22,6 +22,10 @@ namespace FFGUITool.Models
         public int ResolutionHeight { get; set; } = 720;
         public string InputPath { get; set; } = "";
         public string OutputPath { get; set; } = "";
+        public bool IsImageProcessing { get; set; }
+        public int ImageQuality { get; set; } = 80;
+        public double ImageTargetSizeKB { get; set; }
+        public string ImageOutputFormat { get; set; } = "jpg";
         
         /// <summary>
         /// 验证设置是否有效

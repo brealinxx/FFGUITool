@@ -28,6 +28,7 @@ namespace FFGUITool.ViewModels
         private bool _isSyncingConversionToggles;
         private static readonly string[] VideoExtensions = { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm" };
         private static readonly string[] AudioExtensions = { ".mp3", ".aac", ".m4a", ".wav", ".flac", ".ogg", ".wma" };
+        private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".heic", ".bmp" };
 
         #region 可观察属性
 
@@ -45,6 +46,69 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private bool _isVideoInfoVisible;
+
+        [ObservableProperty]
+        private bool _isModeSelectionVisible = true;
+
+        [ObservableProperty]
+        private bool _isWorkspaceVisible;
+
+        [ObservableProperty]
+        private bool _isImageMode;
+
+        [ObservableProperty]
+        private string _currentModeTitle = LocalizationService.T("Mode.Choose");
+
+        [ObservableProperty]
+        private string _inputSourceTitle = LocalizationService.T("Main.InputSource");
+
+        [ObservableProperty]
+        private string _compressionParamsTitle = LocalizationService.T("Main.CompressionParams");
+
+        [ObservableProperty]
+        private string _targetSizeLabel = LocalizationService.T("Main.TargetSize");
+
+        [ObservableProperty]
+        private string _targetSizeUnitText = "MB";
+
+        [ObservableProperty]
+        private bool _isImageTargetUnitSelectorVisible;
+
+        [ObservableProperty]
+        private List<string> _imageTargetSizeUnitOptions = new() { "KB", "MB" };
+
+        [ObservableProperty]
+        private string _selectedImageTargetSizeUnit = "KB";
+
+        [ObservableProperty]
+        private string _advancedBitrateLabel = LocalizationService.T("Main.TargetBitrate");
+
+        [ObservableProperty]
+        private string _formatOptionLabel = LocalizationService.T("Main.VideoFormat");
+
+        [ObservableProperty]
+        private string _sourceInfoTitle = LocalizationService.T("Main.SourceInfo");
+
+        [ObservableProperty]
+        private string _sourceSizeLabel = LocalizationService.T("Main.Size");
+
+        [ObservableProperty]
+        private string _sourceSecondMetricLabel = LocalizationService.T("Main.Duration");
+
+        [ObservableProperty]
+        private string _sourceSecondMetricValue = "";
+
+        [ObservableProperty]
+        private string _sourceThirdMetricLabel = LocalizationService.T("Main.OriginalBitrate");
+
+        [ObservableProperty]
+        private string _sourceThirdMetricValue = "";
+
+        [ObservableProperty]
+        private string _sourceBadgeText = "";
+
+        [ObservableProperty]
+        private bool _isSourceBadgeVisible;
 
         [ObservableProperty]
         private CompressionSettings _compressionSettings = new();
@@ -101,7 +165,7 @@ namespace FFGUITool.ViewModels
         private string _selectedCodec = "libx264";
 
         [ObservableProperty]
-        private string _estimatedBitrateText = LocalizationService.T("Estimate.SelectVideo");
+        private string _estimatedBitrateText = "";
 
         [ObservableProperty]
         private string _estimatedBitrateColor = "Black";
@@ -197,6 +261,9 @@ namespace FFGUITool.ViewModels
         private bool _isResolutionConversionOptionsVisible;
 
         [ObservableProperty]
+        private bool _isAdvancedVideoControlsVisible;
+
+        [ObservableProperty]
         private string _conversionModeHint = "";
 
         [ObservableProperty]
@@ -230,24 +297,94 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private List<CodecOption> _resolutionOptions = new()
         {
+            new CodecOption("原尺寸", "0", "不调整尺寸"),
             new CodecOption("2160p", "2160", "4K"),
             new CodecOption("1080p", "1080", "全高清"),
             new CodecOption("720p", "720", "高清"),
             new CodecOption("480p", "480", "小体积"),
+            new CodecOption("512px", "512", "头像"),
             new CodecOption("360p", "360", "极小体积")
         };
 
         [ObservableProperty]
         private CodecOption? _selectedResolutionOption;
 
+        [ObservableProperty]
+        private List<CodecOption> _imageFormatOptions = new()
+        {
+            new CodecOption("JPG", "jpg", "通用照片格式"),
+            new CodecOption("PNG", "png", "透明与无损场景"),
+            new CodecOption("WebP", "webp", "网页体积更小")
+        };
+
+        [ObservableProperty]
+        private CodecOption? _selectedImageFormatOption;
+
         #endregion
 
         #region 命令
 
         [RelayCommand]
+        private void SelectVideoMode()
+        {
+            IsImageMode = false;
+            CompressionSettings.IsImageProcessing = false;
+            IsModeSelectionVisible = false;
+            IsWorkspaceVisible = true;
+            IsAdvancedMode = false;
+            BitrateSliderMinimum = 1;
+            BitrateSliderMaximum = 50000;
+            Bitrate = CompressionSettings.Bitrate > 0 ? CompressionSettings.Bitrate : 2000;
+            RefreshModeText();
+            ResetSelectedInput();
+            UpdateConversionOptionVisibility();
+            UpdateCommand();
+        }
+
+        [RelayCommand]
+        private void SelectImageMode()
+        {
+            IsImageMode = true;
+            CompressionSettings.IsImageProcessing = true;
+            IsModeSelectionVisible = false;
+            IsWorkspaceVisible = true;
+            IsAdvancedMode = false;
+            EnableAudioConversion = false;
+            EnableFormatConversion = true;
+            EnableResolutionConversion = false;
+            SelectedImageFormatOption ??= ImageFormatOptions[0];
+            CompressionSettings.ImageOutputFormat = SelectedImageFormatOption.Value;
+            BitrateSliderMinimum = 1;
+            BitrateSliderMaximum = 100;
+            Bitrate = CompressionSettings.ImageQuality;
+            RefreshModeText();
+            ResetSelectedInput();
+            UpdateConversionOptionVisibility();
+            UpdateCommand();
+        }
+
+        [RelayCommand]
+        private void BackToModeSelection()
+        {
+            IsModeSelectionVisible = true;
+            IsWorkspaceVisible = false;
+            ResetSelectedInput();
+        }
+
+        [RelayCommand]
         private async Task SelectFile()
         {
-            var file = await _dialogService.OpenFileDialog(LocalizationService.T("Picker.SelectVideo"), new[]
+            var file = await _dialogService.OpenFileDialog(IsImageMode ? LocalizationService.T("Image.SelectFile") : LocalizationService.T("Picker.SelectVideo"), IsImageMode ? new[]
+            {
+                new FilePickerFileType(LocalizationService.T("Image.FileType"))
+                {
+                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.heic", "*.bmp" }
+                },
+                new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
+                {
+                    Patterns = new[] { "*.*" }
+                }
+            } : new[]
             {
                 new FilePickerFileType(LocalizationService.T("Picker.VideoFiles"))
                 {
@@ -272,7 +409,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task SelectFolder()
         {
-            var folder = await _dialogService.OpenFolderDialog(LocalizationService.T("Picker.SelectFolder"));
+            var folder = await _dialogService.OpenFolderDialog(IsImageMode ? LocalizationService.T("Image.SelectFolder") : LocalizationService.T("Picker.SelectFolder"));
             if (folder != null)
             {
                 await ProcessSelectedInput(folder.Path.LocalPath);
@@ -304,19 +441,19 @@ namespace FFGUITool.ViewModels
             {
                 var summary = await ExecuteFFmpegCommand();
                 var message = BuildCompletionMessage(summary);
-                SystemNotificationService.Show("转换完成", message);
+                SystemNotificationService.Show(LocalizationService.T(IsImageMode ? "Result.ImageComplete" : "Result.VideoComplete"), message);
                 await _dialogService.ShowMessage(LocalizationService.T("Dialog.Done"), message);
             }
             catch (FFmpegExecutionException ex)
             {
                 var message = BuildFailureMessage(ex);
-                SystemNotificationService.Show("转换失败", message, isError: true);
+                SystemNotificationService.Show(LocalizationService.T("Dialog.Error"), message, isError: true);
                 await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
             }
             catch (Exception ex)
             {
                 var message = LocalizationService.Format("Dialog.ExecuteError", ex.Message);
-                SystemNotificationService.Show("转换失败", message, isError: true);
+                SystemNotificationService.Show(LocalizationService.T("Dialog.Error"), message, isError: true);
                 await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
             }
             finally
@@ -444,7 +581,8 @@ namespace FFGUITool.ViewModels
             SelectedCompressionPresetOption = CompressionPresetOptions[0];
             SelectedVideoFormatOption = VideoFormatOptions[0];
             SelectedAudioFormatOption = AudioFormatOptions[0];
-            SelectedResolutionOption = ResolutionOptions[2];
+            SelectedResolutionOption = ResolutionOptions[3];
+            SelectedImageFormatOption = ImageFormatOptions[0];
             UpdateBitrateTexts();
 
             // 监听属性变化
@@ -501,6 +639,12 @@ namespace FFGUITool.ViewModels
         {
             switch (e.PropertyName)
             {
+                case nameof(SelectedImageFormatOption):
+                    OnImageFormatChanged();
+                    break;
+                case nameof(SelectedImageTargetSizeUnit):
+                    OnImageTargetSizeUnitChanged();
+                    break;
                 case nameof(TargetSizeMB):
                     OnTargetSizeChanged();
                     break;
@@ -558,6 +702,17 @@ namespace FFGUITool.ViewModels
                 return;
             }
 
+            if (IsImageMode)
+            {
+                TargetSizeMB = ClampTargetSize(TargetSizeMB);
+                TargetSizeSliderValue = TargetSizeMB;
+                CompressionSettings.ImageTargetSizeKB = ImageTargetDisplayValueToKB(TargetSizeMB);
+                EstimateImageQualityFromTargetSize();
+                UpdateTargetSizeTexts();
+                UpdateCommand();
+                return;
+            }
+
             if (CurrentVideoInfo != null)
             {
                 TargetSizeMB = ClampTargetSize(TargetSizeMB);
@@ -574,6 +729,25 @@ namespace FFGUITool.ViewModels
         private void OnTargetSizeSliderChanged()
         {
             TargetSizeMB = TargetSizeSliderValue;
+        }
+
+        private void OnImageTargetSizeUnitChanged()
+        {
+            if (!IsImageMode)
+            {
+                return;
+            }
+
+            var targetKB = CompressionSettings.ImageTargetSizeKB > 0
+                ? CompressionSettings.ImageTargetSizeKB
+                : ImageTargetDisplayValueToKB(TargetSizeMB);
+
+            _isSyncingCompressionValues = true;
+            ConfigureImageTargetRange(targetKB);
+            _isSyncingCompressionValues = false;
+            UpdateTargetSizeTexts();
+            UpdateImageEstimation();
+            UpdateCommand();
         }
 
         private void OnCompressionPresetChanged()
@@ -632,6 +806,10 @@ namespace FFGUITool.ViewModels
             UpdateConversionOptionVisibility();
             ApplySelectedConversionOptions();
             RefreshBatchModeSummary();
+            if (IsImageMode)
+            {
+                UpdateImageEstimation();
+            }
             UpdateCommand();
         }
 
@@ -661,17 +839,42 @@ namespace FFGUITool.ViewModels
             }
         }
 
+        private void OnImageFormatChanged()
+        {
+            if (SelectedImageFormatOption != null)
+            {
+                CompressionSettings.ImageOutputFormat = SelectedImageFormatOption.Value;
+                UpdateImageEstimation();
+                UpdateCommand();
+            }
+        }
+
         private void OnResolutionChanged()
         {
             if (SelectedResolutionOption != null && int.TryParse(SelectedResolutionOption.Value, out var height))
             {
                 CompressionSettings.ResolutionHeight = height;
+                if (IsImageMode)
+                {
+                    UpdateImageEstimation();
+                }
                 UpdateCommand();
             }
         }
 
         private void OnBitrateChanged()
         {
+            if (IsImageMode)
+            {
+                Bitrate = Math.Max(1, Math.Min(Bitrate, 100));
+                CompressionSettings.ImageQuality = Bitrate;
+                BitrateSliderValue = Bitrate;
+                UpdateBitrateTexts();
+                UpdateImageEstimation();
+                UpdateCommand();
+                return;
+            }
+
             CompressionSettings.Bitrate = Bitrate;
             BitrateSliderValue = Bitrate;
             UpdateTargetSizeFromBitrate();
@@ -702,6 +905,12 @@ namespace FFGUITool.ViewModels
             InputPathText = path;
             HasSelectedInput = true;
             IsBatchMode = Directory.Exists(path);
+
+            if (IsImageMode)
+            {
+                await ProcessSelectedImageInput(path);
+                return;
+            }
 
             if (IsBatchMode)
             {
@@ -756,6 +965,52 @@ namespace FFGUITool.ViewModels
             UpdateCommand();
         }
 
+        private async Task ProcessSelectedImageInput(string path)
+        {
+            if (IsBatchMode)
+            {
+                BatchFileCount = GetBatchInputFiles().Count();
+                BatchModeText = BatchFileCount == 0
+                    ? LocalizationService.T("Image.NoSupportedFiles")
+                    : LocalizationService.Format("Image.BatchMode", BatchFileCount);
+                CurrentVideoInfo = null;
+                IsVideoInfoVisible = false;
+            }
+            else
+            {
+                CurrentVideoInfo = await _videoAnalyzer.AnalyzeVideo(path);
+                if (CurrentVideoInfo == null && File.Exists(path))
+                {
+                    CurrentVideoInfo = new VideoInfo
+                    {
+                        FilePath = path,
+                        FileSize = new FileInfo(path).Length
+                    };
+                }
+
+                IsVideoInfoVisible = CurrentVideoInfo != null;
+                BatchModeText = "";
+            }
+
+            IsSelectedAudioInput = false;
+            CanUseVideoConversionTools = true;
+            var sourceSizeKB = CurrentVideoInfo?.FileSize > 0
+                ? CurrentVideoInfo.FileSize / 1024.0
+                : 1;
+            var targetKB = Math.Max(1, sourceSizeKB);
+            ConfigureImageTargetRange(targetKB);
+            CompressionSettings.ImageQuality = Bitrate;
+            EstimatedBitrateColor = "Green";
+            UpdateSourceInfoTexts();
+            UpdateTargetSizeTexts();
+            UpdateBitrateTexts();
+            UpdateImageEstimation();
+            UpdateConversionHint();
+            UpdateConversionOptionVisibility();
+            UpdateSourceInfoTexts();
+            UpdateCommand();
+        }
+
         private Task ProcessSelectedFolder(string path)
         {
             var files = GetBatchInputFiles().ToList();
@@ -780,6 +1035,7 @@ namespace FFGUITool.ViewModels
 
             UpdateConversionHint();
             UpdateConversionOptionVisibility();
+            UpdateSourceInfoTexts();
             UpdateCommand();
             return Task.CompletedTask;
         }
@@ -788,7 +1044,7 @@ namespace FFGUITool.ViewModels
         {
             if (CurrentVideoInfo == null)
             {
-                EstimatedBitrateText = LocalizationService.T("Estimate.SelectVideo");
+                EstimatedBitrateText = "";
                 return;
             }
 
@@ -951,7 +1207,15 @@ namespace FFGUITool.ViewModels
         private void UpdateCommand()
         {
             ApplySelectedConversionOptions();
-            CompressionSettings.Bitrate = Bitrate;
+            if (IsImageMode)
+            {
+                CompressionSettings.ImageQuality = Bitrate;
+                CompressionSettings.ImageTargetSizeKB = ImageTargetDisplayValueToKB(TargetSizeMB);
+            }
+            else
+            {
+                CompressionSettings.Bitrate = Bitrate;
+            }
 
             if (IsBatchMode)
             {
@@ -973,6 +1237,16 @@ namespace FFGUITool.ViewModels
 
         private void UpdateConversionOptionVisibility()
         {
+            IsAdvancedVideoControlsVisible = IsAdvancedMode && !IsImageMode;
+
+            if (IsImageMode)
+            {
+                IsFormatConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableFormatConversion;
+                IsAudioConversionOptionsVisible = false;
+                IsResolutionConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableResolutionConversion;
+                return;
+            }
+
             IsFormatConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && !IsSelectedAudioInput && EnableFormatConversion;
             IsAudioConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableAudioConversion;
             IsResolutionConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && !IsSelectedAudioInput && EnableResolutionConversion;
@@ -987,6 +1261,11 @@ namespace FFGUITool.ViewModels
             if (SelectedVideoFormatOption != null)
             {
                 CompressionSettings.OutputFormat = SelectedVideoFormatOption.Value;
+            }
+
+            if (SelectedImageFormatOption != null)
+            {
+                CompressionSettings.ImageOutputFormat = SelectedImageFormatOption.Value;
             }
 
             if (SelectedAudioFormatOption != null)
@@ -1021,6 +1300,11 @@ namespace FFGUITool.ViewModels
                 .Where(file =>
                 {
                     var extension = Path.GetExtension(file);
+                    if (IsImageMode)
+                    {
+                        return IsImageExtension(extension);
+                    }
+
                     return EnableAudioConversion
                         ? IsVideoExtension(extension) || IsAudioExtension(extension)
                         : IsVideoExtension(extension);
@@ -1036,17 +1320,33 @@ namespace FFGUITool.ViewModels
             }
 
             BatchFileCount = GetBatchInputFiles().Count();
-            BatchModeText = BatchFileCount == 0
-                ? LocalizationService.T("Batch.Empty")
-                : LocalizationService.Format("Batch.Mode", BatchFileCount);
-            EstimatedBitrateText = BatchFileCount == 0
-                ? LocalizationService.T("Estimate.NonVideo")
-                : LocalizationService.Format("Batch.Found", BatchFileCount);
+            BatchModeText = IsImageMode
+                ? BatchFileCount == 0
+                    ? LocalizationService.T("Image.NoSupportedFiles")
+                    : LocalizationService.Format("Image.BatchMode", BatchFileCount)
+                : BatchFileCount == 0
+                    ? LocalizationService.T("Batch.Empty")
+                    : LocalizationService.Format("Batch.Mode", BatchFileCount);
+            EstimatedBitrateText = IsImageMode
+                ? BatchFileCount == 0
+                    ? LocalizationService.T("Image.NoSupportedFiles")
+                    : LocalizationService.Format("Image.Estimate", $"{TargetSizeMB:0.##} {SelectedImageTargetSizeUnit}", (SelectedImageFormatOption?.Name ?? CompressionSettings.ImageOutputFormat).ToUpperInvariant(), "")
+                : BatchFileCount == 0
+                    ? LocalizationService.T("Estimate.NonVideo")
+                    : LocalizationService.Format("Batch.Found", BatchFileCount);
             EstimatedBitrateColor = BatchFileCount == 0 ? "Gray" : "Green";
         }
 
         private void UpdateConversionHint()
         {
+            if (IsImageMode)
+            {
+                ConversionModeHint = EnableFormatConversion || EnableResolutionConversion
+                    ? LocalizationService.T("Image.ConversionHint")
+                    : LocalizationService.T("Image.CompressHint");
+                return;
+            }
+
             if (EnableAudioConversion)
             {
                 ConversionModeHint = LocalizationService.T("Conversion.AudioExclusiveHint");
@@ -1075,6 +1375,11 @@ namespace FFGUITool.ViewModels
             return AudioExtensions.Contains((extension ?? "").ToLowerInvariant());
         }
 
+        private static bool IsImageExtension(string? extension)
+        {
+            return ImageExtensions.Contains((extension ?? "").ToLowerInvariant());
+        }
+
         private void UpdateFFmpegStatus()
         {
             if (_ffmpegManager.IsFFmpegAvailable)
@@ -1095,21 +1400,56 @@ namespace FFGUITool.ViewModels
         {
             IsChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
             IsEnglishLanguage = LocalizationService.CurrentLanguage == "en-US";
+            RefreshModeText();
             UpdateCodecOptions();
             UpdateCompressionPresetOptions();
             UpdateBitrateTexts();
             UpdateTargetSizeTexts();
+            UpdateSourceInfoTexts();
             UpdateFFmpegStatus();
+            UpdateConversionHint();
+            UpdateConversionOptionVisibility();
 
             if (CurrentVideoInfo == null && string.IsNullOrWhiteSpace(CompressionSettings.InputPath))
             {
-                EstimatedBitrateText = LocalizationService.T("Estimate.SelectVideo");
+                EstimatedBitrateText = "";
                 CommandText = LocalizationService.T("Command.SelectInput");
+            }
+            else if (IsImageMode)
+            {
+                UpdateImageEstimation();
+                UpdateCommand();
             }
             else
             {
                 UpdateBitrateWarningAndEstimation();
                 UpdateCommand();
+            }
+        }
+
+        private void RefreshModeText()
+        {
+            if (IsImageMode)
+            {
+                CurrentModeTitle = LocalizationService.T("Mode.Image");
+                InputSourceTitle = LocalizationService.T("Image.InputSource");
+                CompressionParamsTitle = LocalizationService.T("Image.CompressionParams");
+                TargetSizeLabel = LocalizationService.T("Image.TargetSize");
+                TargetSizeUnitText = SelectedImageTargetSizeUnit;
+                IsImageTargetUnitSelectorVisible = true;
+                AdvancedBitrateLabel = "";
+                FormatOptionLabel = LocalizationService.T("Image.FormatLabel");
+            }
+            else
+            {
+                CurrentModeTitle = IsWorkspaceVisible ? LocalizationService.T("Mode.Video") : LocalizationService.T("Mode.Choose");
+                InputSourceTitle = LocalizationService.T("Main.InputSource");
+                CompressionParamsTitle = LocalizationService.T("Main.CompressionParams");
+                TargetSizeLabel = LocalizationService.T("Main.TargetSize");
+                TargetSizeUnitText = "MB";
+                IsImageTargetUnitSelectorVisible = false;
+                AdvancedBitrateLabel = LocalizationService.T("Main.TargetBitrate");
+                FormatOptionLabel = LocalizationService.T("Main.VideoFormat");
             }
         }
 
@@ -1174,14 +1514,139 @@ namespace FFGUITool.ViewModels
 
         private void UpdateBitrateTexts()
         {
+            if (IsImageMode)
+            {
+                BitrateValueText = $"{Bitrate}%";
+                BitrateSelectionText = LocalizationService.Format("Main.CurrentSelection", BitrateValueText);
+                return;
+            }
+
             BitrateValueText = $"{Bitrate}k";
             BitrateSelectionText = LocalizationService.Format("Main.CurrentSelection", BitrateValueText);
         }
 
         private void UpdateTargetSizeTexts()
         {
-            TargetSizeValueText = $"{TargetSizeMB:F1} MB";
-            TargetSizeSelectionText = LocalizationService.Format("Main.CurrentSelection", TargetSizeValueText);
+            TargetSizeUnitText = IsImageMode ? SelectedImageTargetSizeUnit : "MB";
+            TargetSizeValueText = IsImageMode
+                ? $"{TargetSizeMB:0.##} {SelectedImageTargetSizeUnit}"
+                : $"{TargetSizeMB:F1} MB";
+            TargetSizeSelectionText = IsImageMode
+                ? LocalizationService.Format("Main.CurrentSelection", TargetSizeValueText)
+                : LocalizationService.Format("Main.CurrentSelection", TargetSizeValueText);
+        }
+
+        private void EstimateImageQualityFromTargetSize()
+        {
+            var sourceSizeKB = CurrentVideoInfo?.FileSize > 0 ? CurrentVideoInfo.FileSize / 1024.0 : TargetSizeSliderMaximum;
+            var targetKB = ImageTargetDisplayValueToKB(TargetSizeMB);
+            if (sourceSizeKB <= 0)
+            {
+                return;
+            }
+
+            var estimatedQuality = (int)Math.Round(Math.Sqrt(Math.Min(targetKB / sourceSizeKB, 1)) * 100);
+            Bitrate = Math.Max(10, Math.Min(100, estimatedQuality));
+            CompressionSettings.ImageQuality = Bitrate;
+            CompressionSettings.ImageTargetSizeKB = targetKB;
+            UpdateImageEstimation();
+        }
+
+        private void UpdateImageEstimation()
+        {
+            var outputFormat = (SelectedImageFormatOption?.Name ?? CompressionSettings.ImageOutputFormat).ToUpperInvariant();
+            var sizeSuffix = EnableResolutionConversion && SelectedResolutionOption?.Value != "0"
+                ? LocalizationService.Format("Image.EstimateSizeSuffix", SelectedResolutionOption?.Name ?? "")
+                : "";
+            var displayTarget = $"{TargetSizeMB:0.##} {SelectedImageTargetSizeUnit}";
+            EstimatedBitrateText = LocalizationService.Format("Image.Estimate", displayTarget, outputFormat, sizeSuffix);
+            EstimatedBitrateColor = "Green";
+        }
+
+        private double ImageTargetDisplayValueToKB(double value)
+        {
+            return string.Equals(SelectedImageTargetSizeUnit, "MB", StringComparison.OrdinalIgnoreCase)
+                ? value * 1024
+                : value;
+        }
+
+        private double ImageTargetKBToDisplayValue(double valueKB)
+        {
+            return string.Equals(SelectedImageTargetSizeUnit, "MB", StringComparison.OrdinalIgnoreCase)
+                ? valueKB / 1024
+                : valueKB;
+        }
+
+        private void ConfigureImageTargetRange(double targetKB)
+        {
+            var sourceSizeKB = CurrentVideoInfo?.FileSize > 0
+                ? CurrentVideoInfo.FileSize / 1024.0
+                : Math.Max(targetKB, 1);
+            var maxKB = Math.Max(sourceSizeKB, 1);
+            var minKB = 1;
+
+            CompressionSettings.ImageTargetSizeKB = Math.Max(minKB, Math.Min(targetKB, maxKB));
+            TargetSizeSliderMinimum = ImageTargetKBToDisplayValue(minKB);
+            TargetSizeSliderMaximum = ImageTargetKBToDisplayValue(maxKB);
+            TargetSizeMB = ImageTargetKBToDisplayValue(CompressionSettings.ImageTargetSizeKB);
+            TargetSizeSliderValue = TargetSizeMB;
+            TargetSizeUnitText = SelectedImageTargetSizeUnit;
+        }
+
+        private void ResetSelectedInput()
+        {
+            CompressionSettings.InputPath = "";
+            InputPathText = "";
+            CurrentVideoInfo = null;
+            IsVideoInfoVisible = false;
+            HasSelectedInput = false;
+            IsBatchMode = false;
+            BatchFileCount = 0;
+            BatchModeText = "";
+            CanExecute = false;
+            CommandText = LocalizationService.T("Command.SelectInput");
+            EstimatedBitrateText = "";
+            EstimatedBitrateColor = "Gray";
+            UpdateSourceInfoTexts();
+        }
+
+        private void UpdateSourceInfoTexts()
+        {
+            if (CurrentVideoInfo == null)
+            {
+                SourceInfoTitle = IsImageMode ? LocalizationService.T("Image.SourceInfo") : LocalizationService.T("Main.SourceInfo");
+                SourceSizeLabel = LocalizationService.T("Main.Size");
+                SourceSecondMetricLabel = IsImageMode ? LocalizationService.T("Image.Format") : LocalizationService.T("Main.Duration");
+                SourceSecondMetricValue = "";
+                SourceThirdMetricLabel = IsImageMode ? LocalizationService.T("Image.Resolution") : LocalizationService.T("Main.OriginalBitrate");
+                SourceThirdMetricValue = "";
+                SourceBadgeText = "";
+                IsSourceBadgeVisible = false;
+                return;
+            }
+
+            SourceInfoTitle = IsImageMode ? LocalizationService.T("Image.SourceInfo") : LocalizationService.T("Main.SourceInfo");
+            SourceSizeLabel = LocalizationService.T("Main.Size");
+            SourceBadgeText = CurrentVideoInfo.Resolution;
+            IsSourceBadgeVisible = !string.IsNullOrWhiteSpace(SourceBadgeText);
+
+            if (IsImageMode)
+            {
+                SourceSecondMetricLabel = LocalizationService.T("Image.Format");
+                SourceSecondMetricValue = GetDisplayExtension(CurrentVideoInfo.FilePath);
+                SourceThirdMetricLabel = LocalizationService.T("Image.Resolution");
+                SourceThirdMetricValue = string.IsNullOrWhiteSpace(CurrentVideoInfo.Resolution)
+                    ? LocalizationService.T("Result.Unknown")
+                    : CurrentVideoInfo.Resolution;
+                return;
+            }
+
+            SourceSecondMetricLabel = LocalizationService.T("Main.Duration");
+            SourceSecondMetricValue = CurrentVideoInfo.FormattedDuration;
+            SourceThirdMetricLabel = LocalizationService.T("Main.OriginalBitrate");
+            SourceThirdMetricValue = CurrentVideoInfo.Bitrate > 0
+                ? $"{CurrentVideoInfo.Bitrate} kbps"
+                : LocalizationService.T("Result.Unknown");
         }
 
         private async Task<ConversionSummary> ExecuteFFmpegCommand()
@@ -1209,13 +1674,13 @@ namespace FFGUITool.ViewModels
                 }
 
                 stopwatch.Stop();
-                return new ConversionSummary(results, stopwatch.Elapsed);
+                return new ConversionSummary(results, stopwatch.Elapsed, IsImageMode);
             }
 
             var singleCommand = _commandBuilder.BuildCommand(CompressionSettings);
             results.Add(await RunFFmpegCommand(singleCommand));
             stopwatch.Stop();
-            return new ConversionSummary(results, stopwatch.Elapsed);
+            return new ConversionSummary(results, stopwatch.Elapsed, IsImageMode);
         }
 
         private CompressionSettings CreateSettingsForInput(string inputPath)
@@ -1238,19 +1703,27 @@ namespace FFGUITool.ViewModels
                 EnableResolutionConversion = CompressionSettings.EnableResolutionConversion,
                 ResolutionHeight = CompressionSettings.ResolutionHeight,
                 InputPath = inputPath,
-                OutputPath = CompressionSettings.OutputPath
+                OutputPath = CompressionSettings.OutputPath,
+                IsImageProcessing = CompressionSettings.IsImageProcessing,
+                ImageQuality = CompressionSettings.ImageQuality,
+                ImageTargetSizeKB = CompressionSettings.ImageTargetSizeKB,
+                ImageOutputFormat = CompressionSettings.ImageOutputFormat
             };
         }
 
         private async Task<ConversionResult> RunFFmpegCommand(FFmpegCommand command)
         {
-            var commandText = command.BuildCommand();
-            var arguments = commandText.StartsWith("ffmpeg ", StringComparison.OrdinalIgnoreCase)
-                ? commandText["ffmpeg ".Length..]
-                : commandText;
             var inputInfo = CurrentVideoInfo?.FilePath == command.InputPath
                 ? CurrentVideoInfo
                 : await _videoAnalyzer.AnalyzeVideo(command.InputPath);
+            if (inputInfo == null && File.Exists(command.InputPath))
+            {
+                inputInfo = new VideoInfo
+                {
+                    FilePath = command.InputPath,
+                    FileSize = new FileInfo(command.InputPath).Length
+                };
+            }
 
             var outputDirectory = Path.GetDirectoryName(command.OutputPath);
             if (!string.IsNullOrWhiteSpace(outputDirectory))
@@ -1258,28 +1731,16 @@ namespace FFGUITool.ViewModels
                 Directory.CreateDirectory(outputDirectory);
             }
 
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = _ffmpegManager.FFmpegPath,
-                Arguments = arguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
+            var output = command.ImageOutput && command.ImageTargetSizeKB > 0
+                ? await RunImageCommandWithTargetSize(command, inputInfo)
+                : await RunSingleFFmpegCommand(command);
 
-            using var process = new Process { StartInfo = processInfo };
-            process.Start();
-
-            var output = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
-            if (process.ExitCode != 0)
+            if (output.ExitCode != 0)
             {
                 throw new FFmpegExecutionException(
-                    $"FFmpeg执行失败，退出代码: {process.ExitCode}",
-                    process.ExitCode,
-                    output);
+                    $"FFmpeg执行失败，退出代码: {output.ExitCode}",
+                    output.ExitCode,
+                    output.Error);
             }
 
             var outputInfo = await _videoAnalyzer.AnalyzeVideo(command.OutputPath);
@@ -1295,34 +1756,150 @@ namespace FFGUITool.ViewModels
             return new ConversionResult(command.InputPath, command.OutputPath, inputInfo, outputInfo);
         }
 
+        private async Task<(int ExitCode, string Error)> RunImageCommandWithTargetSize(FFmpegCommand command, VideoInfo? inputInfo)
+        {
+            var targetBytes = (long)Math.Max(1, command.ImageTargetSizeKB * 1024);
+            var baseHeight = command.MaxHeight > 0 ? command.MaxHeight : TryParseHeight(inputInfo?.Resolution);
+            var lastResult = (ExitCode: 0, Error: "");
+
+            foreach (var quality in BuildImageQualityAttempts(command.ImageQuality))
+            {
+                command.ImageQuality = quality;
+                lastResult = await RunSingleFFmpegCommand(command);
+                if (lastResult.ExitCode != 0 || IsOutputWithinTarget(command.OutputPath, targetBytes))
+                {
+                    return lastResult;
+                }
+            }
+
+            if (baseHeight <= 0)
+            {
+                return lastResult;
+            }
+
+            var currentHeight = Math.Max(128, (int)Math.Round(baseHeight * 0.85));
+            while (currentHeight >= 128)
+            {
+                command.MaxHeight = currentHeight;
+                foreach (var quality in new[] { 35, 25, 15, 8, 1 })
+                {
+                    command.ImageQuality = quality;
+                    lastResult = await RunSingleFFmpegCommand(command);
+                    if (lastResult.ExitCode != 0 || IsOutputWithinTarget(command.OutputPath, targetBytes))
+                    {
+                        return lastResult;
+                    }
+                }
+
+                currentHeight = (int)Math.Round(currentHeight * 0.85);
+            }
+
+            return lastResult;
+        }
+
+        private async Task<(int ExitCode, string Error)> RunSingleFFmpegCommand(FFmpegCommand command)
+        {
+            if (File.Exists(command.OutputPath))
+            {
+                File.Delete(command.OutputPath);
+            }
+
+            var commandText = command.BuildCommand();
+            var arguments = commandText.StartsWith("ffmpeg ", StringComparison.OrdinalIgnoreCase)
+                ? commandText["ffmpeg ".Length..]
+                : commandText;
+
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = _ffmpegManager.FFmpegPath,
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = new Process { StartInfo = processInfo };
+            process.Start();
+
+            var error = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            return (process.ExitCode, error);
+        }
+
+        private static IEnumerable<int> BuildImageQualityAttempts(int startQuality)
+        {
+            var quality = Math.Max(1, Math.Min(100, startQuality));
+            for (var current = quality; current >= 1; current -= 8)
+            {
+                yield return current;
+            }
+
+            if (quality != 1)
+            {
+                yield return 1;
+            }
+        }
+
+        private static bool IsOutputWithinTarget(string outputPath, long targetBytes)
+        {
+            return File.Exists(outputPath) && new FileInfo(outputPath).Length <= targetBytes;
+        }
+
+        private static int TryParseHeight(string? resolution)
+        {
+            if (string.IsNullOrWhiteSpace(resolution))
+            {
+                return 0;
+            }
+
+            var parts = resolution.Split('x', 'X');
+            return parts.Length == 2 && int.TryParse(parts[1], out var height) ? height : 0;
+        }
+
         private static string BuildCompletionMessage(ConversionSummary summary)
         {
             var lines = new List<string>
             {
                 summary.Results.Count > 1
-                    ? $"批量转换完成：{summary.Results.Count} 个文件"
-                    : "转换完成",
-                $"用时：{FormatDuration(summary.Elapsed)}"
+                    ? LocalizationService.Format("Result.BatchComplete", summary.Results.Count)
+                    : LocalizationService.T(summary.IsImageMode ? "Result.ImageComplete" : "Result.VideoComplete"),
+                LocalizationService.Format("Result.Elapsed", FormatDuration(summary.Elapsed))
             };
 
             foreach (var result in summary.Results)
             {
                 lines.Add("");
                 lines.Add(Path.GetFileName(result.InputPath));
-                lines.Add($"输出：{result.OutputPath}");
+                lines.Add(LocalizationService.Format("Result.Output", result.OutputPath));
 
                 if (result.InputInfo != null && result.OutputInfo != null)
                 {
-                    lines.Add($"大小：{FormatBytes(result.InputInfo.FileSize)} -> {FormatBytes(result.OutputInfo.FileSize)} ({FormatSizeChange(result.InputInfo.FileSize, result.OutputInfo.FileSize)})");
+                    lines.Add(LocalizationService.Format("Result.SizeCompare", FormatBytes(result.InputInfo.FileSize), FormatBytes(result.OutputInfo.FileSize), FormatSizeChange(result.InputInfo.FileSize, result.OutputInfo.FileSize)));
+
+                    if (summary.IsImageMode)
+                    {
+                        lines.Add(LocalizationService.Format("Result.ImageFormat", GetDisplayExtension(result.InputPath), GetDisplayExtension(result.OutputPath)));
+                        if (!string.IsNullOrWhiteSpace(result.InputInfo.Resolution) || !string.IsNullOrWhiteSpace(result.OutputInfo.Resolution))
+                        {
+                            lines.Add(LocalizationService.Format(
+                                "Result.Resolution",
+                                string.IsNullOrWhiteSpace(result.InputInfo.Resolution) ? LocalizationService.T("Result.Unknown") : result.InputInfo.Resolution,
+                                string.IsNullOrWhiteSpace(result.OutputInfo.Resolution) ? LocalizationService.T("Result.Unknown") : result.OutputInfo.Resolution));
+                        }
+
+                        continue;
+                    }
 
                     if (result.InputInfo.Bitrate > 0 || result.OutputInfo.Bitrate > 0)
                     {
-                        lines.Add($"比特率：{FormatBitrate(result.InputInfo.Bitrate)} -> {FormatBitrate(result.OutputInfo.Bitrate)}");
+                        lines.Add(LocalizationService.Format("Result.BitrateCompare", FormatBitrate(result.InputInfo.Bitrate), FormatBitrate(result.OutputInfo.Bitrate)));
                     }
                 }
                 else if (result.OutputInfo != null)
                 {
-                    lines.Add($"输出大小：{FormatBytes(result.OutputInfo.FileSize)}");
+                    lines.Add(LocalizationService.Format("Result.OutputSize", FormatBytes(result.OutputInfo.FileSize)));
                 }
             }
 
@@ -1336,7 +1913,7 @@ namespace FFGUITool.ViewModels
             if (!string.IsNullOrWhiteSpace(exception.FFmpegOutput))
             {
                 lines.Add("");
-                lines.Add("FFmpeg 信息：");
+                lines.Add(LocalizationService.T("Result.FFmpegInfo"));
                 lines.Add(TrimFFmpegOutput(exception.FFmpegOutput));
             }
 
@@ -1363,31 +1940,34 @@ namespace FFGUITool.ViewModels
 
         private static string FormatBytes(long bytes)
         {
-            var sizeMB = bytes / 1024.0 / 1024.0;
-            return sizeMB < 1024
-                ? $"{sizeMB:F1} MB"
-                : $"{sizeMB / 1024.0:F2} GB";
+            return VideoInfo.FormatFileSize(bytes);
         }
 
         private static string FormatSizeChange(long before, long after)
         {
             if (before <= 0)
             {
-                return "无法计算变化";
+                return LocalizationService.T("Result.ChangeUnavailable");
             }
 
             var percentage = (after - before) * 100.0 / before;
             return percentage <= 0
-                ? $"减少 {Math.Abs(percentage):F1}%"
-                : $"增加 {percentage:F1}%";
+                ? LocalizationService.Format("Result.Reduced", Math.Abs(percentage))
+                : LocalizationService.Format("Result.Increased", percentage);
         }
 
         private static string FormatBitrate(int bitrate)
         {
-            return bitrate > 0 ? $"{bitrate} kb/s" : "未知";
+            return bitrate > 0 ? $"{bitrate} kb/s" : LocalizationService.T("Result.Unknown");
         }
 
-        private sealed record ConversionSummary(List<ConversionResult> Results, TimeSpan Elapsed);
+        private static string GetDisplayExtension(string path)
+        {
+            var extension = Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
+            return string.IsNullOrWhiteSpace(extension) ? LocalizationService.T("Result.Unknown") : extension;
+        }
+
+        private sealed record ConversionSummary(List<ConversionResult> Results, TimeSpan Elapsed, bool IsImageMode);
 
         private sealed record ConversionResult(
             string InputPath,

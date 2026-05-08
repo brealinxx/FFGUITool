@@ -21,11 +21,27 @@ namespace FFGUITool.Models
         {
             get
             {
-                var sizeMB = FileSize / 1024.0 / 1024.0;
-                return sizeMB < 1024
-                    ? $"{sizeMB:F1} MB"
-                    : $"{sizeMB / 1024.0:F2} GB";
+                return FormatFileSize(FileSize);
             }
+        }
+
+        public static string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024)
+            {
+                return $"{bytes} B";
+            }
+
+            var sizeKB = bytes / 1024.0;
+            if (sizeKB < 1024)
+            {
+                return $"{sizeKB:F1} KB";
+            }
+
+            var sizeMB = sizeKB / 1024.0;
+            return sizeMB < 1024
+                ? $"{sizeMB:F1} MB"
+                : $"{sizeMB / 1024.0:F2} GB";
         }
 
         /// <summary>

@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.2.0
+
+### Added
+
+- Added a startup mode selector for video processing and image processing.
+- Added image processing mode with image compression, format conversion, and resize presets.
+- Added image target-size controls with KB/MB unit selection.
+- Added target-size driven image compression retries that reduce quality and then dimensions when needed.
+- Added system notifications and detailed completion summaries for successful or failed processing.
+
+### Changed
+
+- Video processing mode keeps the existing video workflow after mode selection.
+- Image mode now shows image-specific source details such as file size, format, and resolution.
+- Image target-size slider now uses the selected image size as the maximum value and 1 KB as the minimum.
+- Advanced mode now starts closed in both processing modes.
+- Estimate text now stays blank until an input is selected or settings provide enough context.
+- Updated mode selector layout with fixed, symmetrical mode cards.
+- Improved localized text refresh when switching languages.
+
+### Fixed
+
+- Fixed default output directory handling when the user does not choose an output folder.
+- Fixed image file-size display for small files by using B, KB, MB, or GB as appropriate.
+- Fixed image target-size unit conversion between KB and MB.
+- Fixed image-mode estimate and completion messages so they no longer show video bitrate wording.
+- Fixed alignment of the image target-size input and unit selector.
+
+### Version
+
+- Updated application version metadata from `1.1.0` to `1.2.0`.
+- Updated assembly version and file version to `1.2.0.0`.
+- Updated Windows application manifest assembly identity to `1.2.0.0`.
+
 ## v1.1.0
 
 ### Added

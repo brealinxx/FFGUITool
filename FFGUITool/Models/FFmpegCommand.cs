@@ -20,6 +20,10 @@ namespace FFGUITool.Models
         public int MaxFramerate { get; set; }
         public bool AudioOnly { get; set; }
         public bool GifOutput { get; set; }
+        public bool ImageOutput { get; set; }
+        public int ImageQuality { get; set; } = 80;
+        public double ImageTargetSizeKB { get; set; }
+        public string ImageFormat { get; set; } = "jpg";
         public string AdditionalParameters { get; set; } = "";
 
         public string BuildCommand()
@@ -39,6 +43,19 @@ namespace FFGUITool.Models
             else if (System.IO.Directory.Exists(InputPath))
             {
                 command.Append($"-i \"{InputPath}/*.mp4\" ");
+            }
+
+            if (ImageOutput)
+            {
+                if (MaxHeight > 0)
+                {
+                    command.Append($"-vf \"scale=-2:min({MaxHeight}\\,ih)\" ");
+                }
+
+                AppendImageParameters(command);
+                AppendAdditionalParameters(command);
+                AppendOutputPath(command);
+                return command.ToString();
             }
 
             if (AudioOnly)
@@ -99,6 +116,32 @@ namespace FFGUITool.Models
             if (!string.IsNullOrEmpty(AdditionalParameters))
             {
                 command.Append($"{AdditionalParameters} ");
+            }
+        }
+
+        private void AppendImageParameters(StringBuilder command)
+        {
+            var quality = System.Math.Clamp(ImageQuality, 1, 100);
+            switch (ImageFormat.ToLowerInvariant())
+            {
+                case "jpg":
+                case "jpeg":
+                    var qscale = System.Math.Clamp(31 - (int)System.Math.Round(quality * 29 / 100.0), 2, 31);
+                    command.Append("-frames:v 1 ");
+                    command.Append($"-q:v {qscale} ");
+                    break;
+                case "webp":
+                    command.Append("-frames:v 1 -c:v libwebp ");
+                    command.Append($"-quality {quality} ");
+                    break;
+                case "png":
+                    var compression = System.Math.Clamp(10 - (int)System.Math.Ceiling(quality / 10.0), 0, 9);
+                    command.Append("-frames:v 1 ");
+                    command.Append($"-compression_level {compression} ");
+                    break;
+                default:
+                    command.Append("-frames:v 1 ");
+                    break;
             }
         }
 
