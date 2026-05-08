@@ -28,7 +28,6 @@ namespace FFGUITool.Models
         /// </summary>
         public bool IsValid => 
             !string.IsNullOrEmpty(InputPath) && 
-            !string.IsNullOrEmpty(OutputPath) &&
             Bitrate > 0;
     }
 }

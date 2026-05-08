@@ -31,17 +31,50 @@ namespace FFGUITool.Services
                 AudioCodec = GetCommandAudioCodec(settings)
             };
 
-            // 生成输出路径
-            if (!string.IsNullOrEmpty(settings.OutputPath))
-            {
-                var inputFileName = Path.GetFileNameWithoutExtension(settings.InputPath);
-                var outputFormat = GetOutputFormat(settings);
-                var targetSize = settings.TargetSizeMB > 0 ? $"{settings.TargetSizeMB:F0}MB" : $"{settings.CompressionPercentage}%";
-                var outputFileName = $"{inputFileName}_compressed_{targetSize}.{outputFormat}";
-                command.OutputPath = Path.Combine(settings.OutputPath, outputFileName);
-            }
+            command.OutputPath = BuildOutputPath(settings);
 
             return command;
+        }
+
+        private static string BuildOutputPath(CompressionSettings settings)
+        {
+            if (string.IsNullOrWhiteSpace(settings.InputPath))
+            {
+                return "";
+            }
+
+            var outputDirectory = !string.IsNullOrWhiteSpace(settings.OutputPath)
+                ? settings.OutputPath
+                : GetDefaultOutputDirectory(settings.InputPath);
+
+            if (string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                return "";
+            }
+
+            var inputFileName = Path.GetFileNameWithoutExtension(settings.InputPath);
+            var outputFormat = GetOutputFormat(settings);
+            var targetSize = settings.TargetSizeMB > 0
+                ? $"{settings.TargetSizeMB:F0}MB"
+                : $"{settings.CompressionPercentage}%";
+            var outputFileName = $"{inputFileName}_compressed_{targetSize}.{outputFormat}";
+
+            return Path.Combine(outputDirectory, outputFileName);
+        }
+
+        private static string GetDefaultOutputDirectory(string inputPath)
+        {
+            if (File.Exists(inputPath))
+            {
+                return Path.GetDirectoryName(inputPath) ?? "";
+            }
+
+            if (Directory.Exists(inputPath))
+            {
+                return inputPath;
+            }
+
+            return Path.GetDirectoryName(inputPath) ?? "";
         }
 
         private static string GetOutputFormat(CompressionSettings settings)

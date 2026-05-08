@@ -302,12 +302,22 @@ namespace FFGUITool.ViewModels
 
             try
             {
-                await ExecuteFFmpegCommand();
-                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Done"), LocalizationService.T("Dialog.VideoComplete"));
+                var summary = await ExecuteFFmpegCommand();
+                var message = BuildCompletionMessage(summary);
+                SystemNotificationService.Show("转换完成", message);
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Done"), message);
+            }
+            catch (FFmpegExecutionException ex)
+            {
+                var message = BuildFailureMessage(ex);
+                SystemNotificationService.Show("转换失败", message, isError: true);
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.Format("Dialog.ExecuteError", ex.Message));
+                var message = LocalizationService.Format("Dialog.ExecuteError", ex.Message);
+                SystemNotificationService.Show("转换失败", message, isError: true);
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
             }
             finally
             {
@@ -1174,12 +1184,15 @@ namespace FFGUITool.ViewModels
             TargetSizeSelectionText = LocalizationService.Format("Main.CurrentSelection", TargetSizeValueText);
         }
 
-        private async Task ExecuteFFmpegCommand()
+        private async Task<ConversionSummary> ExecuteFFmpegCommand()
         {
             if (!_ffmpegManager.IsFFmpegAvailable)
             {
                 throw new Exception(LocalizationService.T("Status.NotConfigured"));
             }
+
+            var stopwatch = Stopwatch.StartNew();
+            var results = new List<ConversionResult>();
 
             if (IsBatchMode)
             {
@@ -1192,14 +1205,17 @@ namespace FFGUITool.ViewModels
                 foreach (var file in files)
                 {
                     var command = _commandBuilder.BuildCommand(CreateSettingsForInput(file));
-                    await RunFFmpegCommand(command.BuildCommand());
+                    results.Add(await RunFFmpegCommand(command));
                 }
 
-                return;
+                stopwatch.Stop();
+                return new ConversionSummary(results, stopwatch.Elapsed);
             }
 
             var singleCommand = _commandBuilder.BuildCommand(CompressionSettings);
-            await RunFFmpegCommand(singleCommand.BuildCommand());
+            results.Add(await RunFFmpegCommand(singleCommand));
+            stopwatch.Stop();
+            return new ConversionSummary(results, stopwatch.Elapsed);
         }
 
         private CompressionSettings CreateSettingsForInput(string inputPath)
@@ -1226,9 +1242,21 @@ namespace FFGUITool.ViewModels
             };
         }
 
-        private async Task RunFFmpegCommand(string commandText)
+        private async Task<ConversionResult> RunFFmpegCommand(FFmpegCommand command)
         {
-            var arguments = commandText.Replace("ffmpeg ", "");
+            var commandText = command.BuildCommand();
+            var arguments = commandText.StartsWith("ffmpeg ", StringComparison.OrdinalIgnoreCase)
+                ? commandText["ffmpeg ".Length..]
+                : commandText;
+            var inputInfo = CurrentVideoInfo?.FilePath == command.InputPath
+                ? CurrentVideoInfo
+                : await _videoAnalyzer.AnalyzeVideo(command.InputPath);
+
+            var outputDirectory = Path.GetDirectoryName(command.OutputPath);
+            if (!string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
 
             var processInfo = new ProcessStartInfo
             {
@@ -1248,8 +1276,136 @@ namespace FFGUITool.ViewModels
 
             if (process.ExitCode != 0)
             {
-                throw new Exception($"FFmpeg执行失败，退出代码: {process.ExitCode}\n错误信息: {output}");
+                throw new FFmpegExecutionException(
+                    $"FFmpeg执行失败，退出代码: {process.ExitCode}",
+                    process.ExitCode,
+                    output);
             }
+
+            var outputInfo = await _videoAnalyzer.AnalyzeVideo(command.OutputPath);
+            if (outputInfo == null && File.Exists(command.OutputPath))
+            {
+                outputInfo = new VideoInfo
+                {
+                    FilePath = command.OutputPath,
+                    FileSize = new FileInfo(command.OutputPath).Length
+                };
+            }
+
+            return new ConversionResult(command.InputPath, command.OutputPath, inputInfo, outputInfo);
+        }
+
+        private static string BuildCompletionMessage(ConversionSummary summary)
+        {
+            var lines = new List<string>
+            {
+                summary.Results.Count > 1
+                    ? $"批量转换完成：{summary.Results.Count} 个文件"
+                    : "转换完成",
+                $"用时：{FormatDuration(summary.Elapsed)}"
+            };
+
+            foreach (var result in summary.Results)
+            {
+                lines.Add("");
+                lines.Add(Path.GetFileName(result.InputPath));
+                lines.Add($"输出：{result.OutputPath}");
+
+                if (result.InputInfo != null && result.OutputInfo != null)
+                {
+                    lines.Add($"大小：{FormatBytes(result.InputInfo.FileSize)} -> {FormatBytes(result.OutputInfo.FileSize)} ({FormatSizeChange(result.InputInfo.FileSize, result.OutputInfo.FileSize)})");
+
+                    if (result.InputInfo.Bitrate > 0 || result.OutputInfo.Bitrate > 0)
+                    {
+                        lines.Add($"比特率：{FormatBitrate(result.InputInfo.Bitrate)} -> {FormatBitrate(result.OutputInfo.Bitrate)}");
+                    }
+                }
+                else if (result.OutputInfo != null)
+                {
+                    lines.Add($"输出大小：{FormatBytes(result.OutputInfo.FileSize)}");
+                }
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string BuildFailureMessage(FFmpegExecutionException exception)
+        {
+            var lines = new List<string> { exception.Message };
+
+            if (!string.IsNullOrWhiteSpace(exception.FFmpegOutput))
+            {
+                lines.Add("");
+                lines.Add("FFmpeg 信息：");
+                lines.Add(TrimFFmpegOutput(exception.FFmpegOutput));
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string TrimFFmpegOutput(string output)
+        {
+            var lines = output
+                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim())
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .TakeLast(12);
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string FormatDuration(TimeSpan duration)
+        {
+            return duration.TotalHours >= 1
+                ? duration.ToString(@"hh\:mm\:ss")
+                : duration.ToString(@"mm\:ss");
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            var sizeMB = bytes / 1024.0 / 1024.0;
+            return sizeMB < 1024
+                ? $"{sizeMB:F1} MB"
+                : $"{sizeMB / 1024.0:F2} GB";
+        }
+
+        private static string FormatSizeChange(long before, long after)
+        {
+            if (before <= 0)
+            {
+                return "无法计算变化";
+            }
+
+            var percentage = (after - before) * 100.0 / before;
+            return percentage <= 0
+                ? $"减少 {Math.Abs(percentage):F1}%"
+                : $"增加 {percentage:F1}%";
+        }
+
+        private static string FormatBitrate(int bitrate)
+        {
+            return bitrate > 0 ? $"{bitrate} kb/s" : "未知";
+        }
+
+        private sealed record ConversionSummary(List<ConversionResult> Results, TimeSpan Elapsed);
+
+        private sealed record ConversionResult(
+            string InputPath,
+            string OutputPath,
+            VideoInfo? InputInfo,
+            VideoInfo? OutputInfo);
+
+        private sealed class FFmpegExecutionException : Exception
+        {
+            public FFmpegExecutionException(string message, int exitCode, string ffmpegOutput)
+                : base(message)
+            {
+                ExitCode = exitCode;
+                FFmpegOutput = ffmpegOutput;
+            }
+
+            public int ExitCode { get; }
+            public string FFmpegOutput { get; }
         }
 
         #endregion
