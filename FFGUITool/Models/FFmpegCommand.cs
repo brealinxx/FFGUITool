@@ -11,6 +11,7 @@ namespace FFGUITool.Models
         public string InputPath { get; set; } = "";
         public string OutputPath { get; set; } = "";
         public string Codec { get; set; } = "libx264";
+        public string HardwareEncoder { get; set; } = "";
         public int Bitrate { get; set; } = 2000;
         public string AudioCodec { get; set; } = "aac";
         public int AudioBitrate { get; set; } = 96;
@@ -92,7 +93,7 @@ namespace FFGUITool.Models
                 return command.ToString();
             }
 
-            command.Append($"-c:v {Codec} ");
+            command.Append($"-c:v {GetEffectiveVideoCodec()} ");
 
             if (UseCrf)
             {
@@ -117,6 +118,11 @@ namespace FFGUITool.Models
             {
                 command.Append($"{AdditionalParameters} ");
             }
+        }
+
+        private string GetEffectiveVideoCodec()
+        {
+            return string.IsNullOrWhiteSpace(HardwareEncoder) ? Codec : HardwareEncoder;
         }
 
         private void AppendImageParameters(StringBuilder command)

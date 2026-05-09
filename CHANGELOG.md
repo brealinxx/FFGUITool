@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.3.0
+
+### Added
+
+- Added per-file ratio batch compression for video and image folders so each source file gets its own target size.
+- Added folder drag-and-drop support for video, audio, and image batch workflows.
+- Added video advanced controls for CRF quality mode and hardware acceleration.
+- Added automatic hardware encoder recommendation with NVIDIA, Intel, AMD, Apple VideoToolbox, and VAAPI candidates.
+- Added a hardware acceleration help dialog explaining performance, quality, compatibility, and fallback tradeoffs.
+
+### Changed
+
+- Batch mode now shows a per-file ratio control instead of applying one absolute target size to every file.
+- CRF mode now disables target-size and bitrate controls because output size cannot be reliably predicted.
+- CRF controls stay hidden until CRF mode is enabled.
+- Image advanced mode now labels the quality control as quality instead of bitrate.
+- Output names now use the source filename first, followed by `FFGUIToolOutPut` and the active output label.
+- Hardware acceleration labels and options now refresh when switching languages.
+- Shortened advanced-mode labels and descriptions to fit better in English and Chinese layouts.
+
+### Fixed
+
+- Fixed a freeze when dragging folders that contain videos into the app.
+- Fixed batch CLI previews so the sample video bitrate updates when the per-file ratio changes.
+- Fixed image batch mode so changing the quality slider no longer rewrites the per-file ratio.
+- Fixed image batch CLI previews so quality-related FFmpeg parameters update immediately.
+- Fixed missing Apple VideoToolbox options on macOS.
+
+### Version
+
+- Updated application version metadata from `1.2.0` to `1.3.0`.
+- Updated assembly version and file version to `1.3.0.0`.
+- Updated Windows application manifest assembly identity to `1.3.0.0`.
+
 ## v1.2.0
 
 ### Added

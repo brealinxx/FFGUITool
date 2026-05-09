@@ -18,6 +18,7 @@ namespace FFGUITool.Services
             {
                 InputPath = settings.InputPath,
                 Codec = GetVideoCodec(settings),
+                HardwareEncoder = settings.HardwareEncoder,
                 Bitrate = settings.Bitrate,
                 AudioBitrate = settings.AudioBitrate,
                 UseCrf = settings.UseCrf,
@@ -58,14 +59,28 @@ namespace FFGUITool.Services
 
             var inputFileName = Path.GetFileNameWithoutExtension(settings.InputPath);
             var outputFormat = GetOutputFormat(settings);
-            var targetSize = settings.IsImageProcessing && settings.ImageTargetSizeKB > 0
+            var targetSize = !string.IsNullOrWhiteSpace(settings.OutputLabel)
+                ? settings.OutputLabel
+                : settings.UseCrf
+                ? $"crf{settings.Crf}"
+                : settings.IsImageProcessing && settings.ImageTargetSizeKB > 0
                 ? $"{settings.ImageTargetSizeKB:F0}KB"
                 : settings.TargetSizeMB > 0
                 ? $"{settings.TargetSizeMB:F0}MB"
                 : $"{settings.CompressionPercentage}%";
-            var outputFileName = $"{inputFileName}_compressed_{targetSize}.{outputFormat}";
+            var outputFileName = $"{inputFileName}_FFGUIToolOutPut_{SanitizeFileNameToken(targetSize)}.{outputFormat}";
 
             return Path.Combine(outputDirectory, outputFileName);
+        }
+
+        private static string SanitizeFileNameToken(string token)
+        {
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+            {
+                token = token.Replace(invalidChar, '_');
+            }
+
+            return token.Replace(' ', '_');
         }
 
         private static string GetDefaultOutputDirectory(string inputPath)

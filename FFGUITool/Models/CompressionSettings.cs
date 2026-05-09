@@ -9,6 +9,7 @@ namespace FFGUITool.Models
         public double TargetSizeMB { get; set; }
         public int Bitrate { get; set; } = 2000;
         public string Codec { get; set; } = "libx264";
+        public string HardwareEncoder { get; set; } = "";
         public bool UseCrf { get; set; }
         public int Crf { get; set; } = 23;
         public int AudioBitrate { get; set; } = 96;
@@ -22,6 +23,7 @@ namespace FFGUITool.Models
         public int ResolutionHeight { get; set; } = 720;
         public string InputPath { get; set; } = "";
         public string OutputPath { get; set; } = "";
+        public string OutputLabel { get; set; } = "";
         public bool IsImageProcessing { get; set; }
         public int ImageQuality { get; set; } = 80;
         public double ImageTargetSizeKB { get; set; }

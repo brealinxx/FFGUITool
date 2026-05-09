@@ -217,6 +217,56 @@ namespace FFGUITool.Services
             return LocalizationService.T("FFmpeg.VersionUnavailable");
         }
 
+        public async Task<IReadOnlySet<string>> GetAvailableVideoEncoders()
+        {
+            if (!IsFFmpegAvailable)
+            {
+                return new HashSet<string>();
+            }
+
+            try
+            {
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = _ffmpegPath,
+                    Arguments = "-hide_banner -encoders",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = processInfo };
+                process.Start();
+
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                var encoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var line in (output + Environment.NewLine + error).Split('\n'))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length < 8 || !trimmed.StartsWith("V", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        encoders.Add(parts[1]);
+                    }
+                }
+
+                return encoders;
+            }
+            catch
+            {
+                return new HashSet<string>();
+            }
+        }
+
         /// <summary>
         /// 执行FFmpeg命令
         /// </summary>

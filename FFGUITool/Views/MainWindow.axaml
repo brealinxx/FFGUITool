@@ -314,39 +314,42 @@
                         <StackPanel Spacing="20">
                             <TextBlock Classes="H1" Text="{Binding CompressionParamsTitle}" />
 
-                            <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16">
+                            <Grid ColumnDefinitions="100, *" Margin="0,0,0,16">
                                 <TextBlock Grid.Column="0" Text="{Binding TargetSizeLabel}" Classes="Label" VerticalAlignment="Center"/>
     
-                                <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
-                                    <Grid ColumnDefinitions="*, Auto">
+                                <StackPanel Grid.Column="1">
+                                    <Grid ColumnDefinitions="*, 12, 88, 6, 78" MinHeight="34">
                                         <Slider Grid.Column="0" 
                                                 Value="{Binding TargetSizeSliderValue}" 
                                                 Minimum="{Binding TargetSizeSliderMinimum}" 
                                                 Maximum="{Binding TargetSizeSliderMaximum}" 
+                                                IsEnabled="{Binding CanEditTargetSize}"
                                                 VerticalAlignment="Center" 
-                                                Margin="0,0,12,0"/>
+                                                Height="34"/>
             
-                                        <Grid Grid.Column="1" ColumnDefinitions="88,6,78">
-                                            <TextBox Text="{Binding TargetSizeMB, Mode=TwoWay}" 
-                                                     Grid.Column="0"
-                                                     Width="88"
-                                                     Height="34"
-                                                     VerticalContentAlignment="Center" 
-                                                     HorizontalContentAlignment="Center"/>
-                                            <TextBlock Text="{Binding TargetSizeUnitText}"
-                                                       Grid.Column="2"
-                                                       IsVisible="{Binding !IsImageTargetUnitSelectorVisible}"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center"
-                                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                            <ComboBox ItemsSource="{Binding ImageTargetSizeUnitOptions}"
-                                                      Grid.Column="2"
-                                                      SelectedItem="{Binding SelectedImageTargetSizeUnit}"
-                                                      IsVisible="{Binding IsImageTargetUnitSelectorVisible}"
-                                                      Width="78"
-                                                      Height="34"
-                                                      HorizontalContentAlignment="Center" />
-                                        </Grid>
+                                        <TextBox Text="{Binding TargetSizeMB, Mode=TwoWay}" 
+                                                 Grid.Column="2"
+                                                 Width="88"
+                                                 Height="34"
+                                                 IsEnabled="{Binding CanEditTargetSize}"
+                                                 VerticalAlignment="Center"
+                                                 VerticalContentAlignment="Center" 
+                                                 HorizontalContentAlignment="Center"/>
+                                        <TextBlock Text="{Binding TargetSizeUnitText}"
+                                                   Grid.Column="4"
+                                                   IsVisible="{Binding !IsImageTargetUnitSelectorVisible}"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                        <ComboBox ItemsSource="{Binding ImageTargetSizeUnitOptions}"
+                                                  Grid.Column="4"
+                                                  SelectedItem="{Binding SelectedImageTargetSizeUnit}"
+                                                  IsVisible="{Binding IsImageTargetUnitSelectorVisible}"
+                                                  IsEnabled="{Binding CanEditTargetSize}"
+                                                  Width="78"
+                                                  Height="34"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalContentAlignment="Center" />
                                     </Grid>
         
                                     <TextBlock Text="{Binding TargetSizeSelectionText}" 
@@ -487,7 +490,7 @@
                                        Margin="0,0,0,16"
                                        IsVisible="{Binding IsAdvancedMode}" />
 
-                            <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
+                            <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16" IsVisible="{Binding IsAdvancedQualityControlsVisible}">
                                 <TextBlock Grid.Column="0" Text="{Binding AdvancedBitrateLabel}" Classes="Label" VerticalAlignment="Top"
                                            Margin="0,6,0,0" />
 
@@ -496,9 +499,11 @@
                                         <Slider Grid.Column="0" Value="{Binding BitrateSliderValue}"
                                                 Minimum="{Binding BitrateSliderMinimum}"
                                                 Maximum="{Binding BitrateSliderMaximum}"
+                                                IsEnabled="{Binding CanEditBitrate}"
                                                 VerticalAlignment="Center" Margin="0,0,12,0" />
 
                                         <TextBox Grid.Column="1" Text="{Binding Bitrate}" Width="80"
+                                                 IsEnabled="{Binding CanEditBitrate}"
                                                  VerticalContentAlignment="Center" 
                                                  HorizontalContentAlignment="Center"/>
                                     </Grid>
@@ -531,6 +536,61 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding HardwareEncoderLabel}" Classes="Label" VerticalAlignment="Center"/>
+                                    <Button Content="{Binding HardwareEncoderHelpLabel}"
+                                            Command="{Binding ShowHardwareAccelerationHelpCommand}"
+                                            Width="24"
+                                            Height="24"
+                                            Padding="0"
+                                            HorizontalContentAlignment="Center"
+                                            VerticalContentAlignment="Center" />
+                                </StackPanel>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding HardwareEncoderOptions}" SelectedItem="{Binding SelectedHardwareEncoderOption}" 
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
+                                                <TextBlock Text="{Binding Description}"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           FontStyle="Italic"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="180"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
+                                <TextBlock Text="{Binding CrfQualityLabel}" Classes="Label" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <CheckBox Content="{Binding EnableCrfLabel}"
+                                              IsChecked="{Binding UseCrf}"
+                                              Foreground="{DynamicResource PrimaryTextBrush}" />
+                                    <Grid ColumnDefinitions="*, 12, 80" IsVisible="{Binding IsCrfControlsVisible}">
+                                        <Slider Grid.Column="0"
+                                                Value="{Binding CrfSliderValue}"
+                                                Minimum="0"
+                                                Maximum="51"
+                                                VerticalAlignment="Center"
+                                                Height="34" />
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding Crf}"
+                                                 Width="80"
+                                                 Height="34"
+                                                 VerticalContentAlignment="Center"
+                                                 HorizontalContentAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding CrfSelectionText}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
                             </Grid>
 
                             <Grid ColumnDefinitions="100, *">

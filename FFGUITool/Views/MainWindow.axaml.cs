@@ -74,12 +74,22 @@ namespace FFGUITool.Views
 
         private static bool IsSupportedDroppedFile(string? path, bool imageMode)
         {
-            if (string.IsNullOrWhiteSpace(path) || System.IO.Directory.Exists(path))
+            if (string.IsNullOrWhiteSpace(path))
             {
                 return false;
             }
 
-            var extension = System.IO.Path.GetExtension(path).ToLowerInvariant();
+            if (System.IO.Directory.Exists(path))
+            {
+                return true;
+            }
+
+            return IsSupportedExtension(System.IO.Path.GetExtension(path), imageMode);
+        }
+
+        private static bool IsSupportedExtension(string? extension, bool imageMode)
+        {
+            extension = (extension ?? "").ToLowerInvariant();
             if (imageMode)
             {
                 return extension is ".jpg" or ".jpeg" or ".png" or ".webp" or ".heic" or ".bmp";
