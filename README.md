@@ -47,54 +47,117 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## Publish Packages
 
-Publish all preset Windows and macOS targets:
+The project provides both PowerShell and Bash publish scripts with the same functionality.
 
-```bash
-./publish.sh
-```
+- Windows users are recommended to use the PowerShell script (`publish.ps1`)
+- macOS/Linux users are recommended to use the Bash script (`publish.sh`)
 
-Publish macOS targets only on a Mac:
+By default, the scripts build the current platform group and automatically create `.zip` archives.
 
-```bash
-./publish-macos.sh
-```
+Default targets:
 
-Publish a single macOS target:
+| Platform | Targets |
+|---|---|
+| Windows | `win-x64`, `win-x86`, `win-arm64` |
+| macOS | `osx-x64`, `osx-arm64` |
 
-```bash
-./publish-macos.sh osx-arm64
-./publish-macos.sh osx-x64
-```
+---
 
-On Windows PowerShell:
+### Windows (PowerShell Recommended)
+
+Build the default Windows target group:
 
 ```powershell
 .\publish.ps1
 ```
 
-Publish a single target:
-
-```bash
-./publish.sh win-x64
-```
+Build Windows packages explicitly:
 
 ```powershell
-.\publish.ps1 -Runtime win-x64
+.\publish.ps1 -Windows
 ```
 
-Outputs are written to `FFGUITool/bin/publish/` using these folder names:
+Build macOS packages:
 
-- `FFGUITool-win-x86`
+```powershell
+.\publish.ps1 -MacOS
+```
+
+Build all Windows and macOS packages:
+
+```powershell
+.\publish.ps1 -All
+```
+
+Create `.7z` archives instead of `.zip`:
+
+```powershell
+.\publish.ps1 -Windows -Archive 7z
+```
+
+---
+
+### macOS / Linux (Bash)
+
+Make the script executable first if needed:
+
+```bash
+chmod +x publish.sh
+```
+
+Build the default platform group:
+
+```bash
+./publish.sh
+```
+
+Build Windows packages:
+
+```bash
+./publish.sh -windows
+```
+
+Build macOS packages:
+
+```bash
+./publish.sh -macos
+```
+
+Build all packages:
+
+```bash
+./publish.sh -all
+```
+
+Create `.7z` archives:
+
+```bash
+./publish.sh -windows --archive 7z
+```
+
+---
+
+Outputs are written to:
+
+```text
+FFGUITool/bin/publish/
+```
+
+Archives are written to:
+
+```text
+FFGUITool/bin/publish/archives/
+```
+
+Generated target folders:
+
 - `FFGUITool-win-x64`
+- `FFGUITool-win-x86`
 - `FFGUITool-win-arm64`
 - `FFGUITool-osx-x64`
 - `FFGUITool-osx-arm64`
 
-On macOS/Linux, make the shell scripts executable first if needed:
-
-```bash
-chmod +x publish.sh publish-macos.sh
-```
+> It is recommended to build macOS packages directly on macOS when distributing to real Mac devices. Cross-building macOS packages from Windows may produce archives that do not run correctly on macOS.
 
 ## License
 

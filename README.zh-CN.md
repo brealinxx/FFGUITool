@@ -58,66 +58,119 @@ dotnet build FFGUIToolAvalonia.sln
 dotnet run --project FFGUITool/FFGUITool.csproj
 ```
 
-## 打包发布
+## 发布
 
-项目根目录提供了预设打包脚本。
+项目同时提供 PowerShell 与 Bash 两种发布脚本，功能保持一致。
 
-一次性发布 Windows 和 macOS 的所有预设目标：
+- Windows 用户推荐使用 PowerShell 脚本（`publish.ps1`）
+- macOS / Linux 用户推荐使用 Bash 脚本（`publish.sh`）
 
-```bash
-./publish.sh
-```
+默认情况下，脚本会根据当前系统自动构建对应的平台组合，并自动生成 `.zip` 压缩包。
 
-Windows PowerShell 下：
+默认构建目标：
+
+| 平台 | 构建目标 |
+|---|---|
+| Windows | `win-x64`、`win-x86`、`win-arm64` |
+| macOS | `osx-x64`、`osx-arm64` |
+
+---
+
+### Windows（推荐使用 PowerShell）
+
+构建默认 Windows 平台组合：
 
 ```powershell
 .\publish.ps1
 ```
 
-在 macOS 机器上只发布 macOS 版本：
-
-```bash
-./publish-macos.sh
-```
-
-只发布单个 macOS 目标：
-
-```bash
-./publish-macos.sh osx-arm64
-./publish-macos.sh osx-x64
-```
-
-只发布任意单个目标：
-
-```bash
-./publish.sh win-x64
-```
+显式构建 Windows 平台：
 
 ```powershell
-.\publish.ps1 -Runtime win-x64
+.\publish.ps1 -Windows
 ```
 
-支持的目标：
+构建 macOS 平台：
 
-- `win-x86`
-- `win-x64`
-- `win-arm64`
-- `osx-x64`
-- `osx-arm64`
+```powershell
+.\publish.ps1 -MacOS
+```
 
-输出位置为 `FFGUITool/bin/publish/`，文件夹命名如下：
+同时构建 Windows 与 macOS 平台：
 
-- `FFGUITool-win-x86`
+```powershell
+.\publish.ps1 -All
+```
+
+生成 `.7z` 压缩包而不是 `.zip`：
+
+```powershell
+.\publish.ps1 -Windows -Archive 7z
+```
+
+---
+
+### macOS / Linux（Bash）
+
+首次使用时，如有需要请先赋予脚本执行权限：
+
+```bash
+chmod +x publish.sh
+```
+
+构建当前系统默认平台组合：
+
+```bash
+./publish.sh
+```
+
+构建 Windows 平台：
+
+```bash
+./publish.sh -windows
+```
+
+构建 macOS 平台：
+
+```bash
+./publish.sh -macos
+```
+
+同时构建所有平台：
+
+```bash
+./publish.sh -all
+```
+
+生成 `.7z` 压缩包：
+
+```bash
+./publish.sh -windows --archive 7z
+```
+
+---
+
+构建输出目录：
+
+```text
+FFGUITool/bin/publish/
+```
+
+压缩包输出目录：
+
+```text
+FFGUITool/bin/publish/archives/
+```
+
+生成的目标目录：
+
 - `FFGUITool-win-x64`
+- `FFGUITool-win-x86`
 - `FFGUITool-win-arm64`
 - `FFGUITool-osx-x64`
 - `FFGUITool-osx-arm64`
 
-macOS/Linux 首次运行脚本前可能需要：
-
-```bash
-chmod +x publish.sh publish-macos.sh
-```
+> 建议在 macOS 系统上构建 macOS 发布包后再进行实际分发。从 Windows 交叉构建 macOS 包时，部分情况下可能无法在真实 Mac 设备上正常运行。
 
 ## 许可证
 
