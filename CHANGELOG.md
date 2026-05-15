@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.4.0
+
+### Added
+
+- Added image and video metadata detection for sensitive fields such as location, author, creation time, device model, software, and handler metadata.
+- Added an advanced metadata removal option that strips global, stream, and chapter metadata from generated outputs.
+- Added localized Chinese and English labels for metadata removal and its sensitive-information preview.
+
+### Changed
+
+- Image quality changes now update target-size estimates and per-file ratio values in real time.
+- Image batch estimates now show the expected total output size for all images.
+- Image per-file ratio and target-size controls now display one decimal place.
+- Reworked the menu bar by removing the File menu, renaming Tools to Settings, and moving language selection under Settings.
+- Reduced startup/runtime overhead by removing unused dependency injection setup, the embedded Inter font package, and release trace logging.
+
+### Fixed
+
+- Fixed image target-size calculations so per-file percentage compression is applied consistently during batch processing.
+- Fixed video source details so duration and bitrate refresh immediately after analysis instead of waiting for a language/layout refresh.
+- Improved image fallback compression by allowing smaller image dimensions to be parsed before resize retries.
+
+### Version
+
+- Updated application version metadata from `1.3.0` to `1.4.0`.
+- Updated assembly version and file version to `1.4.0.0`.
+- Updated Windows application manifest assembly identity to `1.4.0.0`.
+
 ## v1.3.0
 
 ### Added

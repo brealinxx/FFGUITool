@@ -123,6 +123,18 @@ namespace FFGUITool.ViewModels
         private bool _isSourceBadgeVisible;
 
         [ObservableProperty]
+        private string _sourceMetadataText = "";
+
+        [ObservableProperty]
+        private bool _clearMetadata;
+
+        [ObservableProperty]
+        private bool _isMetadataClearOptionVisible;
+
+        [ObservableProperty]
+        private bool _isMetadataPreviewVisible;
+
+        [ObservableProperty]
         private CompressionSettings _compressionSettings = new();
 
         [ObservableProperty]
@@ -725,6 +737,9 @@ namespace FFGUITool.ViewModels
                 case nameof(EnableResolutionConversion):
                     OnConversionToggleChanged(e.PropertyName);
                     break;
+                case nameof(ClearMetadata):
+                    OnClearMetadataChanged();
+                    break;
                 case nameof(SelectedVideoFormatOption):
                     OnVideoFormatChanged();
                     break;
@@ -787,7 +802,7 @@ namespace FFGUITool.ViewModels
 
             if (IsBatchMode)
             {
-                TargetSizeMB = Math.Max(1, Math.Min(TargetSizeMB, 100));
+                TargetSizeMB = RoundTargetSize(ClampImageRatioPercent(TargetSizeMB));
                 TargetSizeSliderValue = TargetSizeMB;
                 CompressionPercentage = (int)Math.Round(TargetSizeMB);
                 CompressionSettings.CompressionPercentage = CompressionPercentage;
@@ -805,7 +820,7 @@ namespace FFGUITool.ViewModels
 
             if (IsImageMode)
             {
-                TargetSizeMB = ClampTargetSize(TargetSizeMB);
+                TargetSizeMB = RoundTargetSize(ClampTargetSize(TargetSizeMB));
                 TargetSizeSliderValue = TargetSizeMB;
                 CompressionSettings.ImageTargetSizeKB = ImageTargetDisplayValueToKB(TargetSizeMB);
                 EstimateImageQualityFromTargetSize();
@@ -816,7 +831,7 @@ namespace FFGUITool.ViewModels
 
             if (CurrentVideoInfo != null)
             {
-                TargetSizeMB = ClampTargetSize(TargetSizeMB);
+                TargetSizeMB = RoundTargetSize(ClampTargetSize(TargetSizeMB));
             }
 
             CompressionSettings.TargetSizeMB = TargetSizeMB;
@@ -829,7 +844,7 @@ namespace FFGUITool.ViewModels
 
         private void OnTargetSizeSliderChanged()
         {
-            TargetSizeMB = TargetSizeSliderValue;
+            TargetSizeMB = RoundTargetSize(TargetSizeSliderValue);
         }
 
         private void OnImageTargetSizeUnitChanged()
@@ -968,20 +983,24 @@ namespace FFGUITool.ViewModels
             }
         }
 
+        private void OnClearMetadataChanged()
+        {
+            CompressionSettings.ClearMetadata = ClearMetadata;
+            IsMetadataPreviewVisible = IsMetadataClearOptionVisible && ClearMetadata;
+            UpdateMetadataPreviewText();
+            UpdateCommand();
+        }
+
         private void OnBitrateChanged()
         {
             if (IsImageMode)
             {
-                var batchRatio = TargetSizeMB;
-                var batchRatioSliderValue = TargetSizeSliderValue;
                 Bitrate = Math.Max(1, Math.Min(Bitrate, 100));
                 CompressionSettings.ImageQuality = Bitrate;
                 BitrateSliderValue = Bitrate;
-                if (IsBatchMode)
+                if (!_isSyncingCompressionValues)
                 {
-                    TargetSizeMB = batchRatio;
-                    TargetSizeSliderValue = batchRatioSliderValue;
-                    CompressionSettings.ImageTargetSizeKB = batchRatio;
+                    UpdateImageTargetFromQuality();
                 }
                 UpdateBitrateTexts();
                 UpdateImageEstimation();
@@ -1080,6 +1099,7 @@ namespace FFGUITool.ViewModels
                 if (CurrentVideoInfo != null)
                 {
                     IsVideoInfoVisible = true;
+                    UpdateSourceInfoTexts();
                     InitializeTargetSizeFromVideo();
                     CalculateBitrateFromTargetSize();
                     UpdateBitrateWarningAndEstimation();
@@ -1255,7 +1275,7 @@ namespace FFGUITool.ViewModels
             _isSyncingCompressionValues = true;
             TargetSizeSliderMinimum = 1;
             TargetSizeSliderMaximum = 100;
-            TargetSizeMB = Math.Max(1, Math.Min(CompressionPercentage, 100));
+            TargetSizeMB = RoundTargetSize(ClampImageRatioPercent(CompressionPercentage));
             TargetSizeSliderValue = TargetSizeMB;
             IsImageTargetUnitSelectorVisible = false;
             _isSyncingCompressionValues = false;
@@ -1270,9 +1290,11 @@ namespace FFGUITool.ViewModels
 
         private void UpdateImageBatchQualityFromRatio()
         {
-            var estimatedQuality = (int)Math.Round(Math.Sqrt(Math.Max(1, Math.Min(TargetSizeMB, 100)) / 100.0) * 100);
+            var estimatedQuality = EstimateImageQualityFromRatioPercent(TargetSizeMB);
+            _isSyncingCompressionValues = true;
             Bitrate = Math.Max(1, Math.Min(100, estimatedQuality));
             BitrateSliderValue = Bitrate;
+            _isSyncingCompressionValues = false;
             CompressionSettings.ImageQuality = Bitrate;
             UpdateBitrateTexts();
             UpdateImageEstimation();
@@ -1414,6 +1436,7 @@ namespace FFGUITool.ViewModels
         private void UpdateCommand()
         {
             ApplySelectedConversionOptions();
+            CompressionSettings.ClearMetadata = ClearMetadata;
             if (IsImageMode)
             {
                 CompressionSettings.ImageQuality = Bitrate;
@@ -1451,6 +1474,8 @@ namespace FFGUITool.ViewModels
         {
             IsAdvancedVideoControlsVisible = IsAdvancedMode && !IsImageMode;
             IsAdvancedQualityControlsVisible = IsAdvancedMode && (!IsImageMode || HasSelectedInput);
+            IsMetadataClearOptionVisible = IsAdvancedMode && HasSelectedInput;
+            IsMetadataPreviewVisible = IsMetadataClearOptionVisible && ClearMetadata;
             UpdateControlEditability();
 
             if (IsImageMode)
@@ -1546,17 +1571,17 @@ namespace FFGUITool.ViewModels
                 ? BatchFileCount == 0
                     ? LocalizationService.T("Image.NoSupportedFiles")
                     : isEnglish
-                        ? $"{LocalizationService.Format("Image.BatchMode", BatchFileCount)}; each file targets {TargetSizeMB:0}% of its original size"
-                        : $"{LocalizationService.Format("Image.BatchMode", BatchFileCount)}；每个文件按 {TargetSizeMB:0}% 原始大小压缩"
+                        ? $"{LocalizationService.Format("Image.BatchMode", BatchFileCount)}; each file targets {TargetSizeMB:0.0}% of its original size"
+                        : $"{LocalizationService.Format("Image.BatchMode", BatchFileCount)}；每个文件按 {TargetSizeMB:0.0}% 原始大小压缩"
                 : BatchFileCount == 0
                     ? LocalizationService.T("Batch.Empty")
                     : isEnglish
-                        ? $"{LocalizationService.Format("Batch.Mode", BatchFileCount)} Each file targets {TargetSizeMB:0}% of its original size."
-                        : $"{LocalizationService.Format("Batch.Mode", BatchFileCount)} 每个文件按 {TargetSizeMB:0}% 原始大小压缩。";
+                        ? $"{LocalizationService.Format("Batch.Mode", BatchFileCount)} Each file targets {TargetSizeMB:0.0}% of its original size."
+                        : $"{LocalizationService.Format("Batch.Mode", BatchFileCount)} 每个文件按 {TargetSizeMB:0.0}% 原始大小压缩。";
             EstimatedBitrateText = IsImageMode
                 ? BatchFileCount == 0
                     ? LocalizationService.T("Image.NoSupportedFiles")
-                    : LocalizationService.Format("Image.Estimate", $"{TargetSizeMB:0.##} {SelectedImageTargetSizeUnit}", (SelectedImageFormatOption?.Name ?? CompressionSettings.ImageOutputFormat).ToUpperInvariant(), "")
+                    : BuildImageEstimateText()
                 : BatchFileCount == 0
                     ? LocalizationService.T("Estimate.NonVideo")
                     : LocalizationService.Format("Batch.Found", BatchFileCount);
@@ -1953,7 +1978,7 @@ namespace FFGUITool.ViewModels
                 TargetSizeLabel = isEnglish ? "Per-file ratio" : "单文件比例";
                 TargetSizeUnitText = "%";
                 IsImageTargetUnitSelectorVisible = false;
-                TargetSizeValueText = $"{TargetSizeMB:0}%";
+                TargetSizeValueText = $"{TargetSizeMB:0.0}%";
                 TargetSizeSelectionText = isEnglish
                     ? $"Each file targets about {TargetSizeValueText} of its original size"
                     : $"每个文件按原始大小约 {TargetSizeValueText} 计算目标";
@@ -1964,7 +1989,7 @@ namespace FFGUITool.ViewModels
             TargetSizeLabel = IsImageMode ? LocalizationService.T("Image.TargetSize") : LocalizationService.T("Main.TargetSize");
             IsImageTargetUnitSelectorVisible = IsImageMode;
             TargetSizeValueText = IsImageMode
-                ? $"{TargetSizeMB:0.##} {SelectedImageTargetSizeUnit}"
+                ? $"{TargetSizeMB:0.0} {SelectedImageTargetSizeUnit}"
                 : $"{TargetSizeMB:F1} MB";
             TargetSizeSelectionText = IsImageMode
                 ? LocalizationService.Format("Main.CurrentSelection", TargetSizeValueText)
@@ -1980,22 +2005,116 @@ namespace FFGUITool.ViewModels
                 return;
             }
 
-            var estimatedQuality = (int)Math.Round(Math.Sqrt(Math.Min(targetKB / sourceSizeKB, 1)) * 100);
+            var estimatedQuality = EstimateImageQualityFromRatioPercent(targetKB / sourceSizeKB * 100.0);
+            _isSyncingCompressionValues = true;
             Bitrate = Math.Max(10, Math.Min(100, estimatedQuality));
+            BitrateSliderValue = Bitrate;
+            _isSyncingCompressionValues = false;
             CompressionSettings.ImageQuality = Bitrate;
             CompressionSettings.ImageTargetSizeKB = targetKB;
+            UpdateBitrateTexts();
             UpdateImageEstimation();
         }
 
         private void UpdateImageEstimation()
         {
+            EstimatedBitrateText = BuildImageEstimateText();
+            EstimatedBitrateColor = "Green";
+        }
+
+        private string BuildImageEstimateText()
+        {
             var outputFormat = (SelectedImageFormatOption?.Name ?? CompressionSettings.ImageOutputFormat).ToUpperInvariant();
             var sizeSuffix = EnableResolutionConversion && SelectedResolutionOption?.Value != "0"
                 ? LocalizationService.Format("Image.EstimateSizeSuffix", SelectedResolutionOption?.Name ?? "")
                 : "";
-            var displayTarget = $"{TargetSizeMB:0.##} {SelectedImageTargetSizeUnit}";
-            EstimatedBitrateText = LocalizationService.Format("Image.Estimate", displayTarget, outputFormat, sizeSuffix);
-            EstimatedBitrateColor = "Green";
+            var displayTarget = FormatImageEstimatedTotalSize();
+            return LocalizationService.Format("Image.Estimate", displayTarget, outputFormat, sizeSuffix);
+        }
+
+        private string FormatImageEstimatedTotalSize()
+        {
+            var estimatedBytes = EstimateImageTotalOutputBytes();
+            if (estimatedBytes > 0)
+            {
+                return VideoInfo.FormatFileSize(estimatedBytes);
+            }
+
+            return IsBatchMode
+                ? $"{TargetSizeMB:0.0}%"
+                : $"{TargetSizeMB:0.0} {SelectedImageTargetSizeUnit}";
+        }
+
+        private long EstimateImageTotalOutputBytes()
+        {
+            if (!IsImageMode)
+            {
+                return 0;
+            }
+
+            if (IsBatchMode)
+            {
+                var ratio = ClampImageRatioPercent(TargetSizeMB) / 100.0;
+                return GetBatchInputFiles()
+                    .Where(File.Exists)
+                    .Sum(file => (long)Math.Max(1, Math.Round(new FileInfo(file).Length * ratio)));
+            }
+
+            var targetKB = CompressionSettings.ImageTargetSizeKB > 0
+                ? CompressionSettings.ImageTargetSizeKB
+                : ImageTargetDisplayValueToKB(TargetSizeMB);
+            return (long)Math.Max(1, Math.Round(targetKB * 1024));
+        }
+
+        private void UpdateImageTargetFromQuality()
+        {
+            var ratioPercent = RoundTargetSize(RatioPercentFromImageQuality(Bitrate));
+
+            _isSyncingCompressionValues = true;
+            if (IsBatchMode)
+            {
+                TargetSizeMB = ratioPercent;
+                TargetSizeSliderValue = ratioPercent;
+                CompressionPercentage = (int)Math.Round(ratioPercent);
+                CompressionSettings.CompressionPercentage = CompressionPercentage;
+                CompressionSettings.TargetSizeMB = ratioPercent;
+                CompressionSettings.ImageTargetSizeKB = ratioPercent;
+            }
+            else
+            {
+                var sourceSizeKB = CurrentVideoInfo?.FileSize > 0
+                    ? CurrentVideoInfo.FileSize / 1024.0
+                    : Math.Max(TargetSizeSliderMaximum, 1);
+                var targetKB = Math.Max(1, sourceSizeKB * ratioPercent / 100.0);
+                targetKB = Math.Min(targetKB, sourceSizeKB);
+                CompressionSettings.ImageTargetSizeKB = targetKB;
+                TargetSizeMB = RoundTargetSize(ImageTargetKBToDisplayValue(targetKB));
+                TargetSizeSliderValue = TargetSizeMB;
+            }
+            _isSyncingCompressionValues = false;
+
+            UpdateTargetSizeTexts();
+        }
+
+        private static int EstimateImageQualityFromRatioPercent(double ratioPercent)
+        {
+            return (int)Math.Round(Math.Sqrt(ClampImageRatioPercent(ratioPercent) / 100.0) * 100);
+        }
+
+        private static double RatioPercentFromImageQuality(int quality)
+        {
+            var clampedQuality = Math.Max(1, Math.Min(quality, 100));
+            return ClampImageRatioPercent(clampedQuality * clampedQuality / 100.0);
+        }
+
+        private static double ClampImageRatioPercent(double ratioPercent)
+        {
+            return Math.Max(1, Math.Min(ratioPercent, 100));
+        }
+
+        private static double RoundTargetSize(double value)
+        {
+            return Math.Round(value, 1, MidpointRounding.AwayFromZero);
         }
 
         private double ImageTargetDisplayValueToKB(double value)
@@ -2023,7 +2142,7 @@ namespace FFGUITool.ViewModels
             CompressionSettings.ImageTargetSizeKB = Math.Max(minKB, Math.Min(targetKB, maxKB));
             TargetSizeSliderMinimum = ImageTargetKBToDisplayValue(minKB);
             TargetSizeSliderMaximum = ImageTargetKBToDisplayValue(maxKB);
-            TargetSizeMB = ImageTargetKBToDisplayValue(CompressionSettings.ImageTargetSizeKB);
+            TargetSizeMB = RoundTargetSize(ImageTargetKBToDisplayValue(CompressionSettings.ImageTargetSizeKB));
             TargetSizeSliderValue = TargetSizeMB;
             TargetSizeUnitText = SelectedImageTargetSizeUnit;
         }
@@ -2044,6 +2163,8 @@ namespace FFGUITool.ViewModels
             CommandText = LocalizationService.T("Command.SelectInput");
             EstimatedBitrateText = "";
             EstimatedBitrateColor = "Gray";
+            SourceMetadataText = "";
+            IsMetadataPreviewVisible = false;
             UpdateSourceInfoTexts();
         }
 
@@ -2059,6 +2180,8 @@ namespace FFGUITool.ViewModels
                 SourceThirdMetricValue = "";
                 SourceBadgeText = "";
                 IsSourceBadgeVisible = false;
+                SourceMetadataText = "";
+                IsMetadataPreviewVisible = false;
                 return;
             }
 
@@ -2066,6 +2189,7 @@ namespace FFGUITool.ViewModels
             SourceSizeLabel = LocalizationService.T("Main.Size");
             SourceBadgeText = CurrentVideoInfo.Resolution;
             IsSourceBadgeVisible = !string.IsNullOrWhiteSpace(SourceBadgeText);
+            UpdateMetadataPreviewText();
 
             if (IsImageMode)
             {
@@ -2084,6 +2208,19 @@ namespace FFGUITool.ViewModels
             SourceThirdMetricValue = CurrentVideoInfo.Bitrate > 0
                 ? $"{CurrentVideoInfo.Bitrate} kbps"
                 : LocalizationService.T("Result.Unknown");
+        }
+
+        private void UpdateMetadataPreviewText()
+        {
+            if (CurrentVideoInfo?.HasMetadata == true)
+            {
+                SourceMetadataText = CurrentVideoInfo.MetadataSummary;
+                return;
+            }
+
+            SourceMetadataText = LocalizationService.CurrentLanguage == "en-US"
+                ? "None"
+                : "无";
         }
 
         private async Task<ConversionSummary> ExecuteFFmpegCommand()
@@ -2140,6 +2277,7 @@ namespace FFGUITool.ViewModels
                 EnableAudioConversion = CompressionSettings.EnableAudioConversion,
                 AudioOutputFormat = CompressionSettings.AudioOutputFormat,
                 EnableResolutionConversion = CompressionSettings.EnableResolutionConversion,
+                ClearMetadata = CompressionSettings.ClearMetadata,
                 ResolutionHeight = CompressionSettings.ResolutionHeight,
                 InputPath = inputPath,
                 OutputPath = CompressionSettings.OutputPath,
@@ -2155,6 +2293,7 @@ namespace FFGUITool.ViewModels
                 ApplyPerFileBatchTarget(settings, inputInfo);
             }
 
+            settings.ClearMetadata = CompressionSettings.ClearMetadata;
             return settings;
         }
 
@@ -2172,14 +2311,14 @@ namespace FFGUITool.ViewModels
                 settings.ImageTargetSizeKB = sourceBytes > 0
                     ? Math.Max(1, sourceBytes / 1024.0 * ratio)
                     : Math.Max(1, TargetSizeMB);
-                settings.OutputLabel = $"ratio{TargetSizeMB:0}pct";
+                settings.OutputLabel = $"ratio{TargetSizeMB:0.0}pct";
                 return;
             }
 
             settings.TargetSizeMB = sourceBytes > 0
                 ? Math.Max(0.1, sourceBytes / 1024.0 / 1024.0 * ratio)
                 : Math.Max(0.1, TargetSizeMB);
-            settings.OutputLabel = settings.UseCrf ? $"crf{settings.Crf}" : $"ratio{TargetSizeMB:0}pct";
+            settings.OutputLabel = settings.UseCrf ? $"crf{settings.Crf}" : $"ratio{TargetSizeMB:0.0}pct";
 
             if (!settings.UseCrf && inputInfo?.Duration > 0)
             {
@@ -2210,7 +2349,7 @@ namespace FFGUITool.ViewModels
 
             if (IsBatchMode)
             {
-                return $"ratio{TargetSizeMB:0}pct";
+                return $"ratio{TargetSizeMB:0.0}pct";
             }
 
             if (settings.IsImageProcessing)

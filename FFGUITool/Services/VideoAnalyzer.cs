@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using FFGUITool.Models;
 
@@ -77,7 +78,7 @@ namespace FFGUITool.Services
                 }
 
                 // 解析分辨率
-                var resolutionMatch = Regex.Match(ffmpegOutput, @"(\d{3,4}x\d{3,4})");
+                var resolutionMatch = Regex.Match(ffmpegOutput, @"(\d{2,5}x\d{2,5})");
                 if (resolutionMatch.Success)
                 {
                     videoInfo.Resolution = resolutionMatch.Groups[1].Value;
@@ -92,6 +93,7 @@ namespace FFGUITool.Services
 
                 // 获取文件大小
                 videoInfo.FileSize = new FileInfo(filePath).Length;
+                videoInfo.MetadataSummary = ParseSensitiveMetadata(ffmpegOutput);
 
                 return videoInfo;
             }
@@ -99,6 +101,79 @@ namespace FFGUITool.Services
             {
                 return null;
             }
+        }
+
+        private static string ParseSensitiveMetadata(string ffmpegOutput)
+        {
+            var sensitiveKeys = new[]
+            {
+                "album",
+                "artist",
+                "author",
+                "camera",
+                "composer",
+                "copyright",
+                "comment",
+                "description",
+                "creation_time",
+                "date",
+                "device",
+                "encoded_by",
+                "encoder",
+                "firmware",
+                "gps",
+                "handler_name",
+                "keywords",
+                "latitude",
+                "lens",
+                "location",
+                "location-eng",
+                "longitude",
+                "make",
+                "model",
+                "owner",
+                "producer",
+                "publisher",
+                "serial",
+                "software",
+                "synopsis",
+                "writer"
+            };
+
+            var lines = ffmpegOutput
+                .Split('\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Contains(':'))
+                .Select(line => line.Split(':', 2))
+                .Select(parts => new
+                {
+                    Key = parts[0].Trim(),
+                    Value = parts.Length > 1 ? parts[1].Trim() : ""
+                })
+                .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+                .Where(item => sensitiveKeys.Any(key => item.Key.Contains(key, System.StringComparison.OrdinalIgnoreCase)))
+                .Select(item => $"{NormalizeMetadataKey(item.Key)}: {item.Value}")
+                .Distinct()
+                .Take(12)
+                .ToList();
+
+            return lines.Count == 0 ? "" : string.Join("\n", lines);
+        }
+
+        private static string NormalizeMetadataKey(string key)
+        {
+            return key switch
+            {
+                "artist" => "Author",
+                "author" => "Author",
+                "com.apple.quicktime.author" => "Author",
+                "creation_time" => "Creation time",
+                "com.apple.quicktime.creationdate" => "Creation time",
+                "com.apple.quicktime.location.ISO6709" => "Location",
+                "com.apple.quicktime.make" => "Device maker",
+                "com.apple.quicktime.model" => "Device model",
+                _ => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(key.Replace('_', ' '))
+            };
         }
     }
 }

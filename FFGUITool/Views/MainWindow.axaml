@@ -130,17 +130,15 @@
 
     <Grid RowDefinitions="Auto, *">
         <Menu Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}">
-            <MenuItem Header="{DynamicResource Menu.File}" Foreground="{DynamicResource PrimaryTextBrush}">
-                <MenuItem Header="{DynamicResource Menu.Exit}" Command="{Binding ExitCommand}" />
-            </MenuItem>
             <MenuItem Header="{DynamicResource Menu.Tools}" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="{DynamicResource Menu.FFmpegSettings}" Command="{Binding ShowFFmpegSettingsCommand}" />
                 <Separator />
                 <MenuItem Header="{DynamicResource Menu.RedetectFFmpeg}" Command="{Binding RedetectFFmpegCommand}" />
-            </MenuItem>
-            <MenuItem Header="{DynamicResource Menu.Language}" Foreground="{DynamicResource PrimaryTextBrush}">
-                <MenuItem Header="{DynamicResource Menu.Language.Chinese}" Command="{Binding SetLanguageCommand}" CommandParameter="zh-CN" />
-                <MenuItem Header="{DynamicResource Menu.Language.English}" Command="{Binding SetLanguageCommand}" CommandParameter="en-US" />
+                <Separator />
+                <MenuItem Header="{DynamicResource Menu.Language}">
+                    <MenuItem Header="{DynamicResource Menu.Language.Chinese}" Command="{Binding SetLanguageCommand}" CommandParameter="zh-CN" />
+                    <MenuItem Header="{DynamicResource Menu.Language.English}" Command="{Binding SetLanguageCommand}" CommandParameter="en-US" />
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu.Help}" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="{DynamicResource Menu.About}" Command="{Binding ShowAboutCommand}" />
@@ -307,6 +305,7 @@
                                                Foreground="{DynamicResource PrimaryTextBrush}" />
                                 </StackPanel>
                             </UniformGrid>
+
                         </StackPanel>
                     </Border>
 
@@ -426,6 +425,25 @@
                                               IsEnabled="{Binding CanUseVideoConversionTools}"
                                               Foreground="{DynamicResource PrimaryTextBrush}" />
                                 </UniformGrid>
+
+                                <CheckBox Content="{DynamicResource Metadata.Clear}"
+                                          IsChecked="{Binding ClearMetadata}"
+                                          IsVisible="{Binding IsMetadataClearOptionVisible}"
+                                          Foreground="{DynamicResource PrimaryTextBrush}" />
+
+                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6"
+                                        Padding="10" IsVisible="{Binding IsMetadataPreviewVisible}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{DynamicResource Metadata.ClearPreview}"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <TextBlock Text="{Binding SourceMetadataText}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
 
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsFormatConversionOptionsVisible}">
                                     <TextBlock Text="{Binding FormatOptionLabel}" Classes="Label" VerticalAlignment="Center"/>

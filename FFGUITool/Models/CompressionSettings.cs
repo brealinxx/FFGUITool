@@ -20,6 +20,7 @@ namespace FFGUITool.Models
         public bool EnableAudioConversion { get; set; }
         public string AudioOutputFormat { get; set; } = "mp3";
         public bool EnableResolutionConversion { get; set; }
+        public bool ClearMetadata { get; set; }
         public int ResolutionHeight { get; set; } = 720;
         public string InputPath { get; set; } = "";
         public string OutputPath { get; set; } = "";

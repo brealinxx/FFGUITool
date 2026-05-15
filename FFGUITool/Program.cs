@@ -13,9 +13,15 @@ namespace FFGUITool
 
         // 配置 Avalonia
         public static AppBuilder BuildAvaloniaApp()
-            => AppBuilder.Configure<App>()
-                .UsePlatformDetect()
-                .WithInterFont()   // 使用内置字体（可选）
-                .LogToTrace();
+        {
+            var builder = AppBuilder.Configure<App>()
+                .UsePlatformDetect();
+
+#if DEBUG
+            builder.LogToTrace();
+#endif
+
+            return builder;
+        }
     }
 }

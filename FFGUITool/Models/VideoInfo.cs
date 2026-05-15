@@ -13,6 +13,8 @@ namespace FFGUITool.Models
         public double Framerate { get; set; }
         public long FileSize { get; set; }
         public string FilePath { get; set; } = "";
+        public string MetadataSummary { get; set; } = "";
+        public bool HasMetadata => !string.IsNullOrWhiteSpace(MetadataSummary);
 
         /// <summary>
         /// 获取格式化的文件大小文本
