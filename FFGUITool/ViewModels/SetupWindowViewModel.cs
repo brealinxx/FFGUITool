@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,6 +16,7 @@ namespace FFGUITool.ViewModels
     public partial class SetupWindowViewModel : ViewModelBase
     {
         private readonly FFmpegManager _ffmpegManager;
+        private readonly ExifToolManager _exifToolManager;
         private readonly IDialogService _dialogService;
 
         #region 可观察属性
@@ -24,6 +26,18 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private string _archivePathText = "";
+
+        [ObservableProperty]
+        private string _exifToolPathText = "";
+
+        [ObservableProperty]
+        private string _exifToolFolderText = "";
+
+        [ObservableProperty]
+        private string _exifToolArchivePathText = "";
+
+        [ObservableProperty]
+        private string _exifToolStatusText = "";
 
         [ObservableProperty]
         private string _statusText = "";
@@ -88,6 +102,58 @@ namespace FFGUITool.ViewModels
         }
 
         [RelayCommand]
+        private async Task BrowseExifTool()
+        {
+            var file = await _dialogService.OpenFileDialog(LocalizationService.T("Picker.SelectExifTool"), new[]
+            {
+                new FilePickerFileType(LocalizationService.T("Picker.Executable"))
+                {
+                    Patterns = new[] { "*.exe", "exiftool", "exiftool.exe", "exiftool(-k).exe" }
+                },
+                new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
+                {
+                    Patterns = new[] { "*.*" }
+                }
+            });
+
+            if (file != null)
+            {
+                ExifToolPathText = file.Path.LocalPath;
+            }
+        }
+
+        [RelayCommand]
+        private async Task BrowseExifToolFolder()
+        {
+            var folder = await _dialogService.OpenFolderDialog(LocalizationService.T("Picker.SelectExifToolFolder"));
+            if (folder != null)
+            {
+                ExifToolFolderText = folder.Path.LocalPath;
+            }
+        }
+
+        [RelayCommand]
+        private async Task BrowseExifToolArchive()
+        {
+            var file = await _dialogService.OpenFileDialog(LocalizationService.T("Picker.SelectExifToolArchive"), new[]
+            {
+                new FilePickerFileType(LocalizationService.T("Picker.Archive"))
+                {
+                    Patterns = new[] { "*.zip" }
+                },
+                new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
+                {
+                    Patterns = new[] { "*.*" }
+                }
+            });
+
+            if (file != null)
+            {
+                ExifToolArchivePathText = file.Path.LocalPath;
+            }
+        }
+
+        [RelayCommand]
         private async Task SetCustomPath()
         {
             if (string.IsNullOrWhiteSpace(FfmpegPathText))
@@ -100,6 +166,12 @@ namespace FFGUITool.ViewModels
         }
 
         [RelayCommand]
+        private async Task DetectSystemFFmpeg()
+        {
+            await ProcessFFmpegSystemDetect();
+        }
+
+        [RelayCommand]
         private async Task InstallFromArchive()
         {
             if (string.IsNullOrWhiteSpace(ArchivePathText))
@@ -109,6 +181,48 @@ namespace FFGUITool.ViewModels
             }
 
             await ProcessArchiveInstall(ArchivePathText);
+        }
+
+        [RelayCommand]
+        private async Task DetectSystemExifTool()
+        {
+            await ProcessExifToolSystemDetect();
+        }
+
+        [RelayCommand]
+        private async Task SetExifToolPath()
+        {
+            if (string.IsNullOrWhiteSpace(ExifToolPathText))
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("ExifTool.SelectExecutableFirst"));
+                return;
+            }
+
+            await ProcessExifToolPath(ExifToolPathText);
+        }
+
+        [RelayCommand]
+        private async Task SetExifToolFolder()
+        {
+            if (string.IsNullOrWhiteSpace(ExifToolFolderText))
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("ExifTool.SelectFolderFirst"));
+                return;
+            }
+
+            await ProcessExifToolFolder(ExifToolFolderText);
+        }
+
+        [RelayCommand]
+        private async Task InstallExifToolArchive()
+        {
+            if (string.IsNullOrWhiteSpace(ExifToolArchivePathText))
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("ExifTool.SelectArchiveFirst"));
+                return;
+            }
+
+            await ProcessExifToolArchive(ExifToolArchivePathText);
         }
 
         [RelayCommand]
@@ -137,6 +251,27 @@ namespace FFGUITool.ViewModels
             OnCloseRequested?.Invoke();
         }
 
+        [RelayCommand]
+        private void OpenUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+            }
+        }
+
         #endregion
 
         #region 事件
@@ -147,19 +282,25 @@ namespace FFGUITool.ViewModels
 
         #region 构造函数
 
-        public SetupWindowViewModel() : this(new FFmpegManager(), new DialogService())
+        public SetupWindowViewModel() : this(new FFmpegManager(), new ExifToolManager(), new DialogService())
         {
         }
 
-        public SetupWindowViewModel(FFmpegManager ffmpegManager) : this(ffmpegManager, new DialogService())
+        public SetupWindowViewModel(FFmpegManager ffmpegManager) : this(ffmpegManager, new ExifToolManager(), new DialogService())
         {
         }
 
-        public SetupWindowViewModel(FFmpegManager ffmpegManager, IDialogService dialogService)
+        public SetupWindowViewModel(FFmpegManager ffmpegManager, ExifToolManager exifToolManager) : this(ffmpegManager, exifToolManager, new DialogService())
+        {
+        }
+
+        public SetupWindowViewModel(FFmpegManager ffmpegManager, ExifToolManager exifToolManager, IDialogService dialogService)
         {
             _ffmpegManager = ffmpegManager;
+            _exifToolManager = exifToolManager;
             _dialogService = dialogService;
             LocalizationService.LanguageChanged += OnLanguageChanged;
+            RefreshExifToolStatus();
         }
 
         #endregion
@@ -192,6 +333,38 @@ namespace FFGUITool.ViewModels
                     await _dialogService.ShowMessage(
                         LocalizationService.T("Dialog.Error"),
                         LocalizationService.T("Setup.InvalidFFmpeg"));
+                }
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowMessage(
+                    LocalizationService.T("Dialog.Error"),
+                    LocalizationService.Format("Setup.PathError", ex.Message));
+            }
+            finally
+            {
+                IsProcessing = false;
+                StatusText = "";
+            }
+        }
+
+        private async Task ProcessFFmpegSystemDetect()
+        {
+            try
+            {
+                IsProcessing = true;
+                StatusText = LocalizationService.T("Setup.Validating");
+
+                var success = await _ffmpegManager.SetSystemFFmpeg();
+                if (success)
+                {
+                    SetupCompleted = true;
+                    StatusText = LocalizationService.T("Setup.PathSuccess");
+                    await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Setup.PathSuccess"));
+                }
+                else
+                {
+                    await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.SystemFFmpegMissing"));
                 }
             }
             catch (Exception ex)
@@ -244,6 +417,103 @@ namespace FFGUITool.ViewModels
                 IsProcessing = false;
                 StatusText = "";
             }
+        }
+
+        private async Task ProcessExifToolSystemDetect()
+        {
+            try
+            {
+                IsProcessing = true;
+                ExifToolStatusText = LocalizationService.T("ExifTool.Validating");
+                var success = await _exifToolManager.SetSystemExifTool();
+                ExifToolStatusText = success
+                    ? LocalizationService.T("ExifTool.PathSuccess")
+                    : LocalizationService.T("ExifTool.SystemMissing");
+            }
+            finally
+            {
+                IsProcessing = false;
+            }
+        }
+
+        private async Task ProcessExifToolPath(string path)
+        {
+            if (!System.IO.File.Exists(path))
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.FileMissing"));
+                return;
+            }
+
+            try
+            {
+                IsProcessing = true;
+                ExifToolStatusText = LocalizationService.T("ExifTool.Validating");
+                var success = await _exifToolManager.SetCustomPath(path);
+                ExifToolStatusText = success
+                    ? LocalizationService.T("ExifTool.PathSuccess")
+                    : LocalizationService.T("ExifTool.Invalid");
+            }
+            finally
+            {
+                IsProcessing = false;
+            }
+        }
+
+        private async Task ProcessExifToolFolder(string folder)
+        {
+            if (!System.IO.Directory.Exists(folder))
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("ExifTool.FolderMissing"));
+                return;
+            }
+
+            try
+            {
+                IsProcessing = true;
+                ExifToolStatusText = LocalizationService.T("ExifTool.Validating");
+                var success = await _exifToolManager.SetCustomDirectory(folder);
+                ExifToolStatusText = success
+                    ? LocalizationService.T("ExifTool.PathSuccess")
+                    : LocalizationService.T("ExifTool.InvalidFolder");
+            }
+            finally
+            {
+                IsProcessing = false;
+            }
+        }
+
+        private async Task ProcessExifToolArchive(string archivePath)
+        {
+            if (!System.IO.File.Exists(archivePath))
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("ExifTool.ArchiveMissing"));
+                return;
+            }
+
+            try
+            {
+                IsProcessing = true;
+                ExifToolStatusText = LocalizationService.T("ExifTool.Installing");
+                var success = await _exifToolManager.InstallFromArchive(archivePath);
+                ExifToolStatusText = success
+                    ? LocalizationService.T("ExifTool.InstallSuccess")
+                    : LocalizationService.T("ExifTool.InstallFailed");
+            }
+            catch (Exception ex)
+            {
+                ExifToolStatusText = LocalizationService.Format("ExifTool.InstallError", ex.Message);
+            }
+            finally
+            {
+                IsProcessing = false;
+            }
+        }
+
+        private void RefreshExifToolStatus()
+        {
+            ExifToolStatusText = _exifToolManager.IsExifToolAvailable
+                ? LocalizationService.T("ExifTool.Ready")
+                : LocalizationService.T("ExifTool.OptionalNotConfigured");
         }
 
         partial void OnSelectedLanguageChanged(LanguageOption? value)

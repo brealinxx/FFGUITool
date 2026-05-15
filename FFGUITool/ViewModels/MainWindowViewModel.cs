@@ -22,6 +22,7 @@ namespace FFGUITool.ViewModels
     public partial class MainWindowViewModel : ViewModelBase
     {
         private readonly FFmpegManager _ffmpegManager;
+        private readonly ExifToolManager _exifToolManager;
         private readonly VideoAnalyzer _videoAnalyzer;
         private readonly CommandBuilder _commandBuilder;
         private readonly IDialogService _dialogService;
@@ -133,6 +134,12 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private bool _isMetadataPreviewVisible;
+
+        [ObservableProperty]
+        private bool _canClearMetadata;
+
+        [ObservableProperty]
+        private string _metadataClearHint = "";
 
         [ObservableProperty]
         private CompressionSettings _compressionSettings = new();
@@ -553,7 +560,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task ShowFFmpegSettings()
         {
-            var setupViewModel = new SetupWindowViewModel(_ffmpegManager);
+            var setupViewModel = new SetupWindowViewModel(_ffmpegManager, _exifToolManager);
             var setupWindow = new Views.SetupWindow
             {
                 DataContext = setupViewModel
@@ -563,6 +570,14 @@ namespace FFGUITool.ViewModels
             if (mainWindow != null)
             {
                 await setupWindow.ShowDialog(mainWindow);
+                await InitializeExifTool();
+                if (CurrentVideoInfo != null)
+                {
+                    await RefreshCurrentInputMetadata();
+                }
+
+                UpdateConversionOptionVisibility();
+                UpdateCommand();
 
                 if (setupViewModel.SetupCompleted)
                 {
@@ -575,6 +590,12 @@ namespace FFGUITool.ViewModels
         }
 
         [RelayCommand]
+        private async Task ConfigureExifTool()
+        {
+            await ShowFFmpegSettings();
+        }
+
+        [RelayCommand]
         private async Task RedetectFFmpeg()
         {
             FfmpegStatusText = LocalizationService.T("Status.Redetecting");
@@ -582,11 +603,16 @@ namespace FFGUITool.ViewModels
 
             await _ffmpegManager.InitializeAsync();
             UpdateFFmpegStatus();
+            await InitializeExifTool();
             await RefreshHardwareEncoderOptions();
 
-            var message = _ffmpegManager.IsFFmpegAvailable
-                ? LocalizationService.T("Dialog.FFmpegDetected")
-                : LocalizationService.T("Dialog.FFmpegMissing");
+            var ffmpegStatus = _ffmpegManager.IsFFmpegAvailable
+                ? LocalizationService.T("Status.Ready")
+                : LocalizationService.T("Status.NotConfigured");
+            var exifToolStatus = _exifToolManager.IsExifToolAvailable
+                ? LocalizationService.T("ExifTool.Ready")
+                : LocalizationService.T("ExifTool.NotConfigured");
+            var message = LocalizationService.Format("Dialog.RedetectToolsResult", ffmpegStatus.Trim(), exifToolStatus);
 
             await _dialogService.ShowMessage(LocalizationService.T("Dialog.DetectComplete"), message);
         }
@@ -646,6 +672,7 @@ namespace FFGUITool.ViewModels
         {
             _ffmpegManager = ffmpegManager;
             _dialogService = dialogService;
+            _exifToolManager = new ExifToolManager();
             _videoAnalyzer = new VideoAnalyzer(_ffmpegManager);
             _commandBuilder = new CommandBuilder();
 
@@ -680,7 +707,7 @@ namespace FFGUITool.ViewModels
 
             if (!_ffmpegManager.IsFFmpegAvailable)
             {
-                var setupViewModel = new SetupWindowViewModel(_ffmpegManager);
+                var setupViewModel = new SetupWindowViewModel(_ffmpegManager, _exifToolManager);
                 var setupWindow = new Views.SetupWindow
                 {
                     DataContext = setupViewModel
@@ -706,7 +733,26 @@ namespace FFGUITool.ViewModels
             }
 
             UpdateFFmpegStatus();
+            await InitializeExifTool();
             await RefreshHardwareEncoderOptions();
+        }
+
+        private async Task InitializeExifTool()
+        {
+            await _exifToolManager.InitializeAsync();
+            UpdateExifToolStatus();
+        }
+
+        private void UpdateExifToolStatus()
+        {
+            CanClearMetadata = _exifToolManager.IsExifToolAvailable;
+            MetadataClearHint = CanClearMetadata
+                ? LocalizationService.T("ExifTool.Ready")
+                : LocalizationService.T("ExifTool.NotConfigured");
+            if (!CanClearMetadata)
+            {
+                ClearMetadata = false;
+            }
         }
 
         #endregion
@@ -985,10 +1031,27 @@ namespace FFGUITool.ViewModels
 
         private void OnClearMetadataChanged()
         {
+            if (ClearMetadata && !CanClearMetadata)
+            {
+                ClearMetadata = false;
+                return;
+            }
+
             CompressionSettings.ClearMetadata = ClearMetadata;
-            IsMetadataPreviewVisible = IsMetadataClearOptionVisible && ClearMetadata;
+            IsMetadataPreviewVisible = IsMetadataClearOptionVisible && CanClearMetadata && ClearMetadata;
             UpdateMetadataPreviewText();
             UpdateCommand();
+        }
+
+        private async Task RefreshCurrentInputMetadata()
+        {
+            if (CurrentVideoInfo == null || string.IsNullOrWhiteSpace(CurrentVideoInfo.FilePath))
+            {
+                return;
+            }
+
+            CurrentVideoInfo.MetadataSummary = await _exifToolManager.ReadSensitiveMetadata(CurrentVideoInfo.FilePath);
+            UpdateMetadataPreviewText();
         }
 
         private void OnBitrateChanged()
@@ -1098,6 +1161,7 @@ namespace FFGUITool.ViewModels
 
                 if (CurrentVideoInfo != null)
                 {
+                    await RefreshCurrentInputMetadata();
                     IsVideoInfoVisible = true;
                     UpdateSourceInfoTexts();
                     InitializeTargetSizeFromVideo();
@@ -1155,6 +1219,8 @@ namespace FFGUITool.ViewModels
                         FileSize = new FileInfo(path).Length
                     };
                 }
+
+                await RefreshCurrentInputMetadata();
 
                 IsVideoInfoVisible = CurrentVideoInfo != null;
                 BatchModeText = "";
@@ -1459,12 +1525,19 @@ namespace FFGUITool.ViewModels
                 var firstCommand = firstFile == null
                     ? LocalizationService.T("Batch.Empty")
                     : _commandBuilder.BuildCommand(CreateSettingsForInput(firstFile, previewInfo)).BuildCommand();
+                if (ClearMetadata && CanClearMetadata && firstFile != null && firstCommand != LocalizationService.T("Batch.Empty"))
+                {
+                    var firstOutput = _commandBuilder.BuildCommand(CreateSettingsForInput(firstFile, previewInfo)).OutputPath;
+                    firstCommand = AppendExifToolPreview(firstCommand, firstOutput);
+                }
                 CommandText = BuildBatchCommandPreview(firstCommand);
             }
             else
             {
                 var command = _commandBuilder.BuildCommand(CompressionSettings, CurrentVideoInfo);
-                CommandText = command.BuildCommand();
+                CommandText = ClearMetadata && CanClearMetadata
+                    ? AppendExifToolPreview(command.BuildCommand(), command.OutputPath)
+                    : command.BuildCommand();
             }
             
             CanExecute = CompressionSettings.IsValid && _ffmpegManager.IsFFmpegAvailable && (!IsBatchMode || BatchFileCount > 0);
@@ -1475,7 +1548,7 @@ namespace FFGUITool.ViewModels
             IsAdvancedVideoControlsVisible = IsAdvancedMode && !IsImageMode;
             IsAdvancedQualityControlsVisible = IsAdvancedMode && (!IsImageMode || HasSelectedInput);
             IsMetadataClearOptionVisible = IsAdvancedMode && HasSelectedInput;
-            IsMetadataPreviewVisible = IsMetadataClearOptionVisible && ClearMetadata;
+            IsMetadataPreviewVisible = IsMetadataClearOptionVisible && CanClearMetadata && ClearMetadata;
             UpdateControlEditability();
 
             if (IsImageMode)
@@ -1533,6 +1606,16 @@ namespace FFGUITool.ViewModels
             }
 
             return $"{LocalizationService.Format("Batch.Preview", BatchFileCount)}\n{firstCommand}";
+        }
+
+        private string AppendExifToolPreview(string ffmpegCommand, string outputPath)
+        {
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                return ffmpegCommand;
+            }
+
+            return $"{ffmpegCommand}\n{_exifToolManager.BuildClearMetadataCommand(outputPath)}";
         }
 
         private IEnumerable<string> GetBatchInputFiles()
@@ -1663,6 +1746,7 @@ namespace FFGUITool.ViewModels
             UpdateFFmpegStatus();
             UpdateConversionHint();
             UpdateConversionOptionVisibility();
+            UpdateExifToolStatus();
 
             if (CurrentVideoInfo == null && string.IsNullOrWhiteSpace(CompressionSettings.InputPath))
             {
@@ -2402,6 +2486,18 @@ namespace FFGUITool.ViewModels
                     $"FFmpeg执行失败，退出代码: {output.ExitCode}",
                     output.ExitCode,
                     output.Error);
+            }
+
+            if (CompressionSettings.ClearMetadata && _exifToolManager.IsExifToolAvailable)
+            {
+                var clearResult = await _exifToolManager.ClearMetadata(command.OutputPath);
+                if (!clearResult.Success)
+                {
+                    throw new FFmpegExecutionException(
+                        "ExifTool元数据清除失败",
+                        1,
+                        clearResult.Error);
+                }
             }
 
             var outputInfo = await _videoAnalyzer.AnalyzeVideo(command.OutputPath);

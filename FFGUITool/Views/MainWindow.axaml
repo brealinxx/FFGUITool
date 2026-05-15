@@ -132,6 +132,7 @@
         <Menu Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}">
             <MenuItem Header="{DynamicResource Menu.Tools}" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="{DynamicResource Menu.FFmpegSettings}" Command="{Binding ShowFFmpegSettingsCommand}" />
+                <MenuItem Header="{DynamicResource Menu.ExifToolSettings}" Command="{Binding ConfigureExifToolCommand}" />
                 <Separator />
                 <MenuItem Header="{DynamicResource Menu.RedetectFFmpeg}" Command="{Binding RedetectFFmpegCommand}" />
                 <Separator />
@@ -429,7 +430,12 @@
                                 <CheckBox Content="{DynamicResource Metadata.Clear}"
                                           IsChecked="{Binding ClearMetadata}"
                                           IsVisible="{Binding IsMetadataClearOptionVisible}"
+                                          IsEnabled="{Binding CanClearMetadata}"
                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="{Binding MetadataClearHint}"
+                                           IsVisible="{Binding IsMetadataClearOptionVisible}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
 
                                 <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6"
                                         Padding="10" IsVisible="{Binding IsMetadataPreviewVisible}">

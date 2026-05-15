@@ -27,7 +27,6 @@ namespace FFGUITool.Services
                 MaxFramerate = settings.EnableFormatConversion && settings.OutputFormat == "gif" && settings.MaxFramerate <= 0
                     ? 12
                     : settings.MaxFramerate,
-                ClearMetadata = settings.ClearMetadata,
                 AudioOnly = settings.EnableAudioConversion,
                 GifOutput = settings.EnableFormatConversion && settings.OutputFormat == "gif",
                 AudioCodec = GetCommandAudioCodec(settings),

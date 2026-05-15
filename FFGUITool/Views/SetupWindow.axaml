@@ -1,10 +1,10 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FFGUITool.ViewModels"
         x:Class="FFGUITool.Views.SetupWindow"
         x:DataType="vm:SetupWindowViewModel"
         Title="{DynamicResource Setup.Title}"
-        Width="540" Height="650"
+        Width="620" Height="760"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource PageBackgroundBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}"
@@ -18,11 +18,6 @@
             <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}"/>
             <Setter Property="Padding" Value="20"/>
             <Setter Property="Margin" Value="4,0,4,16"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
-                </Transitions>
-            </Setter>
         </Style>
 
         <Style Selector="TextBox">
@@ -77,19 +72,15 @@
     </Window.Styles>
 
     <Grid RowDefinitions="Auto, *, Auto" Margin="24,30,24,24">
-
-        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,24">
+        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,20">
             <StackPanel Spacing="8">
                 <TextBlock Text="{DynamicResource Setup.Header}" FontSize="26" FontWeight="ExtraBold"
                            Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Left"/>
-                <TextBlock Text="{DynamicResource Setup.Subtitle}"
-                           Classes="Caption" HorizontalAlignment="Left"/>
+                <TextBlock Text="{DynamicResource Setup.Subtitle}" Classes="Caption" HorizontalAlignment="Left"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Spacing="6" Width="130">
                 <TextBlock Text="{DynamicResource Setup.Language}" Classes="Caption"/>
-                <ComboBox ItemsSource="{Binding LanguageOptions}"
-                          SelectedItem="{Binding SelectedLanguage}"
-                          Height="34">
+                <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}" Height="34">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding DisplayName}"/>
@@ -99,74 +90,148 @@
             </StackPanel>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" Padding="0,0,10,0">
-            <StackPanel>
-                <Border Classes="SetupCard">
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
-                                <TextBlock Text="📂" FontSize="18"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{DynamicResource Setup.Manual}" FontWeight="Bold" FontSize="15"/>
-                                <TextBlock Text="{DynamicResource Setup.ManualDesc}" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+        <TabControl Grid.Row="1">
+            <TabItem Header="{DynamicResource Setup.FFmpegTab}">
+                <ScrollViewer Padding="0,12,10,0">
+                    <StackPanel>
+                        <Border Classes="SetupCard">
+                            <StackPanel Spacing="12">
+                                <Button Content="{DynamicResource Setup.DetectSystemFFmpeg}"
+                                        Command="{Binding DetectSystemFFmpegCommand}"
+                                        IsEnabled="{Binding !IsProcessing}"/>
+
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
+                                        <TextBlock Text="FF" FontSize="14" FontWeight="Bold"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource Setup.Manual}" FontWeight="Bold" FontSize="15"/>
+                                        <TextBlock Text="{DynamicResource Setup.ManualDesc}" Classes="Caption"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="*, 10, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding FfmpegPathText}"
+                                             Watermark="{DynamicResource Setup.SelectFileWatermark}" IsReadOnly="True"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseFFmpegCommand}"/>
+                                </Grid>
+
+                                <Button Content="{DynamicResource Setup.ApplyPath}" Classes="Accent" HorizontalAlignment="Stretch"
+                                        Command="{Binding SetCustomPathCommand}" IsEnabled="{Binding !IsProcessing}"/>
                             </StackPanel>
-                        </StackPanel>
+                        </Border>
 
-                        <Grid ColumnDefinitions="*, 10, Auto">
-                            <TextBox Grid.Column="0" Text="{Binding FfmpegPathText}"
-                                     Watermark="{DynamicResource Setup.SelectFileWatermark}" IsReadOnly="True"/>
-                            <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseFFmpegCommand}"/>
-                        </Grid>
+                        <Border Classes="SetupCard">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
+                                        <TextBlock Text="ZIP" FontSize="13" FontWeight="Bold"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource Setup.Archive}" FontWeight="Bold" FontSize="15"/>
+                                        <TextBlock Text="{DynamicResource Setup.ArchiveDesc}" Classes="Caption"/>
+                                    </StackPanel>
+                                </StackPanel>
 
-                        <Button Content="{DynamicResource Setup.ApplyPath}" Classes="Accent" HorizontalAlignment="Stretch"
-                                Command="{Binding SetCustomPathCommand}" IsEnabled="{Binding !IsProcessing}"/>
-                    </StackPanel>
-                </Border>
+                                <Grid ColumnDefinitions="*, 10, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding ArchivePathText}"
+                                             Watermark="{DynamicResource Setup.ArchiveWatermark}" IsReadOnly="True"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseArchiveCommand}"/>
+                                </Grid>
 
-                <Border Classes="SetupCard">
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
-                                <TextBlock Text="📦" FontSize="18"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{DynamicResource Setup.Archive}" FontWeight="Bold" FontSize="15"/>
-                                <TextBlock Text="{DynamicResource Setup.ArchiveDesc}" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Button Content="{DynamicResource Setup.InstallNow}" Classes="Accent" HorizontalAlignment="Stretch"
+                                        Command="{Binding InstallFromArchiveCommand}" IsEnabled="{Binding !IsProcessing}"/>
                             </StackPanel>
-                        </StackPanel>
+                        </Border>
 
-                        <Grid ColumnDefinitions="*, 10, Auto">
-                            <TextBox Grid.Column="0" Text="{Binding ArchivePathText}"
-                                     Watermark="{DynamicResource Setup.ArchiveWatermark}" IsReadOnly="True"/>
-                            <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseArchiveCommand}"/>
-                        </Grid>
-
-                        <Button Content="{DynamicResource Setup.InstallNow}" Classes="Accent" HorizontalAlignment="Stretch"
-                                Command="{Binding InstallFromArchiveCommand}" IsEnabled="{Binding !IsProcessing}"/>
+                        <Border Classes="SetupCard" BorderThickness="0" Margin="4,8,4,8">
+                            <Border.Background>
+                                <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.1"/>
+                            </Border.Background>
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{DynamicResource Setup.HowToGet}" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="{DynamicResource Setup.DownloadHint}" Classes="Caption"/>
+                                <Grid ColumnDefinitions="Auto, 8, *, 8, Auto">
+                                    <TextBlock Text="{DynamicResource Setup.Link}" Classes="Caption" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="2" Text="https://ffmpeg.org/download.html" IsReadOnly="True"/>
+                                    <Button Grid.Column="4" Content="{DynamicResource Setup.OpenLink}"
+                                            Command="{Binding OpenUrlCommand}"
+                                            CommandParameter="https://ffmpeg.org/download.html"/>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource Setup.Recommend}" Classes="Caption"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                </Border>
+                </ScrollViewer>
+            </TabItem>
 
-                <Border Classes="SetupCard" BorderThickness="0" Margin="4,8,4,8">
-                    <Border.Background>
-                        <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.1"/>
-                    </Border.Background>
-                    <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="💡" Foreground="{DynamicResource AccentBrush}"/>
-                            <TextBlock Text="{DynamicResource Setup.HowToGet}" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                        </StackPanel>
-                        <TextBlock FontSize="13" LineHeight="22" Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap">
-                            <Run Text="{DynamicResource Setup.Visit}"/>
-                            <Run Text="ffmpeg.org" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                            <Run Text="{DynamicResource Setup.DownloadHint}" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                            <LineBreak/>
-                            <Run Text="{DynamicResource Setup.Recommend}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                        </TextBlock>
+            <TabItem Header="{DynamicResource Setup.ExifToolTab}">
+                <ScrollViewer Padding="0,12,10,0">
+                    <StackPanel>
+                        <Border Classes="SetupCard">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="8">
+                                        <TextBlock Text="EX" FontSize="14" FontWeight="Bold"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource ExifTool.SetupTitle}" FontWeight="Bold" FontSize="15"/>
+                                        <TextBlock Text="{DynamicResource ExifTool.SetupDesc}" Classes="Caption"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button Content="{DynamicResource ExifTool.DetectSystem}"
+                                        Command="{Binding DetectSystemExifToolCommand}"
+                                        IsEnabled="{Binding !IsProcessing}"/>
+
+                                <Grid ColumnDefinitions="*, 10, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding ExifToolPathText}"
+                                             Watermark="{DynamicResource ExifTool.SelectExecutableWatermark}" IsReadOnly="True"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseExifToolCommand}"/>
+                                </Grid>
+                                <Button Content="{DynamicResource ExifTool.ApplyExecutable}" Classes="Accent" HorizontalAlignment="Stretch"
+                                        Command="{Binding SetExifToolPathCommand}" IsEnabled="{Binding !IsProcessing}"/>
+
+                                <Grid ColumnDefinitions="*, 10, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding ExifToolFolderText}"
+                                             Watermark="{DynamicResource ExifTool.SelectFolderWatermark}" IsReadOnly="True"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseExifToolFolderCommand}"/>
+                                </Grid>
+                                <Button Content="{DynamicResource ExifTool.ApplyFolder}" Classes="Accent" HorizontalAlignment="Stretch"
+                                        Command="{Binding SetExifToolFolderCommand}" IsEnabled="{Binding !IsProcessing}"/>
+
+                                <Grid ColumnDefinitions="*, 10, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding ExifToolArchivePathText}"
+                                             Watermark="{DynamicResource ExifTool.ArchiveWatermark}" IsReadOnly="True"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Setup.Browse}" Command="{Binding BrowseExifToolArchiveCommand}"/>
+                                </Grid>
+                                <Button Content="{DynamicResource ExifTool.InstallArchive}" Classes="Accent" HorizontalAlignment="Stretch"
+                                        Command="{Binding InstallExifToolArchiveCommand}" IsEnabled="{Binding !IsProcessing}"/>
+
+                                <TextBlock Text="{Binding ExifToolStatusText}" Classes="Caption"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="SetupCard" BorderThickness="0" Margin="4,8,4,8">
+                            <Border.Background>
+                                <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.1"/>
+                            </Border.Background>
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{DynamicResource Setup.HowToGetExifTool}" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="{DynamicResource Setup.ExifToolDownloadHint}" Classes="Caption"/>
+                                <Grid ColumnDefinitions="Auto, 8, *, 8, Auto">
+                                    <TextBlock Text="{DynamicResource Setup.Link}" Classes="Caption" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="2" Text="https://exiftool.org/" IsReadOnly="True"/>
+                                    <Button Grid.Column="4" Content="{DynamicResource Setup.OpenLink}"
+                                            Command="{Binding OpenUrlCommand}"
+                                            CommandParameter="https://exiftool.org/"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
 
         <StackPanel Grid.Row="2" Margin="0,16,0,0">
             <Border IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

@@ -4,9 +4,11 @@
 
 ### Added
 
-- Added image and video metadata detection for sensitive fields such as location, author, creation time, device model, software, and handler metadata.
-- Added an advanced metadata removal option that strips global, stream, and chapter metadata from generated outputs.
+- Added ExifTool integration for image and video metadata detection, including sensitive fields such as GPS location, author, creation time, device model, lens, software, and handler metadata.
+- Added optional ExifTool configuration to the FFmpeg setup wizard, with system command detection, executable selection, folder search, and zip archive installation.
+- Added an advanced metadata removal option that runs ExifTool after output creation to strip metadata from generated files.
 - Added localized Chinese and English labels for metadata removal and its sensitive-information preview.
+- Added a unified redetect action that checks both FFmpeg and ExifTool configuration status.
 
 ### Changed
 
@@ -14,6 +16,8 @@
 - Image batch estimates now show the expected total output size for all images.
 - Image per-file ratio and target-size controls now display one decimal place.
 - Reworked the menu bar by removing the File menu, renaming Tools to Settings, and moving language selection under Settings.
+- Metadata removal is disabled when ExifTool is not available.
+- Renamed the redetect menu item from FFmpeg-only wording to a general redetect action.
 - Reduced startup/runtime overhead by removing unused dependency injection setup, the embedded Inter font package, and release trace logging.
 
 ### Fixed

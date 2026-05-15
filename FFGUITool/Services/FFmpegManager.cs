@@ -181,6 +181,19 @@ namespace FFGUITool.Services
             return false;
         }
 
+        public async Task<bool> SetSystemFFmpeg()
+        {
+            if (await IsValidFFmpegPath("ffmpeg"))
+            {
+                _ffmpegPath = "ffmpeg";
+                IsFFmpegAvailable = true;
+                SaveCustomPath("ffmpeg");
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// 获取FFmpeg版本信息
         /// </summary>

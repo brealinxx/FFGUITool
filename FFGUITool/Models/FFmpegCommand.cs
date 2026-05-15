@@ -22,7 +22,6 @@ namespace FFGUITool.Models
         public bool AudioOnly { get; set; }
         public bool GifOutput { get; set; }
         public bool ImageOutput { get; set; }
-        public bool ClearMetadata { get; set; }
         public int ImageQuality { get; set; } = 80;
         public double ImageTargetSizeKB { get; set; }
         public string ImageFormat { get; set; } = "jpg";
@@ -55,7 +54,6 @@ namespace FFGUITool.Models
                 }
 
                 AppendImageParameters(command);
-                AppendMetadataParameters(command);
                 AppendAdditionalParameters(command);
                 AppendOutputPath(command);
                 return command.ToString();
@@ -66,7 +64,6 @@ namespace FFGUITool.Models
                 command.Append("-vn ");
                 command.Append($"-c:a {AudioCodec} ");
                 command.Append($"-b:a {AudioBitrate}k ");
-                AppendMetadataParameters(command);
                 AppendAdditionalParameters(command);
                 AppendOutputPath(command);
                 return command.ToString();
@@ -91,7 +88,6 @@ namespace FFGUITool.Models
             if (GifOutput)
             {
                 command.Append("-an ");
-                AppendMetadataParameters(command);
                 AppendAdditionalParameters(command);
                 AppendOutputPath(command);
                 return command.ToString();
@@ -110,7 +106,6 @@ namespace FFGUITool.Models
 
             command.Append($"-c:a {AudioCodec} ");
             command.Append($"-b:a {AudioBitrate}k ");
-            AppendMetadataParameters(command);
             AppendAdditionalParameters(command);
             AppendOutputPath(command);
 
@@ -122,18 +117,6 @@ namespace FFGUITool.Models
             if (!string.IsNullOrEmpty(AdditionalParameters))
             {
                 command.Append($"{AdditionalParameters} ");
-            }
-        }
-
-        private void AppendMetadataParameters(StringBuilder command)
-        {
-            if (ClearMetadata)
-            {
-                command.Append("-map_metadata -1 -map_metadata:s:v -1 -map_metadata:s:a -1 -map_metadata:s:d -1 -map_chapters -1 ");
-                command.Append("-metadata title= -metadata artist= -metadata author= -metadata composer= -metadata comment= ");
-                command.Append("-metadata description= -metadata copyright= -metadata creation_time= -metadata date= ");
-                command.Append("-metadata location= -metadata location-eng= ");
-                command.Append("-metadata:s:v:0 handler_name= -metadata:s:v:0 rotate= -metadata:s:a:0 handler_name= ");
             }
         }
 
