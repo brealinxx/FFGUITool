@@ -6,13 +6,15 @@ self_contained="${SELF_CONTAINED:-true}"
 archive="zip"
 all=false
 runtime=""
+create_dmg=false
 
 usage() {
-  echo "Usage: ./publish.sh [-windows|-macos|-all] [--archive zip|7z]"
+  echo "Usage: ./publish.sh [-windows|-macos|-all] [--archive zip|7z] [--dmg]"
   echo "Default: publish the current platform group and create a .zip archive."
   echo "  -windows  Build win-x64, win-x86, and win-arm64 packages"
   echo "  -macos    Build osx-x64 and osx-arm64 packages"
   echo "  -all      Build Windows and macOS packages"
+  echo "  --dmg     On macOS, wrap osx-* outputs into .app bundles and .dmg images"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -41,6 +43,10 @@ while [[ $# -gt 0 ]]; do
       archive="zip"
       shift
       ;;
+    --dmg)
+      create_dmg=true
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -64,6 +70,19 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_path="$script_dir/FFGUITool/FFGUITool.csproj"
 publish_root="$script_dir/FFGUITool/bin/publish"
 archive_root="$publish_root/archives"
+dmg_root="$publish_root/dmg"
+package_version="$(grep -m1 '<Version>' "$project_path" | sed -E 's/.*<Version>([^<]+)<\/Version>.*/\1/')"
+
+package_platform_name() {
+  case "$1" in
+    win-x64) echo "windows-x64" ;;
+    win-x86) echo "windows-x86" ;;
+    win-arm64) echo "windows-arm64" ;;
+    osx-x64) echo "macos-intel" ;;
+    osx-arm64) echo "macos-arm64" ;;
+    *) echo "$1" ;;
+  esac
+}
 
 current_platform_group() {
   local os
@@ -103,6 +122,86 @@ archive_one() {
   (cd "$output_path" && 7z a -t7z "$archive_root/$output_name.7z" . >/dev/null)
 }
 
+create_macos_app_bundle() {
+  local output_path="$1"
+  local rid="$2"
+  local app_name="FFGUITool.app"
+  local app_path="$publish_root/FFGUITool-$rid-app/$app_name"
+  local contents_path="$app_path/Contents"
+  local macos_path="$contents_path/MacOS"
+  local resources_path="$contents_path/Resources"
+
+  rm -rf "$publish_root/FFGUITool-$rid-app"
+  mkdir -p "$macos_path" "$resources_path"
+  cp -R "$output_path"/. "$macos_path/"
+
+  if [[ -f "$script_dir/FFGUITool/Resources/icon.icns" ]]; then
+    cp "$script_dir/FFGUITool/Resources/icon.icns" "$resources_path/FFGUITool.icns"
+  fi
+
+  cat > "$contents_path/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>FFGUITool</string>
+  <key>CFBundleDisplayName</key>
+  <string>FFGUITool</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.brealin.ffguitool</string>
+  <key>CFBundleVersion</key>
+  <string>$package_version</string>
+  <key>CFBundleShortVersionString</key>
+  <string>$package_version</string>
+  <key>CFBundleExecutable</key>
+  <string>FFGUITool</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+
+  chmod +x "$macos_path/FFGUITool" 2>/dev/null || true
+  echo "$app_path"
+}
+
+create_dmg_for_app() {
+  local app_path="$1"
+  local rid="$2"
+
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "--dmg requires macOS because it uses hdiutil. Skipping $rid." >&2
+    return
+  fi
+
+  if ! command -v hdiutil >/dev/null 2>&1; then
+    echo "hdiutil was not found. Skipping DMG creation for $rid." >&2
+    return
+  fi
+
+  mkdir -p "$dmg_root"
+  local staging="$publish_root/FFGUITool-$rid-dmg"
+  local package_platform
+  package_platform="$(package_platform_name "$rid")"
+  local dmg_path="$dmg_root/FFGUITool-v$package_version-$package_platform-Installer.dmg"
+
+  rm -rf "$staging"
+  rm -f "$dmg_path"
+  mkdir -p "$staging"
+  cp -R "$app_path" "$staging/"
+  ln -s /Applications "$staging/Applications"
+
+  hdiutil create \
+    -volname "FFGUITool" \
+    -srcfolder "$staging" \
+    -ov \
+    -format UDZO \
+    "$dmg_path"
+}
+
 publish_one() {
   local rid="$1"
   local output_name="FFGUITool-$rid"
@@ -120,7 +219,14 @@ publish_one() {
     -p:DebugType=None \
     -p:DebugSymbols=false
 
-  archive_one "$output_path" "$output_name"
+  local package_platform
+  package_platform="$(package_platform_name "$rid")"
+  archive_one "$output_path" "FFGUITool-v$package_version-$package_platform-Portable"
+
+  if [[ "$create_dmg" == true && "$rid" == osx-* ]]; then
+    app_path="$(create_macos_app_bundle "$output_path" "$rid")"
+    create_dmg_for_app "$app_path" "$rid"
+  fi
 }
 
 if [[ "$all" == true ]]; then
@@ -152,3 +258,6 @@ done
 echo
 echo "Publish complete. Outputs are in: $publish_root"
 echo "Archives are in: $archive_root"
+if [[ "$create_dmg" == true ]]; then
+  echo "DMG outputs are in: $dmg_root"
+fi

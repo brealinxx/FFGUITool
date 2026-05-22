@@ -115,6 +115,14 @@
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
         </Style>
 
+        <Style Selector="CheckBox.VideoTool">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+
+        <Style Selector="CheckBox.VideoTool:disabled">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        </Style>
+
         <Style Selector="TextBox">
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -140,6 +148,14 @@
                     <MenuItem Header="{DynamicResource Menu.Language.Chinese}" Command="{Binding SetLanguageCommand}" CommandParameter="zh-CN" />
                     <MenuItem Header="{DynamicResource Menu.Language.English}" Command="{Binding SetLanguageCommand}" CommandParameter="en-US" />
                 </MenuItem>
+                <MenuItem Header="{DynamicResource Menu.Theme}">
+                    <MenuItem Header="{Binding ThemeSystemMenuText}" Command="{Binding SetThemeCommand}" CommandParameter="Default" />
+                    <MenuItem Header="{Binding ThemeLightMenuText}" Command="{Binding SetThemeCommand}" CommandParameter="Light" />
+                    <MenuItem Header="{Binding ThemeDarkMenuText}" Command="{Binding SetThemeCommand}" CommandParameter="Dark" />
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="{DynamicResource Menu.OpenConfigFolder}" Command="{Binding OpenConfigFolderCommand}" />
+                <MenuItem Header="{DynamicResource Menu.CleanupLocalData}" Command="{Binding CleanupLocalDataCommand}" />
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu.Help}" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="{DynamicResource Menu.About}" Command="{Binding ShowAboutCommand}" />
@@ -244,9 +260,11 @@
                         Classes="Icon" BorderThickness="0" Background="Transparent"
                         ToolTip.Tip="{DynamicResource Theme.Toggle}">
                     <Panel Width="24" Height="24">
-                        <TextBlock Text="🌙" FontSize="18" IsVisible="{Binding !IsThemeDark}"
+                        <TextBlock Text="◐" FontSize="20" IsVisible="{Binding IsThemeSystem}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBlock Text="☀️" FontSize="18" IsVisible="{Binding IsThemeDark}"
+                        <TextBlock Text="☀" FontSize="18" IsVisible="{Binding IsThemeLight}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="☾" FontSize="18" IsVisible="{Binding IsThemeDarkManual}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Panel>
                 </Button>
@@ -414,42 +432,18 @@
 
                                 <UniformGrid Columns="3" Rows="1">
                                     <CheckBox Content="{DynamicResource Main.FormatConversion}"
+                                              Classes="VideoTool"
                                               IsChecked="{Binding EnableFormatConversion}"
-                                              IsEnabled="{Binding CanUseVideoConversionTools}"
-                                              Foreground="{DynamicResource PrimaryTextBrush}" />
+                                              IsEnabled="{Binding CanEditVideoConversionTools}" />
                                     <CheckBox Content="{DynamicResource Main.AudioConversion}"
                                               IsVisible="{Binding !IsImageMode}"
                                               IsChecked="{Binding EnableAudioConversion}"
                                               Foreground="{DynamicResource PrimaryTextBrush}" />
                                     <CheckBox Content="{DynamicResource Main.ResolutionConversion}"
+                                              Classes="VideoTool"
                                               IsChecked="{Binding EnableResolutionConversion}"
-                                              IsEnabled="{Binding CanUseVideoConversionTools}"
-                                              Foreground="{DynamicResource PrimaryTextBrush}" />
+                                              IsEnabled="{Binding CanEditVideoConversionTools}" />
                                 </UniformGrid>
-
-                                <CheckBox Content="{DynamicResource Metadata.Clear}"
-                                          IsChecked="{Binding ClearMetadata}"
-                                          IsVisible="{Binding IsMetadataClearOptionVisible}"
-                                          IsEnabled="{Binding CanClearMetadata}"
-                                          Foreground="{DynamicResource PrimaryTextBrush}" />
-                                <TextBlock Text="{Binding MetadataClearHint}"
-                                           IsVisible="{Binding IsMetadataClearOptionVisible}"
-                                           FontSize="12"
-                                           Foreground="{DynamicResource SecondaryTextBrush}" />
-
-                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6"
-                                        Padding="10" IsVisible="{Binding IsMetadataPreviewVisible}">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="{DynamicResource Metadata.ClearPreview}"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
-                                        <TextBlock Text="{Binding SourceMetadataText}"
-                                                   FontSize="12"
-                                                   Foreground="{DynamicResource SecondaryTextBrush}"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </Border>
 
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsFormatConversionOptionsVisible}">
                                     <TextBlock Text="{Binding FormatOptionLabel}" Classes="Label" VerticalAlignment="Center"/>
@@ -494,6 +488,21 @@
                                     </ComboBox>
                                 </Grid>
 
+                                <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAudioConversionOptionsVisible}">
+                                    <TextBlock Text="{DynamicResource Main.AudioBitrate}" Classes="Label" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AudioBitrateOptions}" SelectedItem="{Binding SelectedAudioBitrateOption}"
+                                              HorizontalAlignment="Left" Width="300">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
+                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsResolutionConversionOptionsVisible}">
                                     <TextBlock Text="{DynamicResource Main.TargetResolution}" Classes="Label" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding ResolutionOptions}" SelectedItem="{Binding SelectedResolutionOption}"
@@ -508,6 +517,35 @@
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
                                 </Grid>
+
+                                <TextBlock Text="{DynamicResource Main.Privacy}"
+                                           Classes="Label"
+                                           FontWeight="Bold"
+                                           IsVisible="{Binding IsMetadataClearOptionVisible}" />
+                                <CheckBox Content="{DynamicResource Metadata.Clear}"
+                                          IsChecked="{Binding ClearMetadata}"
+                                          IsVisible="{Binding IsMetadataClearOptionVisible}"
+                                          IsEnabled="{Binding CanClearMetadata}"
+                                          Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="{Binding MetadataClearHint}"
+                                           IsVisible="{Binding IsMetadataClearOptionVisible}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6"
+                                        Padding="10" IsVisible="{Binding IsMetadataPreviewVisible}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{DynamicResource Metadata.ClearPreview}"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <TextBlock Text="{Binding SourceMetadataText}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
                             </StackPanel>
 
                             <Separator Background="{DynamicResource BorderBrush}" Height="1" Opacity="0.5"

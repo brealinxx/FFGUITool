@@ -210,6 +210,28 @@ namespace FFGUITool.Services
             return $"\"{executable}\" -overwrite_original -all= \"{outputPath}\"";
         }
 
+        public async Task<string> GetExifToolVersion()
+        {
+            if (!IsExifToolAvailable)
+            {
+                return LocalizationService.T("ExifTool.NotInstalled");
+            }
+
+            try
+            {
+                var result = await RunExifTool(_exifToolPath, "-ver");
+                if (result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.Output))
+                {
+                    return $"ExifTool {result.Output.Trim()}";
+                }
+            }
+            catch
+            {
+            }
+
+            return LocalizationService.T("ExifTool.VersionUnavailable");
+        }
+
         private static async Task<(int ExitCode, string Output, string Error)> RunExifTool(string fileName, string arguments)
         {
             var processInfo = new ProcessStartInfo

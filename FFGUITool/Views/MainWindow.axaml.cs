@@ -25,10 +25,12 @@ namespace FFGUITool.Views
             _viewModel = new MainWindowViewModel();
             DataContext = _viewModel;
 
-            var initialIsDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
-            _viewModel.IsThemeDark = initialIsDark;
-            _viewModel.CurrentTheme = initialIsDark ? ThemeVariant.Dark : ThemeVariant.Light;
-            UpdateTheme(initialIsDark);
+            if (Application.Current != null)
+            {
+                Application.Current.RequestedThemeVariant = _viewModel.CurrentTheme;
+            }
+            _viewModel.IsThemeDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+            UpdateTheme(_viewModel.CurrentTheme);
 
             DragDrop.SetAllowDrop(this, true);
             AddHandler(DragDrop.DragOverEvent, OnDragOver);
@@ -36,9 +38,9 @@ namespace FFGUITool.Views
 
             _viewModel.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(MainWindowViewModel.IsThemeDark))
+                if (e.PropertyName == nameof(MainWindowViewModel.CurrentTheme))
                 {
-                    UpdateTheme(_viewModel.IsThemeDark);
+                    UpdateTheme(_viewModel.CurrentTheme);
                 }
                 else if (e.PropertyName == nameof(MainWindowViewModel.IsWorkspaceVisible) && _viewModel.IsWorkspaceVisible)
                 {
@@ -99,14 +101,18 @@ namespace FFGUITool.Views
                 or ".mp3" or ".aac" or ".m4a" or ".wav" or ".flac" or ".ogg" or ".wma";
         }
 
-        private void UpdateTheme(bool isDark)
+        private void UpdateTheme(ThemeVariant theme)
         {
-            var theme = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
             RequestedThemeVariant = theme;
 
             if (Application.Current != null)
             {
                 Application.Current.RequestedThemeVariant = theme;
+            }
+
+            if (_viewModel != null)
+            {
+                _viewModel.IsThemeDark = ActualThemeVariant == ThemeVariant.Dark;
             }
         }
 

@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.5.0
+
+### Added
+
+- Added Settings menu theme switching with System, Light, and Dark modes, including current-selection markers.
+- Added persistent local app configuration in `%AppData%\FFGUITool\config.json` for theme and language preferences.
+- Added a local data cleanup action for removing app config files and registry records.
+- Added audio bitrate choices for audio conversion, including 320, 256, 128, 96, 64, and 8 kb/s.
+- Added AV1 (`libaom-av1`) as a selectable video encoder.
+- Added Windows Inno Setup installer generation for x64, x86, and ARM64 packages.
+- Added macOS DMG installer packaging support for Intel and Apple Silicon builds.
+- Added installer-time app language selection so FFGUITool can start in the selected Chinese or English interface language.
+
+### Changed
+
+- Renamed release package outputs to distinguish Portable archives from Installer packages.
+- Simplified release documentation and clarified package naming for Windows and macOS architectures.
+- Improved advanced conversion layout so dynamically shown conversion controls stay above the Privacy section.
+- Improved audio-only conversion summaries so output messages match the actual audio conversion result.
+- Updated the About dialog to include ExifTool version information.
+- Updated ExifTool settings from the menu to open the setup wizard directly on the ExifTool tab.
+
+### Fixed
+
+- Disabled video format and resolution conversion controls now appear greyed out and non-clickable while audio conversion is enabled.
+- Fixed language refresh behavior for conversion option lists.
+- Fixed theme icon/state consistency between the main window and menu actions.
+- Fixed Inno Setup Chinese language file resolution by bundling the required language file.
+
+### Version
+
+- Updated application version metadata from `1.4.0` to `1.5.0`.
+- Updated assembly version and file version to `1.5.0.0`.
+- Updated Windows application manifest assembly identity to `1.5.0.0`.
+- Updated installer and macOS bundle version metadata to `1.5.0`.
+
 ## v1.4.0
 
 ### Added

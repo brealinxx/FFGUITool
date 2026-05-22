@@ -10,7 +10,9 @@ param(
 
     [string]$Configuration = "Release",
 
-    [bool]$SelfContained = $true
+    [bool]$SelfContained = $true,
+
+    [switch]$Installer
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +20,10 @@ $ErrorActionPreference = "Stop"
 $ProjectPath = Join-Path $PSScriptRoot "FFGUITool\FFGUITool.csproj"
 $PublishRoot = Join-Path $PSScriptRoot "FFGUITool\bin\publish"
 $ArchiveRoot = Join-Path $PublishRoot "archives"
+$InstallerScript = Join-Path $PSScriptRoot "installer\FFGUITool.iss"
+$InstallerOutput = Join-Path $PublishRoot "installer"
+$ProjectXml = [xml](Get-Content $ProjectPath)
+$PackageVersion = $ProjectXml.Project.PropertyGroup.Version | Select-Object -First 1
 
 $RuntimeMap = [ordered]@{
     "win-x64" = "FFGUITool-win-x64"
@@ -25,6 +31,21 @@ $RuntimeMap = [ordered]@{
     "win-arm64" = "FFGUITool-win-arm64"
     "osx-x64" = "FFGUITool-osx-x64"
     "osx-arm64" = "FFGUITool-osx-arm64"
+}
+
+function Get-PackagePlatformName {
+    param(
+        [string]$RuntimeId
+    )
+
+    switch ($RuntimeId) {
+        "win-x64" { "windows-x64" }
+        "win-x86" { "windows-x86" }
+        "win-arm64" { "windows-arm64" }
+        "osx-x64" { "macos-intel" }
+        "osx-arm64" { "macos-arm64" }
+        default { $RuntimeId }
+    }
 }
 
 function Get-CurrentPlatformGroup {
@@ -71,6 +92,33 @@ function New-PublishArchive {
     }
 }
 
+function New-InnoInstaller {
+    param(
+        [string]$SourcePath,
+        [string]$RuntimeId
+    )
+
+    $iscc = Get-Command ISCC -ErrorAction SilentlyContinue
+    $isccPath = if ($null -ne $iscc) { $iscc.Source } else { $null }
+    if (-not $isccPath) {
+        $defaultIsccPaths = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "F:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "F:\Program Files\Inno Setup 6\ISCC.exe"
+        )
+        $isccPath = $defaultIsccPaths | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    }
+
+    if (-not $isccPath) {
+        throw "Inno Setup Compiler (ISCC) was not found in PATH. Install Inno Setup or run without -Installer."
+    }
+
+    New-Item -ItemType Directory -Force -Path $InstallerOutput | Out-Null
+    $packagePlatform = Get-PackagePlatformName -RuntimeId $RuntimeId
+    & $isccPath $InstallerScript "/DSourceDir=$SourcePath" "/DOutputDir=$InstallerOutput" "/DRuntimeId=$packagePlatform" | Out-Host
+}
+
 if ($All) {
     $targets = @("win-x64", "win-x86", "win-arm64", "osx-x64", "osx-arm64")
 }
@@ -112,9 +160,18 @@ foreach ($rid in $targets) {
         -p:DebugType=None `
         -p:DebugSymbols=false
 
-    New-PublishArchive -SourcePath $outputPath -ArchiveName $outputName
+    $packagePlatform = Get-PackagePlatformName -RuntimeId $rid
+    $portableName = "FFGUITool-v$PackageVersion-$packagePlatform-Portable"
+    New-PublishArchive -SourcePath $outputPath -ArchiveName $portableName
+
+    if ($Installer -and $rid.StartsWith("win-")) {
+        New-InnoInstaller -SourcePath $outputPath -RuntimeId $rid
+    }
 }
 
 Write-Host ""
 Write-Host "Publish complete. Outputs are in: $PublishRoot" -ForegroundColor Cyan
-Write-Host "Archives are in: $ArchiveRoot" -ForegroundColor Cyan
+Write-Host "Portable archives are in: $ArchiveRoot" -ForegroundColor Cyan
+if ($Installer) {
+    Write-Host "Installer output is in: $InstallerOutput" -ForegroundColor Cyan
+}

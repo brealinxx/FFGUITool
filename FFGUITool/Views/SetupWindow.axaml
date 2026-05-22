@@ -90,7 +90,7 @@
             </StackPanel>
         </Grid>
 
-        <TabControl Grid.Row="1">
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedSetupTabIndex}">
             <TabItem Header="{DynamicResource Setup.FFmpegTab}">
                 <ScrollViewer Padding="0,12,10,0">
                     <StackPanel>

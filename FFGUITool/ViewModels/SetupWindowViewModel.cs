@@ -49,6 +49,9 @@ namespace FFGUITool.ViewModels
         private bool _isProcessing;
 
         [ObservableProperty]
+        private int _selectedSetupTabIndex;
+
+        [ObservableProperty]
         private IReadOnlyList<LanguageOption> _languageOptions = LocalizationService.AvailableLanguages;
 
         [ObservableProperty]

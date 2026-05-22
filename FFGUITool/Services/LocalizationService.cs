@@ -38,7 +38,13 @@ namespace FFGUITool.Services
                 ["Menu.Language.English"] = "English",
                 ["Menu.Help"] = "帮助(_H)",
                 ["Menu.About"] = "关于(_A)",
+                ["Menu.Theme"] = "主题(_T)",
+                ["Menu.OpenConfigFolder"] = "打开本地配置目录(_O)",
+                ["Menu.CleanupLocalData"] = "删除本地配置和注册表信息(_C)",
                 ["Theme.Toggle"] = "切换主题",
+                ["Theme.System"] = "跟随系统",
+                ["Theme.Light"] = "浅色",
+                ["Theme.Dark"] = "深色",
                 ["Main.InputSource"] = "输入源",
                 ["Main.InputWatermark"] = "拖入文件或点击右侧按钮...",
                 ["Main.SelectFile"] = "选择文件",
@@ -58,6 +64,7 @@ namespace FFGUITool.Services
                 ["Main.VideoFormat"] = "视频格式",
                 ["Main.AudioConversion"] = "音频转换",
                 ["Main.AudioFormat"] = "音频格式",
+                ["Main.AudioBitrate"] = "音频码率",
                 ["Main.ResolutionConversion"] = "分辨率转换",
                 ["Main.TargetResolution"] = "目标分辨率",
                 ["Main.TargetBitrate"] = "目标码率",
@@ -73,6 +80,7 @@ namespace FFGUITool.Services
                 ["Main.CopyCommand"] = "复制命令",
                 ["Main.Processing"] = "正在处理中...",
                 ["Main.StartConvert"] = "开始转换",
+                ["Main.Privacy"] = "隐私",
                 ["Metadata.Clear"] = "清除元数据",
                 ["Metadata.ClearPreview"] = "将清除的敏感信息",
                 ["ExifTool.Ready"] = "ExifTool已就绪，将在输出后清除元数据",
@@ -130,6 +138,8 @@ namespace FFGUITool.Services
                 ["Result.Output"] = "输出：{0}",
                 ["Result.SizeCompare"] = "大小：{0} -> {1} ({2})",
                 ["Result.ImageFormat"] = "格式：{0} -> {1}",
+                ["Result.AudioFormat"] = "音频格式：{0} -> {1}",
+                ["Result.AudioBitrate"] = "音频码率：{0}",
                 ["Result.Resolution"] = "分辨率：{0} -> {1}",
                 ["Result.BitrateCompare"] = "比特率：{0} -> {1}",
                 ["Result.Unknown"] = "未知",
@@ -167,6 +177,38 @@ namespace FFGUITool.Services
                 ["Codec.H264.Desc"] = "兼容性最好",
                 ["Codec.H265.Desc"] = "压缩率更高",
                 ["Codec.VP9.Desc"] = "开源编码",
+                ["Codec.AV1.Desc"] = "新一代高压缩",
+                ["AudioBitrate.320.Desc"] = "高音质",
+                ["AudioBitrate.256.Desc"] = "清晰均衡",
+                ["AudioBitrate.128.Desc"] = "常用体积",
+                ["AudioBitrate.96.Desc"] = "更小体积",
+                ["AudioBitrate.64.Desc"] = "语音/低码率",
+                ["AudioBitrate.8.Desc"] = "极低码率",
+                ["VideoFormat.MP4.Desc"] = "兼容性最好",
+                ["VideoFormat.MKV.Desc"] = "多轨封装",
+                ["VideoFormat.WebM.Desc"] = "网页友好",
+                ["VideoFormat.MOV.Desc"] = "Apple/剪辑软件",
+                ["VideoFormat.AVI.Desc"] = "旧设备兼容",
+                ["VideoFormat.GIF.Desc"] = "视频转动图",
+                ["AudioFormat.MP3.Desc"] = "通用音频",
+                ["AudioFormat.AAC.Desc"] = "体积小",
+                ["AudioFormat.M4A.Desc"] = "Apple/移动设备",
+                ["AudioFormat.WAV.Desc"] = "无压缩",
+                ["AudioFormat.FLAC.Desc"] = "无损压缩",
+                ["AudioFormat.OGG.Desc"] = "开源音频",
+                ["Resolution.Original"] = "原尺寸",
+                ["Resolution.Original.Desc"] = "不调整尺寸",
+                ["Resolution.1080.Desc"] = "全高清",
+                ["Resolution.720.Desc"] = "高清",
+                ["Resolution.480.Desc"] = "小体积",
+                ["Resolution.512.Desc"] = "头像",
+                ["Resolution.360.Desc"] = "极小体积",
+                ["ImageFormat.JPG.Desc"] = "通用照片格式",
+                ["ImageFormat.PNG.Desc"] = "透明与无损场景",
+                ["ImageFormat.WebP.Desc"] = "网页体积更小",
+                ["Cleanup.Title"] = "删除本地数据",
+                ["Cleanup.ConfirmMessage"] = "将删除本机配置文件、工具路径记录、已安装的内置工具和注册表信息。\n\n配置目录：{0}\n\n此操作不会删除当前程序文件。确定继续吗？",
+                ["Cleanup.Done"] = "本地配置文件和注册表信息已清理。",
                 ["Dialog.Ok"] = "确定",
                 ["Dialog.Cancel"] = "取消",
                 ["Dialog.Done"] = "完成",
@@ -183,7 +225,9 @@ namespace FFGUITool.Services
                 ["Dialog.RedetectToolsResult"] = "FFmpeg：{0}\nExifTool：{1}",
                 ["Dialog.FFmpegWarn"] = "FFmpeg未正确配置，某些功能可能无法使用。\n您可以通过菜单重新配置。",
                 ["Dialog.ExecuteError"] = "执行FFmpeg命令时出错:\n{0}",
-                ["Dialog.AboutMessage"] = "FFGUITool v{0}\n\nFFmpeg版本: {1}\n\n© 2025 FFGUITool\nPowered by FFmpeg & ExifTool and Avalonia\nAssembled by brealin",
+                ["Dialog.AboutMessage"] = "FFGUITool v{0}\n\nFFmpeg版本: {1}\nExifTool版本: {2}\n\n© 2025 FFGUITool\nPowered by FFmpeg & ExifTool and Avalonia\nAssembled by brealin",
+                ["ExifTool.NotInstalled"] = "ExifTool未安装",
+                ["ExifTool.VersionUnavailable"] = "无法获取版本信息",
                 ["Picker.VideoFiles"] = "视频文件",
                 ["Picker.AudioFiles"] = "音频文件",
                 ["Picker.AllFiles"] = "所有文件",
@@ -266,7 +310,13 @@ namespace FFGUITool.Services
                 ["Menu.Language.English"] = "English",
                 ["Menu.Help"] = "Help (_H)",
                 ["Menu.About"] = "About (_A)",
+                ["Menu.Theme"] = "Theme (_T)",
+                ["Menu.OpenConfigFolder"] = "Open local config folder (_O)",
+                ["Menu.CleanupLocalData"] = "Delete local config and registry (_C)",
                 ["Theme.Toggle"] = "Toggle theme",
+                ["Theme.System"] = "Follow system",
+                ["Theme.Light"] = "Light",
+                ["Theme.Dark"] = "Dark",
                 ["Main.InputSource"] = "Input Source",
                 ["Main.InputWatermark"] = "Drop a file or click a button...",
                 ["Main.SelectFile"] = "Select File",
@@ -286,6 +336,7 @@ namespace FFGUITool.Services
                 ["Main.VideoFormat"] = "Video format",
                 ["Main.AudioConversion"] = "Audio conversion",
                 ["Main.AudioFormat"] = "Audio format",
+                ["Main.AudioBitrate"] = "Audio bitrate",
                 ["Main.ResolutionConversion"] = "Resolution conversion",
                 ["Main.TargetResolution"] = "Target resolution",
                 ["Main.TargetBitrate"] = "Target Bitrate",
@@ -301,6 +352,7 @@ namespace FFGUITool.Services
                 ["Main.CopyCommand"] = "Copy command",
                 ["Main.Processing"] = "Processing...",
                 ["Main.StartConvert"] = "Start",
+                ["Main.Privacy"] = "Privacy",
                 ["Metadata.Clear"] = "Clear metadata",
                 ["Metadata.ClearPreview"] = "Sensitive metadata to remove",
                 ["ExifTool.Ready"] = "ExifTool is ready. Metadata will be removed after output is created.",
@@ -358,6 +410,8 @@ namespace FFGUITool.Services
                 ["Result.Output"] = "Output: {0}",
                 ["Result.SizeCompare"] = "Size: {0} -> {1} ({2})",
                 ["Result.ImageFormat"] = "Format: {0} -> {1}",
+                ["Result.AudioFormat"] = "Audio format: {0} -> {1}",
+                ["Result.AudioBitrate"] = "Audio bitrate: {0}",
                 ["Result.Resolution"] = "Resolution: {0} -> {1}",
                 ["Result.BitrateCompare"] = "Bitrate: {0} -> {1}",
                 ["Result.Unknown"] = "Unknown",
@@ -395,6 +449,38 @@ namespace FFGUITool.Services
                 ["Codec.H264.Desc"] = "Best compatibility",
                 ["Codec.H265.Desc"] = "Higher compression",
                 ["Codec.VP9.Desc"] = "Open codec",
+                ["Codec.AV1.Desc"] = "Next-gen compression",
+                ["AudioBitrate.320.Desc"] = "High quality",
+                ["AudioBitrate.256.Desc"] = "Clear balance",
+                ["AudioBitrate.128.Desc"] = "Common size",
+                ["AudioBitrate.96.Desc"] = "Smaller files",
+                ["AudioBitrate.64.Desc"] = "Voice / low bitrate",
+                ["AudioBitrate.8.Desc"] = "Very low bitrate",
+                ["VideoFormat.MP4.Desc"] = "Best compatibility",
+                ["VideoFormat.MKV.Desc"] = "Multi-track container",
+                ["VideoFormat.WebM.Desc"] = "Web friendly",
+                ["VideoFormat.MOV.Desc"] = "Apple/editing apps",
+                ["VideoFormat.AVI.Desc"] = "Legacy compatibility",
+                ["VideoFormat.GIF.Desc"] = "Video to GIF",
+                ["AudioFormat.MP3.Desc"] = "Universal audio",
+                ["AudioFormat.AAC.Desc"] = "Small size",
+                ["AudioFormat.M4A.Desc"] = "Apple/mobile devices",
+                ["AudioFormat.WAV.Desc"] = "Uncompressed",
+                ["AudioFormat.FLAC.Desc"] = "Lossless compression",
+                ["AudioFormat.OGG.Desc"] = "Open audio",
+                ["Resolution.Original"] = "Original",
+                ["Resolution.Original.Desc"] = "No resizing",
+                ["Resolution.1080.Desc"] = "Full HD",
+                ["Resolution.720.Desc"] = "HD",
+                ["Resolution.480.Desc"] = "Small size",
+                ["Resolution.512.Desc"] = "Avatar",
+                ["Resolution.360.Desc"] = "Very small",
+                ["ImageFormat.JPG.Desc"] = "Common photo format",
+                ["ImageFormat.PNG.Desc"] = "Transparency/lossless",
+                ["ImageFormat.WebP.Desc"] = "Smaller web images",
+                ["Cleanup.Title"] = "Delete local data",
+                ["Cleanup.ConfirmMessage"] = "This will delete local config files, tool path records, bundled tools installed by the app, and registry information.\n\nConfig folder: {0}\n\nThis will not delete the current program files. Continue?",
+                ["Cleanup.Done"] = "Local config files and registry information have been removed.",
                 ["Dialog.Ok"] = "OK",
                 ["Dialog.Cancel"] = "Cancel",
                 ["Dialog.Done"] = "Done",
@@ -411,7 +497,9 @@ namespace FFGUITool.Services
                 ["Dialog.RedetectToolsResult"] = "FFmpeg: {0}\nExifTool: {1}",
                 ["Dialog.FFmpegWarn"] = "FFmpeg is not configured correctly, so some features may not work.\nYou can configure it again from the menu.",
                 ["Dialog.ExecuteError"] = "An error occurred while running FFmpeg:\n{0}",
-                ["Dialog.AboutMessage"] = "FFGUITool v{0}\nFFmpeg video compressor\n\nFFmpeg version: {1}\n\n© 2025 FFGUITool\nPowered by FFmpeg and Avalonia\nAssembled by brealin",
+                ["Dialog.AboutMessage"] = "FFGUITool v{0}\nFFmpeg video compressor\n\nFFmpeg version: {1}\nExifTool version: {2}\n\n© 2025 FFGUITool\nPowered by FFmpeg, ExifTool and Avalonia\nAssembled by brealin",
+                ["ExifTool.NotInstalled"] = "ExifTool is not installed",
+                ["ExifTool.VersionUnavailable"] = "Version unavailable",
                 ["Picker.VideoFiles"] = "Video files",
                 ["Picker.AudioFiles"] = "Audio files",
                 ["Picker.AllFiles"] = "All files",
@@ -490,7 +578,7 @@ namespace FFGUITool.Services
 
         public static event EventHandler? LanguageChanged;
 
-        public static void SetLanguage(string? languageCode)
+        public static void SetLanguage(string? languageCode, bool persistPreference = true)
         {
             if (string.IsNullOrWhiteSpace(languageCode) || !Resources.ContainsKey(languageCode))
             {
@@ -499,14 +587,31 @@ namespace FFGUITool.Services
 
             if (CurrentLanguage == languageCode)
             {
+                if (persistPreference)
+                {
+                    SaveLanguagePreference(languageCode);
+                }
+
                 ApplyResources();
                 LanguageChanged?.Invoke(null, EventArgs.Empty);
                 return;
             }
 
             CurrentLanguage = languageCode;
+            if (persistPreference)
+            {
+                SaveLanguagePreference(languageCode);
+            }
+
             ApplyResources();
             LanguageChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        private static void SaveLanguagePreference(string languageCode)
+        {
+            var config = AppConfigService.Load();
+            config.Language = languageCode;
+            AppConfigService.Save(config);
         }
 
         public static string T(string key)

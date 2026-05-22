@@ -26,6 +26,7 @@ namespace FFGUITool.ViewModels
         private readonly VideoAnalyzer _videoAnalyzer;
         private readonly CommandBuilder _commandBuilder;
         private readonly IDialogService _dialogService;
+        private readonly AppConfig _appConfig;
         private bool _isSyncingCompressionValues;
         private bool _isSyncingConversionToggles;
         private VideoInfo? _batchPreviewInfo;
@@ -262,6 +263,24 @@ namespace FFGUITool.ViewModels
         private bool _isThemeDark;
 
         [ObservableProperty]
+        private bool _isThemeSystem;
+
+        [ObservableProperty]
+        private bool _isThemeLight;
+
+        [ObservableProperty]
+        private bool _isThemeDarkManual;
+
+        [ObservableProperty]
+        private string _themeSystemMenuText = "";
+
+        [ObservableProperty]
+        private string _themeLightMenuText = "";
+
+        [ObservableProperty]
+        private string _themeDarkMenuText = "";
+
+        [ObservableProperty]
         private bool _isChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
 
         [ObservableProperty]
@@ -272,7 +291,8 @@ namespace FFGUITool.ViewModels
         {
             new CodecOption("H.264 (libx264)", "libx264", LocalizationService.T("Codec.H264.Desc")),
             new CodecOption("H.265 (libx265)", "libx265", LocalizationService.T("Codec.H265.Desc")),
-            new CodecOption("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc"))
+            new CodecOption("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc")),
+            new CodecOption("AV1 (libaom-av1)", "libaom-av1", LocalizationService.T("Codec.AV1.Desc"))
         };
 
         [ObservableProperty]
@@ -308,6 +328,9 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private bool _canUseVideoConversionTools;
+
+        [ObservableProperty]
+        private bool _canEditVideoConversionTools;
 
         [ObservableProperty]
         private bool _enableFormatConversion;
@@ -360,6 +383,20 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private CodecOption? _selectedAudioFormatOption;
+
+        [ObservableProperty]
+        private List<CodecOption> _audioBitrateOptions = new()
+        {
+            new CodecOption("320 kb/s", "320", LocalizationService.T("AudioBitrate.320.Desc")),
+            new CodecOption("256 kb/s", "256", LocalizationService.T("AudioBitrate.256.Desc")),
+            new CodecOption("128 kb/s", "128", LocalizationService.T("AudioBitrate.128.Desc")),
+            new CodecOption("96 kb/s", "96", LocalizationService.T("AudioBitrate.96.Desc")),
+            new CodecOption("64 kb/s", "64", LocalizationService.T("AudioBitrate.64.Desc")),
+            new CodecOption("8 kb/s", "8", LocalizationService.T("AudioBitrate.8.Desc"))
+        };
+
+        [ObservableProperty]
+        private CodecOption? _selectedAudioBitrateOption;
 
         [ObservableProperty]
         private List<CodecOption> _resolutionOptions = new()
@@ -534,14 +571,34 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private void ToggleTheme()
         {
-            IsThemeDark = !IsThemeDark;
-            CurrentTheme = IsThemeDark ? ThemeVariant.Dark : ThemeVariant.Light;
-            Application.Current!.RequestedThemeVariant = CurrentTheme;
+            SetTheme(IsThemeDark ? "Light" : "Dark");
+        }
+
+        [RelayCommand]
+        private void SetTheme(string themeName)
+        {
+            CurrentTheme = themeName switch
+            {
+                "Dark" => ThemeVariant.Dark,
+                "Light" => ThemeVariant.Light,
+                _ => ThemeVariant.Default
+            };
+
+            if (Application.Current != null)
+            {
+                Application.Current.RequestedThemeVariant = CurrentTheme;
+                IsThemeDark = Application.Current.ActualThemeVariant == ThemeVariant.Dark;
+            }
+
+            _appConfig.Theme = GetThemeName(CurrentTheme);
+            AppConfigService.Save(_appConfig);
+            UpdateThemeStateTexts();
         }
 
         [RelayCommand]
         private void SetLanguage(string languageCode)
         {
+            _appConfig.Language = languageCode;
             LocalizationService.SetLanguage(languageCode);
         }
 
@@ -560,7 +617,13 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task ShowFFmpegSettings()
         {
+            await ShowSetupWindow(0);
+        }
+
+        private async Task ShowSetupWindow(int selectedTabIndex)
+        {
             var setupViewModel = new SetupWindowViewModel(_ffmpegManager, _exifToolManager);
+            setupViewModel.SelectedSetupTabIndex = selectedTabIndex;
             var setupWindow = new Views.SetupWindow
             {
                 DataContext = setupViewModel
@@ -592,7 +655,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task ConfigureExifTool()
         {
-            await ShowFFmpegSettings();
+            await ShowSetupWindow(1);
         }
 
         [RelayCommand]
@@ -622,10 +685,35 @@ namespace FFGUITool.ViewModels
         {
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
             var ffmpegVersion = await _ffmpegManager.GetFFmpegVersion();
+            var exifToolVersion = await _exifToolManager.GetExifToolVersion();
 
-            var message = LocalizationService.Format("Dialog.AboutMessage", version, ffmpegVersion);
+            var message = LocalizationService.Format("Dialog.AboutMessage", version, ffmpegVersion, exifToolVersion);
 
             await _dialogService.ShowMessage(LocalizationService.T("Dialog.AboutTitle"), message);
+        }
+
+        [RelayCommand]
+        private async Task CleanupLocalData()
+        {
+            var confirmed = await _dialogService.ShowConfirmation(
+                LocalizationService.T("Cleanup.Title"),
+                LocalizationService.Format("Cleanup.ConfirmMessage", LocalDataCleanupService.CleanupTargetDescription));
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+            LocalDataCleanupService.DeleteLocalDataAndRegistry();
+            await _dialogService.ShowMessage(
+                LocalizationService.T("Dialog.Done"),
+                LocalizationService.T("Cleanup.Done"));
+        }
+
+        [RelayCommand]
+        private void OpenConfigFolder()
+        {
+            LocalDataCleanupService.OpenConfigFolder();
         }
 
         [RelayCommand]
@@ -675,17 +763,22 @@ namespace FFGUITool.ViewModels
             _exifToolManager = new ExifToolManager();
             _videoAnalyzer = new VideoAnalyzer(_ffmpegManager);
             _commandBuilder = new CommandBuilder();
+            _appConfig = AppConfigService.Load();
+            CurrentTheme = ParseThemeVariant(_appConfig.Theme);
 
             // 设置默认编码器选项
             SelectedCodecOption = CodecOptions[0];
             SelectedHardwareEncoderOption = HardwareEncoderOptions[0];
             CompressionPresetOptions = CreateCompressionPresetOptions();
+            UpdateConversionOptionLists();
             SelectedCompressionPresetOption = CompressionPresetOptions[0];
             SelectedVideoFormatOption = VideoFormatOptions[0];
             SelectedAudioFormatOption = AudioFormatOptions[0];
+            SelectedAudioBitrateOption = AudioBitrateOptions.Find(option => option.Value == CompressionSettings.AudioBitrate.ToString()) ?? AudioBitrateOptions[^1];
             SelectedResolutionOption = ResolutionOptions[3];
             SelectedImageFormatOption = ImageFormatOptions[0];
             RefreshAdvancedVideoLabels();
+            UpdateThemeStateTexts();
             UpdateBitrateTexts();
             UpdateCrfText();
 
@@ -792,6 +885,9 @@ namespace FFGUITool.ViewModels
                 case nameof(SelectedAudioFormatOption):
                     OnAudioFormatChanged();
                     break;
+                case nameof(SelectedAudioBitrateOption):
+                    OnAudioBitrateChanged();
+                    break;
                 case nameof(SelectedResolutionOption):
                     OnResolutionChanged();
                     break;
@@ -823,7 +919,14 @@ namespace FFGUITool.ViewModels
                     OnCrfSliderChanged();
                     break;
                 case nameof(IsThemeDark):
-                    // 当IsThemeDark改变时不需要额外处理，ToggleTheme命令会处理
+                    break;
+                case nameof(CurrentTheme):
+                    if (Application.Current != null)
+                    {
+                        Application.Current.RequestedThemeVariant = CurrentTheme;
+                        IsThemeDark = Application.Current.ActualThemeVariant == ThemeVariant.Dark;
+                    }
+                    UpdateThemeStateTexts();
                     break;
             }
         }
@@ -1002,6 +1105,16 @@ namespace FFGUITool.ViewModels
             if (SelectedAudioFormatOption != null)
             {
                 CompressionSettings.AudioOutputFormat = SelectedAudioFormatOption.Value;
+                UpdateCommand();
+            }
+        }
+
+        private void OnAudioBitrateChanged()
+        {
+            if (SelectedAudioBitrateOption != null && int.TryParse(SelectedAudioBitrateOption.Value, out var audioBitrate))
+            {
+                CompressionSettings.AudioBitrate = audioBitrate;
+                UpdateBitrateWarningAndEstimation();
                 UpdateCommand();
             }
         }
@@ -1549,6 +1662,7 @@ namespace FFGUITool.ViewModels
             IsAdvancedQualityControlsVisible = IsAdvancedMode && (!IsImageMode || HasSelectedInput);
             IsMetadataClearOptionVisible = IsAdvancedMode && HasSelectedInput;
             IsMetadataPreviewVisible = IsMetadataClearOptionVisible && CanClearMetadata && ClearMetadata;
+            CanEditVideoConversionTools = CanUseVideoConversionTools && !EnableAudioConversion;
             UpdateControlEditability();
 
             if (IsImageMode)
@@ -1590,6 +1704,13 @@ namespace FFGUITool.ViewModels
             if (SelectedAudioFormatOption != null)
             {
                 CompressionSettings.AudioOutputFormat = SelectedAudioFormatOption.Value;
+            }
+
+            if (CompressionSettings.EnableAudioConversion &&
+                SelectedAudioBitrateOption != null &&
+                int.TryParse(SelectedAudioBitrateOption.Value, out var audioBitrate))
+            {
+                CompressionSettings.AudioBitrate = audioBitrate;
             }
 
             if (SelectedResolutionOption != null && int.TryParse(SelectedResolutionOption.Value, out var height))
@@ -1732,11 +1853,15 @@ namespace FFGUITool.ViewModels
 
         private async void OnLanguageChanged(object? sender, EventArgs e)
         {
+            _appConfig.Language = LocalizationService.CurrentLanguage;
             IsChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
             IsEnglishLanguage = LocalizationService.CurrentLanguage == "en-US";
             RefreshModeText();
             RefreshAdvancedVideoLabels();
+            UpdateThemeStateTexts();
             UpdateCodecOptions();
+            UpdateConversionOptionLists();
+            UpdateAudioBitrateOptions();
             UpdateCompressionPresetOptions();
             await RefreshHardwareEncoderOptions();
             UpdateBitrateTexts();
@@ -1799,6 +1924,114 @@ namespace FFGUITool.ViewModels
             EnableCrfLabel = isEnglish ? "CRF mode" : "启用 CRF";
         }
 
+        private static ThemeVariant ParseThemeVariant(string? themeName)
+        {
+            return themeName switch
+            {
+                "Dark" => ThemeVariant.Dark,
+                "Light" => ThemeVariant.Light,
+                _ => ThemeVariant.Default
+            };
+        }
+
+        private static string GetThemeName(ThemeVariant theme)
+        {
+            if (theme == ThemeVariant.Dark)
+            {
+                return "Dark";
+            }
+
+            if (theme == ThemeVariant.Light)
+            {
+                return "Light";
+            }
+
+            return "Default";
+        }
+
+        private void UpdateThemeStateTexts()
+        {
+            var current = GetThemeName(CurrentTheme);
+            IsThemeSystem = current == "Default";
+            IsThemeLight = current == "Light";
+            IsThemeDarkManual = current == "Dark";
+
+            ThemeSystemMenuText = BuildCheckedMenuText("Default", LocalizationService.T("Theme.System"));
+            ThemeLightMenuText = BuildCheckedMenuText("Light", LocalizationService.T("Theme.Light"));
+            ThemeDarkMenuText = BuildCheckedMenuText("Dark", LocalizationService.T("Theme.Dark"));
+        }
+
+        private string BuildCheckedMenuText(string themeName, string label)
+        {
+            return GetThemeName(CurrentTheme) == themeName ? $"● {label}" : $"  {label}";
+        }
+
+        private void UpdateConversionOptionLists()
+        {
+            UpdateVideoFormatOptions();
+            UpdateAudioFormatOptions();
+            UpdateResolutionOptions();
+            UpdateImageFormatOptions();
+        }
+
+        private void UpdateVideoFormatOptions()
+        {
+            var selectedValue = SelectedVideoFormatOption?.Value ?? CompressionSettings.OutputFormat;
+            VideoFormatOptions = new List<CodecOption>
+            {
+                new("MP4", "mp4", LocalizationService.T("VideoFormat.MP4.Desc")),
+                new("MKV", "mkv", LocalizationService.T("VideoFormat.MKV.Desc")),
+                new("WebM", "webm", LocalizationService.T("VideoFormat.WebM.Desc")),
+                new("MOV", "mov", LocalizationService.T("VideoFormat.MOV.Desc")),
+                new("AVI", "avi", LocalizationService.T("VideoFormat.AVI.Desc")),
+                new("GIF", "gif", LocalizationService.T("VideoFormat.GIF.Desc"))
+            };
+            SelectedVideoFormatOption = VideoFormatOptions.Find(option => option.Value == selectedValue) ?? VideoFormatOptions[0];
+        }
+
+        private void UpdateAudioFormatOptions()
+        {
+            var selectedValue = SelectedAudioFormatOption?.Value ?? CompressionSettings.AudioOutputFormat;
+            AudioFormatOptions = new List<CodecOption>
+            {
+                new("MP3", "mp3", LocalizationService.T("AudioFormat.MP3.Desc")),
+                new("AAC", "aac", LocalizationService.T("AudioFormat.AAC.Desc")),
+                new("M4A", "m4a", LocalizationService.T("AudioFormat.M4A.Desc")),
+                new("WAV", "wav", LocalizationService.T("AudioFormat.WAV.Desc")),
+                new("FLAC", "flac", LocalizationService.T("AudioFormat.FLAC.Desc")),
+                new("OGG", "ogg", LocalizationService.T("AudioFormat.OGG.Desc"))
+            };
+            SelectedAudioFormatOption = AudioFormatOptions.Find(option => option.Value == selectedValue) ?? AudioFormatOptions[0];
+        }
+
+        private void UpdateResolutionOptions()
+        {
+            var selectedValue = SelectedResolutionOption?.Value ?? CompressionSettings.ResolutionHeight.ToString();
+            ResolutionOptions = new List<CodecOption>
+            {
+                new(LocalizationService.T("Resolution.Original"), "0", LocalizationService.T("Resolution.Original.Desc")),
+                new("2160p", "2160", "4K"),
+                new("1080p", "1080", LocalizationService.T("Resolution.1080.Desc")),
+                new("720p", "720", LocalizationService.T("Resolution.720.Desc")),
+                new("480p", "480", LocalizationService.T("Resolution.480.Desc")),
+                new("512px", "512", LocalizationService.T("Resolution.512.Desc")),
+                new("360p", "360", LocalizationService.T("Resolution.360.Desc"))
+            };
+            SelectedResolutionOption = ResolutionOptions.Find(option => option.Value == selectedValue) ?? ResolutionOptions[3];
+        }
+
+        private void UpdateImageFormatOptions()
+        {
+            var selectedValue = SelectedImageFormatOption?.Value ?? CompressionSettings.ImageOutputFormat;
+            ImageFormatOptions = new List<CodecOption>
+            {
+                new("JPG", "jpg", LocalizationService.T("ImageFormat.JPG.Desc")),
+                new("PNG", "png", LocalizationService.T("ImageFormat.PNG.Desc")),
+                new("WebP", "webp", LocalizationService.T("ImageFormat.WebP.Desc"))
+            };
+            SelectedImageFormatOption = ImageFormatOptions.Find(option => option.Value == selectedValue) ?? ImageFormatOptions[0];
+        }
+
         private void UpdateCodecOptions()
         {
             var selectedValue = SelectedCodecOption?.Value ?? SelectedCodec;
@@ -1806,9 +2039,26 @@ namespace FFGUITool.ViewModels
             {
                 new("H.264 (libx264)", "libx264", LocalizationService.T("Codec.H264.Desc")),
                 new("H.265 (libx265)", "libx265", LocalizationService.T("Codec.H265.Desc")),
-                new("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc"))
+                new("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc")),
+                new("AV1 (libaom-av1)", "libaom-av1", LocalizationService.T("Codec.AV1.Desc"))
             };
             SelectedCodecOption = CodecOptions.Find(option => option.Value == selectedValue) ?? CodecOptions[0];
+        }
+
+        private void UpdateAudioBitrateOptions()
+        {
+            var selectedValue = SelectedAudioBitrateOption?.Value ?? CompressionSettings.AudioBitrate.ToString();
+            AudioBitrateOptions = new List<CodecOption>
+            {
+                new("320 kb/s", "320", LocalizationService.T("AudioBitrate.320.Desc")),
+                new("256 kb/s", "256", LocalizationService.T("AudioBitrate.256.Desc")),
+                new("128 kb/s", "128", LocalizationService.T("AudioBitrate.128.Desc")),
+                new("96 kb/s", "96", LocalizationService.T("AudioBitrate.96.Desc")),
+                new("64 kb/s", "64", LocalizationService.T("AudioBitrate.64.Desc")),
+                new("8 kb/s", "8", LocalizationService.T("AudioBitrate.8.Desc"))
+            };
+            SelectedAudioBitrateOption = AudioBitrateOptions.Find(option => option.Value == selectedValue)
+                                         ?? AudioBitrateOptions[^1];
         }
 
         private async Task RefreshHardwareEncoderOptions()
@@ -2333,13 +2583,13 @@ namespace FFGUITool.ViewModels
                 }
 
                 stopwatch.Stop();
-                return new ConversionSummary(results, stopwatch.Elapsed, IsImageMode);
+                return new ConversionSummary(results, stopwatch.Elapsed);
             }
 
             var singleCommand = _commandBuilder.BuildCommand(CompressionSettings);
             results.Add(await RunFFmpegCommand(singleCommand));
             stopwatch.Stop();
-            return new ConversionSummary(results, stopwatch.Elapsed, IsImageMode);
+            return new ConversionSummary(results, stopwatch.Elapsed);
         }
 
         private CompressionSettings CreateSettingsForInput(string inputPath, VideoInfo? inputInfo = null)
@@ -2510,7 +2760,7 @@ namespace FFGUITool.ViewModels
                 };
             }
 
-            return new ConversionResult(command.InputPath, command.OutputPath, inputInfo, outputInfo);
+            return new ConversionResult(command.InputPath, command.OutputPath, command, inputInfo, outputInfo);
         }
 
         private async Task<(int ExitCode, string Error)> RunImageCommandWithTargetSize(FFmpegCommand command, VideoInfo? inputInfo)
@@ -2621,7 +2871,7 @@ namespace FFGUITool.ViewModels
             {
                 summary.Results.Count > 1
                     ? LocalizationService.Format("Result.BatchComplete", summary.Results.Count)
-                    : LocalizationService.T(summary.IsImageMode ? "Result.ImageComplete" : "Result.VideoComplete"),
+                    : LocalizationService.T(summary.Results.FirstOrDefault()?.Command.ImageOutput == true ? "Result.ImageComplete" : "Result.VideoComplete"),
                 LocalizationService.Format("Result.Elapsed", FormatDuration(summary.Elapsed))
             };
 
@@ -2635,7 +2885,7 @@ namespace FFGUITool.ViewModels
                 {
                     lines.Add(LocalizationService.Format("Result.SizeCompare", FormatBytes(result.InputInfo.FileSize), FormatBytes(result.OutputInfo.FileSize), FormatSizeChange(result.InputInfo.FileSize, result.OutputInfo.FileSize)));
 
-                    if (summary.IsImageMode)
+                    if (result.Command.ImageOutput)
                     {
                         lines.Add(LocalizationService.Format("Result.ImageFormat", GetDisplayExtension(result.InputPath), GetDisplayExtension(result.OutputPath)));
                         if (!string.IsNullOrWhiteSpace(result.InputInfo.Resolution) || !string.IsNullOrWhiteSpace(result.OutputInfo.Resolution))
@@ -2646,6 +2896,13 @@ namespace FFGUITool.ViewModels
                                 string.IsNullOrWhiteSpace(result.OutputInfo.Resolution) ? LocalizationService.T("Result.Unknown") : result.OutputInfo.Resolution));
                         }
 
+                        continue;
+                    }
+
+                    if (result.Command.AudioOnly)
+                    {
+                        lines.Add(LocalizationService.Format("Result.AudioFormat", GetDisplayExtension(result.InputPath), GetDisplayExtension(result.OutputPath)));
+                        lines.Add(LocalizationService.Format("Result.AudioBitrate", $"{result.Command.AudioBitrate} kb/s"));
                         continue;
                     }
 
@@ -2724,11 +2981,12 @@ namespace FFGUITool.ViewModels
             return string.IsNullOrWhiteSpace(extension) ? LocalizationService.T("Result.Unknown") : extension;
         }
 
-        private sealed record ConversionSummary(List<ConversionResult> Results, TimeSpan Elapsed, bool IsImageMode);
+        private sealed record ConversionSummary(List<ConversionResult> Results, TimeSpan Elapsed);
 
         private sealed record ConversionResult(
             string InputPath,
             string OutputPath,
+            FFmpegCommand Command,
             VideoInfo? InputInfo,
             VideoInfo? OutputInfo);
 

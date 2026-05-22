@@ -47,117 +47,41 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## Publish Packages
 
-The project provides both PowerShell and Bash publish scripts with the same functionality.
+The project provides PowerShell and Bash publish scripts. Both create architecture-specific Portable archives; Windows can also create Inno Setup installers, and macOS can create DMG installers on macOS.
 
-- Windows users are recommended to use the PowerShell script (`publish.ps1`)
-- macOS/Linux users are recommended to use the Bash script (`publish.sh`)
-
-By default, the scripts build the current platform group and automatically create `.zip` archives.
-
-Default targets:
-
-| Platform | Targets |
-|---|---|
-| Windows | `win-x64`, `win-x86`, `win-arm64` |
-| macOS | `osx-x64`, `osx-arm64` |
-
----
-
-### Windows (PowerShell Recommended)
-
-Build the default Windows target group:
+Common commands:
 
 ```powershell
-.\publish.ps1
-```
-
-Build Windows packages explicitly:
-
-```powershell
-.\publish.ps1 -Windows
-```
-
-Build macOS packages:
-
-```powershell
+.\publish.ps1 -Windows -Installer
 .\publish.ps1 -MacOS
-```
-
-Build all Windows and macOS packages:
-
-```powershell
 .\publish.ps1 -All
 ```
 
-Create `.7z` archives instead of `.zip`:
-
-```powershell
-.\publish.ps1 -Windows -Archive 7z
-```
-
----
-
-### macOS / Linux (Bash)
-
-Make the script executable first if needed:
-
 ```bash
 chmod +x publish.sh
-```
-
-Build the default platform group:
-
-```bash
-./publish.sh
-```
-
-Build Windows packages:
-
-```bash
-./publish.sh -windows
-```
-
-Build macOS packages:
-
-```bash
-./publish.sh -macos
-```
-
-Build all packages:
-
-```bash
+./publish.sh -macos --dmg
 ./publish.sh -all
 ```
 
-Create `.7z` archives:
+Targets and package labels:
 
-```bash
-./publish.sh -windows --archive 7z
-```
+| Platform | Runtime | Package label |
+|---|---|---|
+| Windows | `win-x64` | `windows-x64` |
+| Windows | `win-x86` | `windows-x86` |
+| Windows | `win-arm64` | `windows-arm64` |
+| macOS | `osx-x64` | `macos-intel` |
+| macOS | `osx-arm64` | `macos-arm64` |
 
----
+Package names use this format:
 
-Outputs are written to:
+- Portable: `FFGUITool-vx.x.0-<platform>-Portable.zip`
+- Windows installer: `FFGUITool-vx.x.0-<platform>-Installer.exe`
+- macOS installer: `FFGUITool-vx.x.0-<platform>-Installer.dmg`
 
-```text
-FFGUITool/bin/publish/
-```
+Outputs are written to `FFGUITool/bin/publish/`, Portable archives to `archives/`, Windows installers to `installer/`, and macOS DMGs to `dmg/`.
 
-Archives are written to:
-
-```text
-FFGUITool/bin/publish/archives/
-```
-
-Generated target folders:
-
-- `FFGUITool-win-x64`
-- `FFGUITool-win-x86`
-- `FFGUITool-win-arm64`
-- `FFGUITool-osx-x64`
-- `FFGUITool-osx-arm64`
-
-> It is recommended to build macOS packages directly on macOS when distributing to real Mac devices. Cross-building macOS packages from Windows may produce archives that do not run correctly on macOS.
+> Build macOS DMG packages on macOS because DMG creation uses `hdiutil`.
 
 ## License
 

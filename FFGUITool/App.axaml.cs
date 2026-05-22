@@ -15,7 +15,7 @@ namespace FFGUITool
 
         public override void OnFrameworkInitializationCompleted()
         {
-            LocalizationService.SetLanguage("zh-CN");
+            LocalizationService.SetLanguage(AppConfigService.Load().Language, false);
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {

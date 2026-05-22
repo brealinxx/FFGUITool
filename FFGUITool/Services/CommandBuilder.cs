@@ -221,6 +221,7 @@ namespace FFGUITool.Services
             {
                 "libx265" => (int)(baseBitrate * 0.7), // H.265效率更高
                 "libvpx-vp9" => (int)(baseBitrate * 0.8), // VP9效率较高
+                "libaom-av1" => (int)(baseBitrate * 0.65), // AV1效率更高
                 _ => baseBitrate // H.264基准
             };
         }
