@@ -71,7 +71,28 @@ project_path="$script_dir/FFGUITool/FFGUITool.csproj"
 publish_root="$script_dir/FFGUITool/bin/publish"
 archive_root="$publish_root/archives"
 dmg_root="$publish_root/dmg"
-package_version="$(grep -m1 '<Version>' "$project_path" | sed -E 's/.*<Version>([^<]+)<\/Version>.*/\1/')"
+
+project_version() {
+  local version
+  version="$(grep -m1 '<Version>' "$project_path" | sed -E 's/.*<Version>([^<]+)<\/Version>.*/\1/' || true)"
+
+  if [[ -z "$version" || "$version" == *"<Version>"* ]]; then
+    version="$(grep -m1 '<InformationalVersion>' "$project_path" | sed -E 's/.*<InformationalVersion>([^<]+)<\/InformationalVersion>.*/\1/' || true)"
+  fi
+
+  if [[ -z "$version" || "$version" == *"<InformationalVersion>"* ]]; then
+    version="$(grep -m1 '<AssemblyVersion>' "$project_path" | sed -E 's/.*<AssemblyVersion>([^<]+)<\/AssemblyVersion>.*/\1/; s/\.0$//' || true)"
+  fi
+
+  if [[ -z "$version" || "$version" == *"<AssemblyVersion>"* ]]; then
+    echo "Could not find Version, InformationalVersion, or AssemblyVersion in $project_path." >&2
+    exit 1
+  fi
+
+  echo "$version"
+}
+
+package_version="$(project_version)"
 
 package_platform_name() {
   case "$1" in
@@ -135,8 +156,8 @@ create_macos_app_bundle() {
   mkdir -p "$macos_path" "$resources_path"
   cp -R "$output_path"/. "$macos_path/"
 
-  if [[ -f "$script_dir/FFGUITool/Resources/icon.icns" ]]; then
-    cp "$script_dir/FFGUITool/Resources/icon.icns" "$resources_path/FFGUITool.icns"
+  if [[ -f "$script_dir/FFGUITool/Resources/AppIcon.icns" ]]; then
+    cp "$script_dir/FFGUITool/Resources/AppIcon.icns" "$resources_path/FFGUITool.icns"
   fi
 
   cat > "$contents_path/Info.plist" <<PLIST
@@ -158,6 +179,8 @@ create_macos_app_bundle() {
   <string>FFGUITool</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleIconFile</key>
+  <string>FFGUITool.icns</string>
   <key>NSHighResolutionCapable</key>
   <true/>
 </dict>

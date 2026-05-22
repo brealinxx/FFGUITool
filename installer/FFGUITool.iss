@@ -1,5 +1,7 @@
 #define MyAppName "FFGUITool"
-#define MyAppVersion "1.5.0"
+#ifndef MyAppVersion
+#define MyAppVersion "1.6.0"
+#endif
 #define MyAppPublisher "brealin"
 #define MyAppExeName "FFGUITool.exe"
 #ifndef RuntimeId
@@ -10,6 +12,9 @@
 #endif
 #ifndef OutputDir
 #define OutputDir "..\\FFGUITool\\bin\\publish\\installer"
+#endif
+#ifndef IconFile
+#define IconFile "..\\FFGUITool\\Resources\\icon.ico"
 #endif
 
 [Setup]
@@ -26,6 +31,7 @@ OutputBaseFilename=FFGUITool-v{#MyAppVersion}-{#RuntimeId}-Installer
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile={#IconFile}
 #if RuntimeId == "windows-x64"
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -34,7 +40,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=arm64
 ArchitecturesInstallIn64BitMode=arm64
 #endif
-UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayIcon={app}\Resources\icon.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -45,12 +51,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#IconFile}"; DestDir: "{app}\Resources"; DestName: "icon.ico"; Flags: ignoreversion
 Source: "uninstall.cmd"; DestDir: "{app}"; DestName: "{cm:UninstallLauncherFile}.cmd"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Resources\icon.ico"
 Name: "{group}\{cm:UninstallShortcut}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Resources\icon.ico"; Tasks: desktopicon
 
 [Registry]
 Root: HKCU; Subkey: "Software\FFGUITool"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey

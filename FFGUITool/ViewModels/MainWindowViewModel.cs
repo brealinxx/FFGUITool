@@ -33,7 +33,11 @@ namespace FFGUITool.ViewModels
         private string _batchPreviewInfoPath = "";
         private static readonly string[] VideoExtensions = { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm" };
         private static readonly string[] AudioExtensions = { ".mp3", ".aac", ".m4a", ".wav", ".flac", ".ogg", ".wma" };
-        private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".heic", ".bmp" };
+        private static readonly string[] ImageExtensions =
+        {
+            ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp",
+            ".gif", ".tif", ".tiff", ".ico", ".tga", ".avif"
+        };
 
         #region 可观察属性
 
@@ -482,7 +486,7 @@ namespace FFGUITool.ViewModels
             {
                 new FilePickerFileType(LocalizationService.T("Image.FileType"))
                 {
-                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.heic", "*.bmp" }
+                    Patterns = ImageExtensions.Select(extension => $"*{extension}").ToArray()
                 },
                 new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
                 {
@@ -1627,6 +1631,13 @@ namespace FFGUITool.ViewModels
             }
 
             CompressionSettings.OutputLabel = BuildOutputLabel(CompressionSettings);
+
+            if (string.IsNullOrWhiteSpace(CompressionSettings.InputPath))
+            {
+                CommandText = LocalizationService.T("Command.SelectInput");
+                CanExecute = false;
+                return;
+            }
 
             if (IsBatchMode)
             {

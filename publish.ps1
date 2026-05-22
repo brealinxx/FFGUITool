@@ -23,7 +23,44 @@ $ArchiveRoot = Join-Path $PublishRoot "archives"
 $InstallerScript = Join-Path $PSScriptRoot "installer\FFGUITool.iss"
 $InstallerOutput = Join-Path $PublishRoot "installer"
 $ProjectXml = [xml](Get-Content $ProjectPath)
-$PackageVersion = $ProjectXml.Project.PropertyGroup.Version | Select-Object -First 1
+
+function Get-ProjectVersion {
+    $propertyGroups = @($ProjectXml.Project.PropertyGroup)
+    $version = $propertyGroups |
+        ForEach-Object { $_.Version } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -First 1
+
+    if (-not [string]::IsNullOrWhiteSpace($version)) {
+        return $version
+    }
+
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        $version = $propertyGroups |
+            ForEach-Object { $_.InformationalVersion } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($version)) {
+        return $version
+    }
+
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        $version = $propertyGroups |
+            ForEach-Object { $_.AssemblyVersion } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1
+    }
+
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        throw "Could not find Version, InformationalVersion, or AssemblyVersion in $ProjectPath."
+    }
+
+    return ($version -replace '\.0$', '')
+}
+
+$PackageVersion = Get-ProjectVersion
 
 $RuntimeMap = [ordered]@{
     "win-x64" = "FFGUITool-win-x64"
@@ -116,7 +153,7 @@ function New-InnoInstaller {
 
     New-Item -ItemType Directory -Force -Path $InstallerOutput | Out-Null
     $packagePlatform = Get-PackagePlatformName -RuntimeId $RuntimeId
-    & $isccPath $InstallerScript "/DSourceDir=$SourcePath" "/DOutputDir=$InstallerOutput" "/DRuntimeId=$packagePlatform" | Out-Host
+    & $isccPath $InstallerScript "/DSourceDir=$SourcePath" "/DOutputDir=$InstallerOutput" "/DRuntimeId=$packagePlatform" "/DMyAppVersion=$PackageVersion" | Out-Host
 }
 
 if ($All) {

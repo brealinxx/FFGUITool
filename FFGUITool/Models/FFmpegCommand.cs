@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using FFGUITool.Services;
 
 namespace FFGUITool.Models
 {
@@ -31,7 +32,7 @@ namespace FFGUITool.Models
         {
             if (string.IsNullOrEmpty(InputPath))
             {
-                return "请先选择输入文件或文件夹";
+                return LocalizationService.T("Command.SelectInput");
             }
 
             var command = new StringBuilder();

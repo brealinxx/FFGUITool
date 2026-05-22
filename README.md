@@ -2,7 +2,7 @@
 
 [中文说明](README.zh-CN.md)
 
-FFGUITool is a lightweight desktop GUI for FFmpeg video compression. It helps you select an input file or folder, choose compression settings, preview the generated FFmpeg command, and run the conversion without writing commands by hand.
+FFGUITool is a lightweight cross-platform desktop GUI for FFmpeg. It helps you compress and convert videos, audio, and images, process folders in batch, preview the generated CLI command, and run common FFmpeg workflows without writing commands by hand.
 
 ## Download
 
@@ -10,18 +10,42 @@ Download the latest ready-to-use build from:
 
 [GitHub Releases](https://github.com/brealinxx/FFGUITool/releases/latest)
 
+## Features
+
+- Video compression by target size, target bitrate, preset, or CRF quality mode.
+- Image compression by target size or quality, with KB/MB target-size controls.
+- Video, audio, and image format conversion.
+- Folder batch processing with per-file target ratios for video and image workflows.
+- Drag-and-drop support for files and folders.
+- Image input support for JPG, JPEG, PNG, WebP, HEIC, HEIF, BMP, GIF, TIFF, ICO, TGA, and AVIF.
+- Image output formats: JPG, PNG, and WebP.
+- Video output formats: MP4, MKV, WebM, MOV, AVI, and GIF.
+- Audio extraction/conversion to MP3, AAC, M4A, WAV, FLAC, and OGG.
+- Resolution presets including original size, 2160p, 1080p, 720p, 480p, 512px, and 360p.
+- Hardware encoder options, including NVIDIA, Intel, AMD, Apple VideoToolbox, and VAAPI when available.
+- Optional ExifTool integration for reading and removing privacy metadata from videos and images.
+- Chinese and English UI, plus light, dark, and system themes.
+- Portable archives, Windows installers, and macOS DMG packages.
+
 ## Basic Usage
 
 1. Start FFGUITool.
 2. Configure FFmpeg when prompted:
-   - Select an existing `ffmpeg.exe`, or
+   - Select an existing FFmpeg executable, or
    - Install FFmpeg from a `.zip` or `.7z` archive.
-3. Choose a video file or folder.
-4. Adjust compression strength, target bitrate, codec, and output location.
-5. Check the CLI command preview if needed.
-6. Click **Start** to begin conversion.
+3. Choose **Video mode** or **Image mode**.
+4. Select or drag in a file or folder.
+5. Adjust target size, preset, output format, quality, resolution, or advanced options.
+6. Check the CLI command preview if needed.
+7. Click **Start** to process the file or folder.
 
-You can change FFmpeg settings later from **Tools > FFmpeg Settings**.
+You can change FFmpeg, ExifTool, language, theme, and local data settings later from the Settings menu.
+
+## Optional Privacy Cleanup
+
+ExifTool is optional. When configured, FFGUITool can inspect and remove metadata such as GPS location, device model, author, creation time, software, lens, and media handler fields after FFmpeg creates the output file.
+
+Compression and conversion still work without ExifTool.
 
 ## Build From Source
 
@@ -47,7 +71,7 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## Publish Packages
 
-The project provides PowerShell and Bash publish scripts. Both create architecture-specific Portable archives; Windows can also create Inno Setup installers, and macOS can create DMG installers on macOS.
+The project provides PowerShell and Bash publish scripts. Package versions are read automatically from `FFGUITool.csproj`, so release files are named like `FFGUITool-v1.6.0-<platform>-Portable.zip`.
 
 Common commands:
 
@@ -75,13 +99,13 @@ Targets and package labels:
 
 Package names use this format:
 
-- Portable: `FFGUITool-vx.x.0-<platform>-Portable.zip`
-- Windows installer: `FFGUITool-vx.x.0-<platform>-Installer.exe`
-- macOS installer: `FFGUITool-vx.x.0-<platform>-Installer.dmg`
+- Portable: `FFGUITool-vx.x.x-<platform>-Portable.zip`
+- Windows installer: `FFGUITool-vx.x.x-<platform>-Installer.exe`
+- macOS installer: `FFGUITool-vx.x.x-<platform>-Installer.dmg`
 
 Outputs are written to `FFGUITool/bin/publish/`, Portable archives to `archives/`, Windows installers to `installer/`, and macOS DMGs to `dmg/`.
 
-> Build macOS DMG packages on macOS because DMG creation uses `hdiutil`.
+> Build macOS DMG packages on macOS because DMG creation uses `hdiutil`. The macOS app bundle uses `FFGUITool/Resources/AppIcon.icns`; Windows builds use `FFGUITool/Resources/icon.ico`.
 
 ## License
 

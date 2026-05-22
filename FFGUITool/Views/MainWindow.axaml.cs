@@ -94,7 +94,8 @@ namespace FFGUITool.Views
             extension = (extension ?? "").ToLowerInvariant();
             if (imageMode)
             {
-                return extension is ".jpg" or ".jpeg" or ".png" or ".webp" or ".heic" or ".bmp";
+                return extension is ".jpg" or ".jpeg" or ".png" or ".webp" or ".heic" or ".heif" or ".bmp"
+                    or ".gif" or ".tif" or ".tiff" or ".ico" or ".tga" or ".avif";
             }
 
             return extension is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm"

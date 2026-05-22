@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.6.0
+
+### Added
+
+- Added broader image input support for HEIF, GIF, TIFF, ICO, TGA, and AVIF files in image mode.
+- Added automatic release package version detection from the project file for Portable, installer, and DMG names.
+- Added macOS bundle icon wiring through `AppIcon.icns` and explicit Windows installer shortcut icon wiring through `icon.ico`.
+
+### Changed
+
+- Updated English and Chinese README files to match the current video, audio, image, metadata, theme, and packaging features.
+- Improved button layout and hit areas in the main window.
+
+### Fixed
+
+- Fixed CLI preview fallback text so it follows the selected UI language.
+- Fixed macOS DMG app bundles missing the application icon.
+- Fixed Windows installer shortcuts continuing to use stale default icon sources.
+
+### Version
+
+- Updated application version metadata from `1.5.0` to `1.6.0`.
+- Updated assembly version and file version to `1.6.0.0`.
+- Updated Windows application manifest assembly identity to `1.6.0.0`.
+- Updated installer and macOS bundle version metadata to `1.6.0`.
+
 ## v1.5.0
 
 ### Added

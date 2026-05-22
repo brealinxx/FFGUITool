@@ -91,6 +91,16 @@
             <Setter Property="Padding" Value="12,6" />
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Button /template/ ContentPresenter">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="RecognizesAccessKey" Value="False" />
         </Style>
 
         <Style Selector="Button:pointerover /template/ ContentPresenter">
@@ -601,16 +611,25 @@
                             </Grid>
 
                             <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
-                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding HardwareEncoderLabel}" Classes="Label" VerticalAlignment="Center"/>
+                                <Grid ColumnDefinitions="*, 6, 30" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding HardwareEncoderLabel}"
+                                               Classes="Label"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
                                     <Button Content="{Binding HardwareEncoderHelpLabel}"
+                                            Grid.Column="2"
                                             Command="{Binding ShowHardwareAccelerationHelpCommand}"
-                                            Width="24"
-                                            Height="24"
+                                            Width="30"
+                                            Height="30"
+                                            MinWidth="30"
+                                            MinHeight="30"
                                             Padding="0"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
                                             HorizontalContentAlignment="Center"
                                             VerticalContentAlignment="Center" />
-                                </StackPanel>
+                                </Grid>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding HardwareEncoderOptions}" SelectedItem="{Binding SelectedHardwareEncoderOption}" 
                                           HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
@@ -704,7 +723,7 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*, 20, Auto">
+                <Grid Grid.Row="1" ColumnDefinitions="*, 20, Auto" HorizontalAlignment="Stretch">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="5">
                         <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}" IsIndeterminate="True"
                                      Foreground="{DynamicResource AccentBrush}"
@@ -717,6 +736,7 @@
                     <Button Grid.Column="2" Classes="Accent" Command="{Binding ExecuteCommand}"
                             IsEnabled="{Binding CanExecute}"
                             Height="44" Width="140" FontSize="16"
+                            HorizontalAlignment="Right"
                             HorizontalContentAlignment="Center"
                             VerticalContentAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="8"

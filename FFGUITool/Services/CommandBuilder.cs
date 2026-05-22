@@ -128,7 +128,7 @@ namespace FFGUITool.Services
                 "jpeg" => "jpg",
                 "jpg" or "png" or "webp" => extension,
                 "bmp" => "png",
-                "heic" => "jpg",
+                "heic" or "heif" or "gif" or "tif" or "tiff" or "ico" or "tga" or "avif" => "jpg",
                 _ => "jpg"
             };
         }
