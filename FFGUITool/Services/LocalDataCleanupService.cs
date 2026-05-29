@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 
 namespace FFGUITool.Services
@@ -14,22 +15,32 @@ namespace FFGUITool.Services
 
         public static void DeleteLocalDataAndRegistry()
         {
+            DeleteDirectory(AppLogger.LogDirectory);
+            DeleteDirectory(AppConfigService.AppDataPath);
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                DeleteRegistryKey();
+            }
+        }
+
+        private static void DeleteDirectory(string path)
+        {
             try
             {
-                if (Directory.Exists(AppConfigService.AppDataPath))
+                if (Directory.Exists(path))
                 {
-                    Directory.Delete(AppConfigService.AppDataPath, recursive: true);
+                    Directory.Delete(path, recursive: true);
                 }
             }
             catch
             {
             }
+        }
 
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return;
-            }
-
+        [SupportedOSPlatform("windows")]
+        private static void DeleteRegistryKey()
+        {
             try
             {
                 Registry.CurrentUser.DeleteSubKeyTree(AppRegistryKey, throwOnMissingSubKey: false);

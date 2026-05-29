@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -27,17 +29,13 @@ namespace FFGUITool.ViewModels
         private readonly CommandBuilder _commandBuilder;
         private readonly IDialogService _dialogService;
         private readonly AppConfig _appConfig;
+        private const string ReleasesUrl = "https://github.com/brealinxx/FFGUITool/releases";
+        private const string LatestReleaseApiUrl = "https://api.github.com/repos/brealinxx/FFGUITool/releases/latest";
         private bool _isSyncingCompressionValues;
         private bool _isSyncingConversionToggles;
         private VideoInfo? _batchPreviewInfo;
         private string _batchPreviewInfoPath = "";
-        private static readonly string[] VideoExtensions = { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm" };
-        private static readonly string[] AudioExtensions = { ".mp3", ".aac", ".m4a", ".wav", ".flac", ".ogg", ".wma" };
-        private static readonly string[] ImageExtensions =
-        {
-            ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp",
-            ".gif", ".tif", ".tiff", ".ico", ".tga", ".avif"
-        };
+        private IReadOnlySet<string> _availableVideoEncoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         #region 可观察属性
 
@@ -151,6 +149,15 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private string _commandText = LocalizationService.T("Command.SelectInput");
+
+        [ObservableProperty]
+        private bool _isFailureActionsVisible;
+
+        [ObservableProperty]
+        private string _lastFailureDetails = "";
+
+        [ObservableProperty]
+        private string _lastFailureCommand = "";
 
         [ObservableProperty]
         private bool _canExecute;
@@ -486,7 +493,7 @@ namespace FFGUITool.ViewModels
             {
                 new FilePickerFileType(LocalizationService.T("Image.FileType"))
                 {
-                    Patterns = ImageExtensions.Select(extension => $"*{extension}").ToArray()
+                    Patterns = MediaFileSupport.ImageExtensions.Select(extension => $"*{extension}").ToArray()
                 },
                 new FilePickerFileType(LocalizationService.T("Picker.AllFiles"))
                 {
@@ -547,6 +554,7 @@ namespace FFGUITool.ViewModels
 
             try
             {
+                ClearLastFailure();
                 var summary = await ExecuteFFmpegCommand();
                 var message = BuildCompletionMessage(summary);
                 SystemNotificationService.Show(LocalizationService.T(IsImageMode ? "Result.ImageComplete" : "Result.VideoComplete"), message);
@@ -554,12 +562,17 @@ namespace FFGUITool.ViewModels
             }
             catch (FFmpegExecutionException ex)
             {
+                CaptureFailure(ex);
                 var message = BuildFailureMessage(ex);
                 SystemNotificationService.Show(LocalizationService.T("Dialog.Error"), message, isError: true);
                 await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
             }
             catch (Exception ex)
             {
+                AppLogger.Error("Unexpected execution error.", ex);
+                LastFailureDetails = ex.ToString();
+                LastFailureCommand = CommandText;
+                IsFailureActionsVisible = true;
                 var message = LocalizationService.Format("Dialog.ExecuteError", ex.Message);
                 SystemNotificationService.Show(LocalizationService.T("Dialog.Error"), message, isError: true);
                 await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
@@ -609,13 +622,91 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task CopyCommandText()
         {
+            await SetClipboardText(CommandText);
+        }
+
+        [RelayCommand]
+        private async Task CopyErrorDetails()
+        {
+            await SetClipboardText(LastFailureDetails);
+        }
+
+        [RelayCommand]
+        private async Task CopyFullCommand()
+        {
+            await SetClipboardText(LastFailureCommand);
+        }
+
+        [RelayCommand]
+        private void OpenLogFolder()
+        {
+            OpenFolderInShell(AppLogger.LogDirectory);
+        }
+
+        private static async Task SetClipboardText(string text)
+        {
             if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop ||
                 desktop.MainWindow?.Clipboard == null)
             {
                 return;
             }
 
-            await desktop.MainWindow.Clipboard.SetTextAsync(CommandText);
+            await desktop.MainWindow.Clipboard.SetTextAsync(text);
+        }
+
+        private static void OpenFolderInShell(string folderPath)
+        {
+            try
+            {
+                Directory.CreateDirectory(folderPath);
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = folderPath,
+                    UseShellExecute = true
+                };
+                Process.Start(processInfo);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error($"Failed to open folder: {folderPath}", ex);
+            }
+        }
+
+        private static void OpenUrl(string url)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error($"Failed to open URL: {url}", ex);
+            }
+        }
+
+        private static string GetCurrentVersion()
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var informationalVersion = assembly
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()
+                ?.InformationalVersion;
+
+            return string.IsNullOrWhiteSpace(informationalVersion)
+                ? assembly.GetName().Version?.ToString() ?? "1.0.0"
+                : informationalVersion;
+        }
+
+        private static bool IsNewerVersion(string latestVersion, string currentVersion)
+        {
+            return Version.TryParse(latestVersion.Split('+')[0], out var latest) &&
+                   Version.TryParse(currentVersion.Split('+')[0], out var current) &&
+                   latest > current;
         }
 
         [RelayCommand]
@@ -687,13 +778,52 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task ShowAbout()
         {
-            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+            var version = GetCurrentVersion();
             var ffmpegVersion = await _ffmpegManager.GetFFmpegVersion();
             var exifToolVersion = await _exifToolManager.GetExifToolVersion();
 
-            var message = LocalizationService.Format("Dialog.AboutMessage", version, ffmpegVersion, exifToolVersion);
+            var message = LocalizationService.Format("Dialog.AboutMessage", version, ffmpegVersion, exifToolVersion)
+                          + $"{Environment.NewLine}{Environment.NewLine}{LocalizationService.Format("Update.Releases", ReleasesUrl)}";
 
             await _dialogService.ShowMessage(LocalizationService.T("Dialog.AboutTitle"), message);
+        }
+
+        [RelayCommand]
+        private void OpenReleases()
+        {
+            OpenUrl(ReleasesUrl);
+        }
+
+        [RelayCommand]
+        private async Task CheckForUpdates()
+        {
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("FFGUITool");
+                using var response = await client.GetAsync(LatestReleaseApiUrl);
+                response.EnsureSuccessStatusCode();
+
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                using var document = await JsonDocument.ParseAsync(stream);
+                var tag = document.RootElement.TryGetProperty("tag_name", out var tagElement)
+                    ? tagElement.GetString() ?? ""
+                    : "";
+                var latestVersion = tag.Trim().TrimStart('v', 'V');
+                var currentVersion = GetCurrentVersion();
+
+                var message = IsNewerVersion(latestVersion, currentVersion)
+                    ? LocalizationService.Format("Update.NewVersion", latestVersion, ReleasesUrl)
+                    : LocalizationService.Format("Update.Latest", currentVersion, ReleasesUrl);
+                await _dialogService.ShowMessage(LocalizationService.T("Update.Title"), message);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn($"Update check failed: {ex.Message}");
+                await _dialogService.ShowMessage(
+                    LocalizationService.T("Update.Title"),
+                    LocalizationService.Format("Update.Unavailable", ReleasesUrl));
+            }
         }
 
         [RelayCommand]
@@ -1757,20 +1887,7 @@ namespace FFGUITool.ViewModels
                 return Array.Empty<string>();
             }
 
-            return Directory.EnumerateFiles(CompressionSettings.InputPath, "*.*", SearchOption.TopDirectoryOnly)
-                .Where(file =>
-                {
-                    var extension = Path.GetExtension(file);
-                    if (IsImageMode)
-                    {
-                        return IsImageExtension(extension);
-                    }
-
-                    return EnableAudioConversion
-                        ? IsVideoExtension(extension) || IsAudioExtension(extension)
-                        : IsVideoExtension(extension);
-                })
-                .OrderBy(file => file, StringComparer.OrdinalIgnoreCase);
+            return MediaFileSupport.GetBatchInputFiles(CompressionSettings.InputPath, IsImageMode, EnableAudioConversion);
         }
 
         private void RefreshBatchModeSummary()
@@ -1833,17 +1950,17 @@ namespace FFGUITool.ViewModels
 
         private static bool IsVideoExtension(string? extension)
         {
-            return VideoExtensions.Contains((extension ?? "").ToLowerInvariant());
+            return MediaFileSupport.IsVideoExtension(extension);
         }
 
         private static bool IsAudioExtension(string? extension)
         {
-            return AudioExtensions.Contains((extension ?? "").ToLowerInvariant());
+            return MediaFileSupport.IsAudioExtension(extension);
         }
 
         private static bool IsImageExtension(string? extension)
         {
-            return ImageExtensions.Contains((extension ?? "").ToLowerInvariant());
+            return MediaFileSupport.IsImageExtension(extension);
         }
 
         private void UpdateFFmpegStatus()
@@ -2034,25 +2151,41 @@ namespace FFGUITool.ViewModels
         private void UpdateImageFormatOptions()
         {
             var selectedValue = SelectedImageFormatOption?.Value ?? CompressionSettings.ImageOutputFormat;
-            ImageFormatOptions = new List<CodecOption>
+            var options = new List<CodecOption>
             {
                 new("JPG", "jpg", LocalizationService.T("ImageFormat.JPG.Desc")),
-                new("PNG", "png", LocalizationService.T("ImageFormat.PNG.Desc")),
-                new("WebP", "webp", LocalizationService.T("ImageFormat.WebP.Desc"))
+                new("PNG", "png", LocalizationService.T("ImageFormat.PNG.Desc"))
             };
+
+            if (IsEncoderAvailableOrUnknown("libwebp"))
+            {
+                options.Add(new("WebP", "webp", LocalizationService.T("ImageFormat.WebP.Desc")));
+            }
+
+            ImageFormatOptions = options;
             SelectedImageFormatOption = ImageFormatOptions.Find(option => option.Value == selectedValue) ?? ImageFormatOptions[0];
         }
 
         private void UpdateCodecOptions()
         {
             var selectedValue = SelectedCodecOption?.Value ?? SelectedCodec;
-            CodecOptions = new List<CodecOption>
+            var candidates = new List<CodecOption>
             {
                 new("H.264 (libx264)", "libx264", LocalizationService.T("Codec.H264.Desc")),
                 new("H.265 (libx265)", "libx265", LocalizationService.T("Codec.H265.Desc")),
                 new("VP9 (libvpx-vp9)", "libvpx-vp9", LocalizationService.T("Codec.VP9.Desc")),
                 new("AV1 (libaom-av1)", "libaom-av1", LocalizationService.T("Codec.AV1.Desc"))
             };
+
+            CodecOptions = candidates
+                .Where(option => IsEncoderAvailableOrUnknown(option.Value))
+                .ToList();
+
+            if (CodecOptions.Count == 0)
+            {
+                CodecOptions = candidates;
+            }
+
             SelectedCodecOption = CodecOptions.Find(option => option.Value == selectedValue) ?? CodecOptions[0];
         }
 
@@ -2075,13 +2208,22 @@ namespace FFGUITool.ViewModels
         private async Task RefreshHardwareEncoderOptions()
         {
             var selectedValue = SelectedHardwareEncoderOption?.Value ?? "";
-            var availableEncoders = await _ffmpegManager.GetAvailableVideoEncoders();
-            HardwareEncoderOptions = CreateHardwareEncoderOptions(availableEncoders);
+            _availableVideoEncoders = await _ffmpegManager.GetAvailableVideoEncoders();
+            UpdateCodecOptions();
+            UpdateImageFormatOptions();
+            HardwareEncoderOptions = CreateHardwareEncoderOptions(_availableVideoEncoders);
             SelectedHardwareEncoderOption = HardwareEncoderOptions.Find(option => option.Value == selectedValue)
                 ?? HardwareEncoderOptions[0];
             CompressionSettings.HardwareEncoder = SelectedHardwareEncoderOption.Value == "auto"
                 ? RecommendHardwareEncoder()
                 : SelectedHardwareEncoderOption.Value;
+        }
+
+        private bool IsEncoderAvailableOrUnknown(string encoder)
+        {
+            return !_ffmpegManager.IsFFmpegAvailable ||
+                   _availableVideoEncoders.Count == 0 ||
+                   _availableVideoEncoders.Contains(encoder);
         }
 
         private List<CodecOption> CreateHardwareEncoderOptions(IReadOnlySet<string> availableEncoders)
@@ -2727,14 +2869,39 @@ namespace FFGUITool.ViewModels
             return inputInfo;
         }
 
+        private static long EstimateExpectedOutputBytes(FFmpegCommand command, VideoInfo? inputInfo)
+        {
+            if (command.ImageOutput && command.ImageTargetSizeKB > 0)
+            {
+                return (long)(command.ImageTargetSizeKB * 1024);
+            }
+
+            if (!command.UseCrf && command.Bitrate > 0 && inputInfo?.Duration > 0)
+            {
+                var totalKbps = command.AudioOnly
+                    ? command.AudioBitrate
+                    : command.Bitrate + command.AudioBitrate;
+                return (long)(totalKbps * 1024.0 * inputInfo.Duration / 8.0);
+            }
+
+            return inputInfo?.FileSize > 0 ? inputInfo.FileSize : 0;
+        }
+
         private async Task<ConversionResult> RunFFmpegCommand(FFmpegCommand command)
         {
             var inputInfo = await GetInputInfo(command.InputPath);
-
-            var outputDirectory = Path.GetDirectoryName(command.OutputPath);
-            if (!string.IsNullOrWhiteSpace(outputDirectory))
+            var expectedOutputBytes = EstimateExpectedOutputBytes(command, inputInfo);
+            var outputDiagnostics = OutputDiagnostics.Check(command, expectedOutputBytes);
+            AppLogger.Info($"Output diagnostics before FFmpeg run:{Environment.NewLine}{outputDiagnostics.Summary}");
+            if (!outputDiagnostics.CanWrite)
             {
-                Directory.CreateDirectory(outputDirectory);
+                throw new FFmpegExecutionException(
+                    "Output path check failed before running FFmpeg.",
+                    1,
+                    outputDiagnostics.Summary,
+                    command.BuildCommand(),
+                    command.OutputPath,
+                    outputDiagnostics.Summary);
             }
 
             var output = command.ImageOutput && command.ImageTargetSizeKB > 0
@@ -2746,7 +2913,10 @@ namespace FFGUITool.ViewModels
                 throw new FFmpegExecutionException(
                     $"FFmpeg执行失败，退出代码: {output.ExitCode}",
                     output.ExitCode,
-                    output.Error);
+                    output.Error,
+                    command.BuildCommand(),
+                    command.OutputPath,
+                    outputDiagnostics.Summary);
             }
 
             if (CompressionSettings.ClearMetadata && _exifToolManager.IsExifToolAvailable)
@@ -2757,7 +2927,10 @@ namespace FFGUITool.ViewModels
                     throw new FFmpegExecutionException(
                         "ExifTool元数据清除失败",
                         1,
-                        clearResult.Error);
+                        clearResult.Error,
+                        command.BuildCommand(),
+                        command.OutputPath,
+                        outputDiagnostics.Summary);
                 }
             }
 
@@ -2823,6 +2996,7 @@ namespace FFGUITool.ViewModels
             }
 
             var commandText = command.BuildCommand();
+            AppLogger.Info($"Running FFmpeg command:{Environment.NewLine}{commandText}");
             var arguments = commandText.StartsWith("ffmpeg ", StringComparison.OrdinalIgnoreCase)
                 ? commandText["ffmpeg ".Length..]
                 : commandText;
@@ -2842,6 +3016,12 @@ namespace FFGUITool.ViewModels
 
             var error = await process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
+            AppLogger.Info($"FFmpeg exited with code {process.ExitCode}.");
+            var errorSummary = AppLogger.Summarize(error);
+            if (!string.IsNullOrWhiteSpace(errorSummary))
+            {
+                AppLogger.Info($"FFmpeg stderr summary:{Environment.NewLine}{errorSummary}");
+            }
 
             return (process.ExitCode, error);
         }
@@ -2935,6 +3115,13 @@ namespace FFGUITool.ViewModels
         {
             var lines = new List<string> { exception.Message };
 
+            if (!string.IsNullOrWhiteSpace(exception.OutputDiagnostics))
+            {
+                lines.Add("");
+                lines.Add("Diagnostics:");
+                lines.Add(exception.OutputDiagnostics);
+            }
+
             if (!string.IsNullOrWhiteSpace(exception.FFmpegOutput))
             {
                 lines.Add("");
@@ -2942,6 +3129,66 @@ namespace FFGUITool.ViewModels
                 lines.Add(TrimFFmpegOutput(exception.FFmpegOutput));
             }
 
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private void CaptureFailure(FFmpegExecutionException exception)
+        {
+            LastFailureCommand = string.IsNullOrWhiteSpace(exception.CommandText)
+                ? CommandText
+                : exception.CommandText;
+            LastFailureDetails = BuildFailureDetails(exception);
+            IsFailureActionsVisible = true;
+            AppLogger.Error($"FFmpeg execution failed. Details:{Environment.NewLine}{LastFailureDetails}", exception);
+        }
+
+        private void ClearLastFailure()
+        {
+            IsFailureActionsVisible = false;
+            LastFailureDetails = "";
+            LastFailureCommand = "";
+        }
+
+        private static string BuildFailureDetails(FFmpegExecutionException exception)
+        {
+            var lines = new List<string>
+            {
+                exception.Message,
+                $"Exit code: {exception.ExitCode}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(exception.CommandText))
+            {
+                lines.Add("");
+                lines.Add("Command:");
+                lines.Add(exception.CommandText);
+            }
+
+            if (!string.IsNullOrWhiteSpace(exception.OutputPath))
+            {
+                lines.Add("");
+                lines.Add($"Output path: {exception.OutputPath}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(exception.OutputDiagnostics))
+            {
+                lines.Add("");
+                lines.Add("Diagnostics:");
+                lines.Add(exception.OutputDiagnostics);
+            }
+
+            if (!string.IsNullOrWhiteSpace(exception.FFmpegOutput))
+            {
+                lines.Add("");
+                lines.Add("stderr summary:");
+                lines.Add(TrimFFmpegOutput(exception.FFmpegOutput));
+                lines.Add("");
+                lines.Add("stderr full:");
+                lines.Add(exception.FFmpegOutput);
+            }
+
+            lines.Add("");
+            lines.Add($"Log file: {AppLogger.CurrentLogPath}");
             return string.Join(Environment.NewLine, lines);
         }
 
@@ -3003,15 +3250,27 @@ namespace FFGUITool.ViewModels
 
         private sealed class FFmpegExecutionException : Exception
         {
-            public FFmpegExecutionException(string message, int exitCode, string ffmpegOutput)
+            public FFmpegExecutionException(
+                string message,
+                int exitCode,
+                string ffmpegOutput,
+                string commandText = "",
+                string outputPath = "",
+                string outputDiagnostics = "")
                 : base(message)
             {
                 ExitCode = exitCode;
                 FFmpegOutput = ffmpegOutput;
+                CommandText = commandText;
+                OutputPath = outputPath;
+                OutputDiagnostics = outputDiagnostics;
             }
 
             public int ExitCode { get; }
             public string FFmpegOutput { get; }
+            public string CommandText { get; }
+            public string OutputPath { get; }
+            public string OutputDiagnostics { get; }
         }
 
         #endregion

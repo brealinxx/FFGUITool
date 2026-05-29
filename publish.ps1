@@ -3,6 +3,8 @@ param(
 
     [switch]$MacOS,
 
+    [switch]$Linux,
+
     [switch]$All,
 
     [ValidateSet("zip", "7z")]
@@ -68,6 +70,8 @@ $RuntimeMap = [ordered]@{
     "win-arm64" = "FFGUITool-win-arm64"
     "osx-x64" = "FFGUITool-osx-x64"
     "osx-arm64" = "FFGUITool-osx-arm64"
+    "linux-x64" = "FFGUITool-linux-x64"
+    "linux-arm64" = "FFGUITool-linux-arm64"
 }
 
 function Get-PackagePlatformName {
@@ -81,6 +85,8 @@ function Get-PackagePlatformName {
         "win-arm64" { "windows-arm64" }
         "osx-x64" { "macos-intel" }
         "osx-arm64" { "macos-arm64" }
+        "linux-x64" { "linux-x64" }
+        "linux-arm64" { "linux-arm64" }
         default { $RuntimeId }
     }
 }
@@ -94,7 +100,11 @@ function Get-CurrentPlatformGroup {
         return "macos"
     }
 
-    throw "Unsupported OS. Use -Windows, -MacOS, or -All explicitly."
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+        return "linux"
+    }
+
+    throw "Unsupported OS. Use -Windows, -MacOS, -Linux, or -All explicitly."
 }
 
 function New-PublishArchive {
@@ -157,7 +167,7 @@ function New-InnoInstaller {
 }
 
 if ($All) {
-    $targets = @("win-x64", "win-x86", "win-arm64", "osx-x64", "osx-arm64")
+    $targets = @("win-x64", "win-x86", "win-arm64", "osx-x64", "osx-arm64", "linux-x64", "linux-arm64")
 }
 else {
     $group = if ($Windows) {
@@ -166,6 +176,9 @@ else {
     elseif ($MacOS) {
         "macos"
     }
+    elseif ($Linux) {
+        "linux"
+    }
     else {
         Get-CurrentPlatformGroup
     }
@@ -173,6 +186,7 @@ else {
     $targets = switch ($group) {
         "windows" { @("win-x64", "win-x86", "win-arm64") }
         "macos" { @("osx-x64", "osx-arm64") }
+        "linux" { @("linux-x64", "linux-arm64") }
         default { throw "Unsupported platform group: $group" }
     }
 }

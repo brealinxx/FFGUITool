@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  SOLUTION_PATH: FFGUIToolAvalonia.sln
+  DOTNET_VERSION: 8.0.x
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}, ${{ matrix.configuration }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+          - ubuntu-latest
+        configuration:
+          - Debug
+          - Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Check release metadata
+        shell: pwsh
+        run: ./scripts/release-check.ps1
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration ${{ matrix.configuration }} --no-restore
+
+      - name: Run automated tests
+        run: dotnet test ${{ env.SOLUTION_PATH }} --configuration ${{ matrix.configuration }} --no-build
+
+  package-windows:
+    name: Package Windows
+    runs-on: windows-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Publish Windows packages
+        shell: pwsh
+        run: .\publish.ps1 -Windows -Installer
+
+      - name: Upload Windows portable archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: FFGUITool/bin/publish/archives/*.zip
+          if-no-files-found: error
+
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: FFGUITool/bin/publish/installer/*.exe
+          if-no-files-found: error
+
+  package-macos:
+    name: Package macOS
+    runs-on: macos-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish macOS packages
+        shell: bash
+        run: |
+          chmod +x ./publish.sh
+          ./publish.sh -macos --dmg
+
+      - name: Upload macOS portable archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-portable
+          path: FFGUITool/bin/publish/archives/*.zip
+          if-no-files-found: error
+
+      - name: Upload macOS DMGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: FFGUITool/bin/publish/dmg/*.dmg
+          if-no-files-found: error
+
+  package-linux:
+    name: Package Linux
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Linux packages
+        shell: bash
+        run: |
+          chmod +x ./publish.sh
+          ./publish.sh -linux
+
+      - name: Upload Linux portable archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-portable
+          path: FFGUITool/bin/publish/archives/*.zip
+          if-no-files-found: error

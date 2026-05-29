@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using Avalonia;
 
 namespace FFGUITool.Services
@@ -29,10 +31,14 @@ namespace FFGUITool.Services
                 ["App.Title.NotConfigured"] = "FFGUITool - FFmpeg未配置",
                 ["Menu.File"] = "文件(_F)",
                 ["Menu.Exit"] = "退出(_X)",
-                ["Menu.Tools"] = "设置(_S)",
+                ["Menu.Tools"] = "工具(_T)",
+                ["Menu.Preferences"] = "偏好设置(_P)",
                 ["Menu.FFmpegSettings"] = "FFmpeg设置(_S)",
                 ["Menu.ExifToolSettings"] = "ExifTool设置(_E)",
                 ["Menu.RedetectFFmpeg"] = "重新检测(_R)",
+                ["Menu.OpenLogFolder"] = "打开日志目录(_L)",
+                ["Menu.CheckUpdates"] = "检查更新(_U)",
+                ["Menu.GitHubReleases"] = "GitHub Releases(_G)",
                 ["Menu.Language"] = "语言(_L)",
                 ["Menu.Language.Chinese"] = "中文",
                 ["Menu.Language.English"] = "English",
@@ -207,8 +213,16 @@ namespace FFGUITool.Services
                 ["ImageFormat.PNG.Desc"] = "透明与无损场景",
                 ["ImageFormat.WebP.Desc"] = "网页体积更小",
                 ["Cleanup.Title"] = "删除本地数据",
-                ["Cleanup.ConfirmMessage"] = "将删除本机配置文件、工具路径记录、已安装的内置工具和注册表信息。\n\n配置目录：{0}\n\n此操作不会删除当前程序文件。确定继续吗？",
-                ["Cleanup.Done"] = "本地配置文件和注册表信息已清理。",
+                ["Cleanup.ConfirmMessage"] = "将删除本机配置文件、日志文件、工具路径记录、已安装的内置工具和注册表信息。\n\n配置目录：{0}\n\n此操作不会删除当前程序文件。确定继续吗？",
+                ["Cleanup.Done"] = "本地配置、日志文件和注册表信息已清理。",
+                ["Failure.CopyErrorDetails"] = "复制错误详情",
+                ["Failure.CopyFullCommand"] = "复制完整命令",
+                ["Failure.OpenLogs"] = "打开日志目录",
+                ["Update.Title"] = "检查更新",
+                ["Update.NewVersion"] = "发现新版本：v{0}\n{1}",
+                ["Update.Latest"] = "当前已是最新版本：v{0}\n{1}",
+                ["Update.Unavailable"] = "暂时无法检查更新。\n{0}",
+                ["Update.Releases"] = "GitHub Releases：{0}",
                 ["Dialog.Ok"] = "确定",
                 ["Dialog.Cancel"] = "取消",
                 ["Dialog.Done"] = "完成",
@@ -301,10 +315,14 @@ namespace FFGUITool.Services
                 ["App.Title.NotConfigured"] = "FFGUITool - FFmpeg Not Configured",
                 ["Menu.File"] = "File (_F)",
                 ["Menu.Exit"] = "Exit (_X)",
-                ["Menu.Tools"] = "Settings (_S)",
+                ["Menu.Tools"] = "Tools (_T)",
+                ["Menu.Preferences"] = "Preferences (_P)",
                 ["Menu.FFmpegSettings"] = "FFmpeg Settings (_S)",
                 ["Menu.ExifToolSettings"] = "ExifTool Settings (_E)",
                 ["Menu.RedetectFFmpeg"] = "Redetect (_R)",
+                ["Menu.OpenLogFolder"] = "Open log folder (_L)",
+                ["Menu.CheckUpdates"] = "Check for updates (_U)",
+                ["Menu.GitHubReleases"] = "GitHub Releases (_G)",
                 ["Menu.Language"] = "Language (_L)",
                 ["Menu.Language.Chinese"] = "中文",
                 ["Menu.Language.English"] = "English",
@@ -479,8 +497,16 @@ namespace FFGUITool.Services
                 ["ImageFormat.PNG.Desc"] = "Transparency/lossless",
                 ["ImageFormat.WebP.Desc"] = "Smaller web images",
                 ["Cleanup.Title"] = "Delete local data",
-                ["Cleanup.ConfirmMessage"] = "This will delete local config files, tool path records, bundled tools installed by the app, and registry information.\n\nConfig folder: {0}\n\nThis will not delete the current program files. Continue?",
-                ["Cleanup.Done"] = "Local config files and registry information have been removed.",
+                ["Cleanup.ConfirmMessage"] = "This will delete local config files, logs, tool path records, bundled tools installed by the app, and registry information.\n\nConfig folder: {0}\n\nThis will not delete the current program files. Continue?",
+                ["Cleanup.Done"] = "Local config files, logs, and registry information have been removed.",
+                ["Failure.CopyErrorDetails"] = "Copy error details",
+                ["Failure.CopyFullCommand"] = "Copy full command",
+                ["Failure.OpenLogs"] = "Open logs",
+                ["Update.Title"] = "Update Check",
+                ["Update.NewVersion"] = "New version available: v{0}\n{1}",
+                ["Update.Latest"] = "You are using the latest version: v{0}\n{1}",
+                ["Update.Unavailable"] = "Unable to check updates now.\n{0}",
+                ["Update.Releases"] = "GitHub Releases: {0}",
                 ["Dialog.Ok"] = "OK",
                 ["Dialog.Cancel"] = "Cancel",
                 ["Dialog.Done"] = "Done",
@@ -578,6 +604,11 @@ namespace FFGUITool.Services
 
         public static event EventHandler? LanguageChanged;
 
+        static LocalizationService()
+        {
+            LoadExternalResources();
+        }
+
         public static void SetLanguage(string? languageCode, bool persistPreference = true)
         {
             if (string.IsNullOrWhiteSpace(languageCode) || !Resources.ContainsKey(languageCode))
@@ -641,6 +672,55 @@ namespace FFGUITool.Services
             {
                 Application.Current.Resources[pair.Key] = pair.Value;
             }
+        }
+
+        private static void LoadExternalResources()
+        {
+            foreach (var directory in GetExternalResourceDirectories())
+            {
+                if (!Directory.Exists(directory))
+                {
+                    continue;
+                }
+
+                foreach (var file in Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
+                {
+                    try
+                    {
+                        var languageCode = Path.GetFileNameWithoutExtension(file);
+                        if (!Resources.ContainsKey(languageCode))
+                        {
+                            Resources[languageCode] = new Dictionary<string, string>();
+                        }
+
+                        var values = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file));
+                        if (values == null)
+                        {
+                            continue;
+                        }
+
+                        foreach (var pair in values)
+                        {
+                            Resources[languageCode][pair.Key] = pair.Value;
+                        }
+
+                        AppLogger.Info($"Loaded localization overrides from {file}.");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Warn($"Failed to load localization file '{file}': {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<string> GetExternalResourceDirectories()
+        {
+            yield return Path.Combine(AppContext.BaseDirectory, "i18n");
+            yield return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "FFGUITool",
+                "i18n");
         }
     }
 }

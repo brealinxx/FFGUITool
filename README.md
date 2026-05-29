@@ -71,19 +71,21 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## Publish Packages
 
-The project provides PowerShell and Bash publish scripts. Package versions are read automatically from `FFGUITool.csproj`, so release files are named like `FFGUITool-v1.6.0-<platform>-Portable.zip`.
+The project provides PowerShell and Bash publish scripts. Package versions are read automatically from `FFGUITool.csproj`, so release files are named like `FFGUITool-v1.7.0-<platform>-Portable.zip`.
 
 Common commands:
 
 ```powershell
 .\publish.ps1 -Windows -Installer
 .\publish.ps1 -MacOS
+.\publish.ps1 -Linux
 .\publish.ps1 -All
 ```
 
 ```bash
 chmod +x publish.sh
 ./publish.sh -macos --dmg
+./publish.sh -linux
 ./publish.sh -all
 ```
 

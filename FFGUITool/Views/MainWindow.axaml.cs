@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
+using FFGUITool.Services;
 using FFGUITool.ViewModels;
 
 namespace FFGUITool.Views
@@ -58,7 +59,7 @@ namespace FFGUITool.Views
         {
             var files = e.Data.GetFiles()?.ToList();
             var path = files?.Count == 1 ? files[0].Path.LocalPath : null;
-            e.DragEffects = IsSupportedDroppedFile(path, _viewModel?.IsImageMode == true) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.DragEffects = MediaFileSupport.IsSupportedDroppedPath(path, _viewModel?.IsImageMode == true) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         }
 
@@ -66,40 +67,12 @@ namespace FFGUITool.Views
         {
             var item = e.Data.GetFiles()?.FirstOrDefault();
             var path = item?.Path.LocalPath;
-            if (IsSupportedDroppedFile(path, _viewModel?.IsImageMode == true) && _viewModel != null)
+            if (MediaFileSupport.IsSupportedDroppedPath(path, _viewModel?.IsImageMode == true) && _viewModel != null)
             {
                 await _viewModel.ProcessSelectedInput(path!);
             }
 
             e.Handled = true;
-        }
-
-        private static bool IsSupportedDroppedFile(string? path, bool imageMode)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return false;
-            }
-
-            if (System.IO.Directory.Exists(path))
-            {
-                return true;
-            }
-
-            return IsSupportedExtension(System.IO.Path.GetExtension(path), imageMode);
-        }
-
-        private static bool IsSupportedExtension(string? extension, bool imageMode)
-        {
-            extension = (extension ?? "").ToLowerInvariant();
-            if (imageMode)
-            {
-                return extension is ".jpg" or ".jpeg" or ".png" or ".webp" or ".heic" or ".heif" or ".bmp"
-                    or ".gif" or ".tif" or ".tiff" or ".ico" or ".tga" or ".avif";
-            }
-
-            return extension is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm"
-                or ".mp3" or ".aac" or ".m4a" or ".wav" or ".flac" or ".ogg" or ".wma";
         }
 
         private void UpdateTheme(ThemeVariant theme)

@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.7.0
+
+### Added
+
+- Added automated test coverage for command generation, output paths, image format mapping, batch file filtering, version metadata, package naming, README examples, changelog entries, and release icons.
+- Added GitHub Actions CI for Windows, macOS, and Linux builds with `dotnet test`, release metadata checks, and tag-triggered publishing.
+- Added `scripts/release-check.ps1` to verify version consistency, changelog coverage, icon files, and README package naming.
+- Added local file logging for app startup, FFmpeg detection, FFmpeg command execution, stderr summaries, output diagnostics, and crashes.
+- Added FFmpeg failure actions for copying error details, copying the full command, and opening the log directory.
+- Added FFmpeg encoder capability probing so unavailable codec/image options can be hidden from the UI.
+- Added Help menu update checking and GitHub Releases access.
+- Added external JSON localization override support through `i18n/*.json` and `%AppData%/FFGUITool/i18n/*.json`.
+- Added Linux publish targets to the PowerShell and Bash publish scripts.
+
+### Changed
+
+- Reorganized the menu bar into Tools, Preferences, and Help groups.
+- Improved local data cleanup so app logs are included in cleanup prompts and cleanup behavior.
+- Updated the Windows uninstall helper to remove `%AppData%\FFGUITool` and the app registry key after uninstall.
+- Centralized media file extension filtering through `MediaFileSupport`.
+
+### Fixed
+
+- Fixed hard-coded English strings in update-check and failure-action UI paths so they follow the selected language.
+- Fixed release automation to run standard `dotnet test` instead of a custom test runner command.
+
+### Version
+
+- Updated application version metadata from `1.6.0` to `1.7.0`.
+- Updated assembly version and file version to `1.7.0.0`.
+- Updated Windows application manifest assembly identity to `1.7.0.0`.
+- Updated installer and package documentation version metadata to `1.7.0`.
+
 ## v1.6.0
 
 ### Added

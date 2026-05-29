@@ -9,11 +9,12 @@ runtime=""
 create_dmg=false
 
 usage() {
-  echo "Usage: ./publish.sh [-windows|-macos|-all] [--archive zip|7z] [--dmg]"
+  echo "Usage: ./publish.sh [-windows|-macos|-linux|-all] [--archive zip|7z] [--dmg]"
   echo "Default: publish the current platform group and create a .zip archive."
   echo "  -windows  Build win-x64, win-x86, and win-arm64 packages"
   echo "  -macos    Build osx-x64 and osx-arm64 packages"
-  echo "  -all      Build Windows and macOS packages"
+  echo "  -linux    Build linux-x64 and linux-arm64 packages"
+  echo "  -all      Build Windows, macOS, and Linux packages"
   echo "  --dmg     On macOS, wrap osx-* outputs into .app bundles and .dmg images"
 }
 
@@ -25,6 +26,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -macos|--macos)
       runtime="macos"
+      shift
+      ;;
+    -linux|--linux)
+      runtime="linux"
       shift
       ;;
     -all|--all)
@@ -101,6 +106,8 @@ package_platform_name() {
     win-arm64) echo "windows-arm64" ;;
     osx-x64) echo "macos-intel" ;;
     osx-arm64) echo "macos-arm64" ;;
+    linux-x64) echo "linux-x64" ;;
+    linux-arm64) echo "linux-arm64" ;;
     *) echo "$1" ;;
   esac
 }
@@ -116,8 +123,11 @@ current_platform_group() {
     MINGW*|MSYS*|CYGWIN*)
       echo "windows"
       ;;
+    Linux)
+      echo "linux"
+      ;;
     *)
-      echo "Unsupported OS: $os. Use -windows, -macos, or -all explicitly." >&2
+      echo "Unsupported OS: $os. Use -windows, -macos, -linux, or -all explicitly." >&2
       exit 1
       ;;
   esac
@@ -253,7 +263,7 @@ publish_one() {
 }
 
 if [[ "$all" == true ]]; then
-  targets=(win-x64 win-x86 win-arm64 osx-x64 osx-arm64)
+  targets=(win-x64 win-x86 win-arm64 osx-x64 osx-arm64 linux-x64 linux-arm64)
 else
   group="${runtime:-$(current_platform_group)}"
   case "$group" in
@@ -262,6 +272,9 @@ else
       ;;
     macos)
       targets=(osx-x64 osx-arm64)
+      ;;
+    linux)
+      targets=(linux-x64 linux-arm64)
       ;;
     *)
       usage

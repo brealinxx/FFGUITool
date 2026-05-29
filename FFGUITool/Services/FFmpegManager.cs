@@ -46,12 +46,14 @@ namespace FFGUITool.Services
         /// </summary>
         public async Task InitializeAsync()
         {
+            AppLogger.Info("Starting FFmpeg detection.");
             // 1. 检查用户设置的自定义路径
             var customPath = LoadCustomPath();
             if (!string.IsNullOrEmpty(customPath) && await IsValidFFmpegPath(customPath))
             {
                 _ffmpegPath = customPath;
                 IsFFmpegAvailable = true;
+                AppLogger.Info($"FFmpeg detected from custom path: {_ffmpegPath}");
                 return;
             }
 
@@ -61,6 +63,7 @@ namespace FFGUITool.Services
             {
                 _ffmpegPath = embeddedPath;
                 IsFFmpegAvailable = true;
+                AppLogger.Info($"FFmpeg detected from embedded path: {_ffmpegPath}");
                 return;
             }
 
@@ -69,6 +72,7 @@ namespace FFGUITool.Services
             {
                 _ffmpegPath = "ffmpeg";
                 IsFFmpegAvailable = true;
+                AppLogger.Info("FFmpeg detected from system PATH.");
                 return;
             }
 
@@ -80,12 +84,14 @@ namespace FFGUITool.Services
                 {
                     _ffmpegPath = path;
                     IsFFmpegAvailable = true;
+                    AppLogger.Info($"FFmpeg detected from common path: {_ffmpegPath}");
                     return;
                 }
             }
 
             // 5. 都没找到
             IsFFmpegAvailable = false;
+            AppLogger.Warn("FFmpeg detection completed: no usable FFmpeg was found.");
         }
 
         /// <summary>
@@ -95,6 +101,7 @@ namespace FFGUITool.Services
         {
             try
             {
+                AppLogger.Info($"Validating FFmpeg path: {path}");
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = path,
@@ -111,10 +118,13 @@ namespace FFGUITool.Services
                 var output = await process.StandardOutput.ReadToEndAsync();
                 await process.WaitForExitAsync();
 
-                return process.ExitCode == 0 && output.Contains("ffmpeg version");
+                var isValid = process.ExitCode == 0 && output.Contains("ffmpeg version");
+                AppLogger.Info($"FFmpeg validation result for '{path}': {(isValid ? "valid" : $"invalid, exit {process.ExitCode}")}");
+                return isValid;
             }
-            catch
+            catch (Exception ex)
             {
+                AppLogger.Warn($"FFmpeg validation failed for '{path}': {ex.Message}");
                 return false;
             }
         }
@@ -272,10 +282,12 @@ namespace FFGUITool.Services
                     }
                 }
 
+                AppLogger.Info($"FFmpeg encoder probe found {encoders.Count} video encoders.");
                 return encoders;
             }
-            catch
+            catch (Exception ex)
             {
+                AppLogger.Warn($"FFmpeg encoder probe failed: {ex.Message}");
                 return new HashSet<string>();
             }
         }

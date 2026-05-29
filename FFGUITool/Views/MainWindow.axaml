@@ -151,9 +151,13 @@
             <MenuItem Header="{DynamicResource Menu.Tools}" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="{DynamicResource Menu.FFmpegSettings}" Command="{Binding ShowFFmpegSettingsCommand}" />
                 <MenuItem Header="{DynamicResource Menu.ExifToolSettings}" Command="{Binding ConfigureExifToolCommand}" />
-                <Separator />
                 <MenuItem Header="{DynamicResource Menu.RedetectFFmpeg}" Command="{Binding RedetectFFmpegCommand}" />
                 <Separator />
+                <MenuItem Header="{DynamicResource Menu.OpenLogFolder}" Command="{Binding OpenLogFolderCommand}" />
+                <MenuItem Header="{DynamicResource Menu.OpenConfigFolder}" Command="{Binding OpenConfigFolderCommand}" />
+                <MenuItem Header="{DynamicResource Menu.CleanupLocalData}" Command="{Binding CleanupLocalDataCommand}" />
+            </MenuItem>
+            <MenuItem Header="{DynamicResource Menu.Preferences}" Foreground="{DynamicResource PrimaryTextBrush}">
                 <MenuItem Header="{DynamicResource Menu.Language}">
                     <MenuItem Header="{DynamicResource Menu.Language.Chinese}" Command="{Binding SetLanguageCommand}" CommandParameter="zh-CN" />
                     <MenuItem Header="{DynamicResource Menu.Language.English}" Command="{Binding SetLanguageCommand}" CommandParameter="en-US" />
@@ -163,11 +167,11 @@
                     <MenuItem Header="{Binding ThemeLightMenuText}" Command="{Binding SetThemeCommand}" CommandParameter="Light" />
                     <MenuItem Header="{Binding ThemeDarkMenuText}" Command="{Binding SetThemeCommand}" CommandParameter="Dark" />
                 </MenuItem>
-                <Separator />
-                <MenuItem Header="{DynamicResource Menu.OpenConfigFolder}" Command="{Binding OpenConfigFolderCommand}" />
-                <MenuItem Header="{DynamicResource Menu.CleanupLocalData}" Command="{Binding CleanupLocalDataCommand}" />
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu.Help}" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="{DynamicResource Menu.CheckUpdates}" Command="{Binding CheckForUpdatesCommand}" />
+                <MenuItem Header="{DynamicResource Menu.GitHubReleases}" Command="{Binding OpenReleasesCommand}" />
+                <Separator />
                 <MenuItem Header="{DynamicResource Menu.About}" Command="{Binding ShowAboutCommand}" />
             </MenuItem>
         </Menu>
@@ -698,7 +702,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <Grid Grid.Row="2" Margin="0,10,0,0" RowDefinitions="Auto, Auto">
+            <Grid Grid.Row="2" Margin="0,10,0,0" RowDefinitions="Auto, Auto, Auto">
 
                 <Border Grid.Row="0" CornerRadius="8" Background="{StaticResource ConsoleBgColor}"
                         Padding="12" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
@@ -723,7 +727,30 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*, 20, Auto" HorizontalAlignment="Stretch">
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="8"
+                            Margin="0,0,0,16"
+                            IsVisible="{Binding IsFailureActionsVisible}">
+                    <Button Content="{DynamicResource Failure.CopyErrorDetails}"
+                            Command="{Binding CopyErrorDetailsCommand}"
+                            Height="30"
+                            Padding="10,0"
+                            FontSize="12" />
+                    <Button Content="{DynamicResource Failure.CopyFullCommand}"
+                            Command="{Binding CopyFullCommandCommand}"
+                            Height="30"
+                            Padding="10,0"
+                            FontSize="12" />
+                    <Button Content="{DynamicResource Failure.OpenLogs}"
+                            Command="{Binding OpenLogFolderCommand}"
+                            Height="30"
+                            Padding="10,0"
+                            FontSize="12" />
+                </StackPanel>
+
+                <Grid Grid.Row="2" ColumnDefinitions="*, 20, Auto" HorizontalAlignment="Stretch">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="5">
                         <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}" IsIndeterminate="True"
                                      Foreground="{DynamicResource AccentBrush}"

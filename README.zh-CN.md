@@ -71,19 +71,21 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## 发布
 
-项目提供 PowerShell 和 Bash 发布脚本。包版本会自动从 `FFGUITool.csproj` 读取，因此发布文件会命名为类似 `FFGUITool-v1.6.0-<platform>-Portable.zip` 的格式。
+项目提供 PowerShell 和 Bash 发布脚本。包版本会自动从 `FFGUITool.csproj` 读取，因此发布文件会命名为类似 `FFGUITool-v1.7.0-<platform>-Portable.zip` 的格式。
 
 常用命令：
 
 ```powershell
 .\publish.ps1 -Windows -Installer
 .\publish.ps1 -MacOS
+.\publish.ps1 -Linux
 .\publish.ps1 -All
 ```
 
 ```bash
 chmod +x publish.sh
 ./publish.sh -macos --dmg
+./publish.sh -linux
 ./publish.sh -all
 ```
 
