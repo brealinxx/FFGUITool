@@ -292,6 +292,58 @@ namespace FFGUITool.Services
             }
         }
 
+        public async Task<IReadOnlySet<string>> GetAvailableVideoDecoders()
+        {
+            if (!IsFFmpegAvailable)
+            {
+                return new HashSet<string>();
+            }
+
+            try
+            {
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = _ffmpegPath,
+                    Arguments = "-hide_banner -decoders",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = processInfo };
+                process.Start();
+
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                var decoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var line in (output + Environment.NewLine + error).Split('\n'))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length < 8 || !trimmed.StartsWith("V", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        decoders.Add(parts[1]);
+                    }
+                }
+
+                AppLogger.Info($"FFmpeg decoder probe found {decoders.Count} video decoders.");
+                return decoders;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn($"FFmpeg decoder probe failed: {ex.Message}");
+                return new HashSet<string>();
+            }
+        }
+
         /// <summary>
         /// 执行FFmpeg命令
         /// </summary>

@@ -208,7 +208,6 @@
                                 <Button Content="{DynamicResource ExifTool.InstallArchive}" Classes="Accent" HorizontalAlignment="Stretch"
                                         Command="{Binding InstallExifToolArchiveCommand}" IsEnabled="{Binding !IsProcessing}"/>
 
-                                <TextBlock Text="{Binding ExifToolStatusText}" Classes="Caption"/>
                             </StackPanel>
                         </Border>
 

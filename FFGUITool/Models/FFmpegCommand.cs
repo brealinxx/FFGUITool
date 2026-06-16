@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using FFGUITool.Services;
 
 namespace FFGUITool.Models
@@ -23,9 +25,15 @@ namespace FFGUITool.Models
         public bool AudioOnly { get; set; }
         public bool GifOutput { get; set; }
         public bool ImageOutput { get; set; }
+        public string InputVideoCodec { get; set; } = "";
+        public bool PreferDav1dDecoder { get; set; }
+        public string TrimStart { get; set; } = "";
+        public string TrimEnd { get; set; } = "";
+        public string AudioTrackMode { get; set; } = "transcode";
         public int ImageQuality { get; set; } = 80;
         public double ImageTargetSizeKB { get; set; }
         public string ImageFormat { get; set; } = "jpg";
+        public List<int> IconSizes { get; set; } = new();
         public string AdditionalParameters { get; set; } = "";
 
         public string BuildCommand()
@@ -37,6 +45,8 @@ namespace FFGUITool.Models
 
             var command = new StringBuilder();
             command.Append("ffmpeg ");
+            AppendTrimInputOptions(command);
+            AppendDecoderOptions(command);
 
             if (System.IO.File.Exists(InputPath))
             {
@@ -52,6 +62,13 @@ namespace FFGUITool.Models
                 if (MaxHeight > 0)
                 {
                     command.Append($"-vf \"scale=-2:min({MaxHeight}\\,ih)\" ");
+                }
+
+                if (IsIconFormat(ImageFormat) && IconSizes.Count > 0)
+                {
+                    AppendIconFileParameters(command);
+                    AppendOutputPath(command);
+                    return command.ToString();
                 }
 
                 AppendImageParameters(command);
@@ -105,8 +122,7 @@ namespace FFGUITool.Models
                 command.Append($"-b:v {Bitrate}k ");
             }
 
-            command.Append($"-c:a {AudioCodec} ");
-            command.Append($"-b:a {AudioBitrate}k ");
+            AppendAudioParameters(command);
             AppendAdditionalParameters(command);
             AppendOutputPath(command);
 
@@ -119,6 +135,54 @@ namespace FFGUITool.Models
             {
                 command.Append($"{AdditionalParameters} ");
             }
+        }
+
+        private void AppendTrimInputOptions(StringBuilder command)
+        {
+            var start = NormalizeTimeArgument(TrimStart);
+            var end = NormalizeTimeArgument(TrimEnd);
+            if (!string.IsNullOrWhiteSpace(start))
+            {
+                command.Append($"-ss {start} ");
+            }
+
+            if (!string.IsNullOrWhiteSpace(end))
+            {
+                command.Append($"-to {end} ");
+            }
+        }
+
+        private void AppendDecoderOptions(StringBuilder command)
+        {
+            if (PreferDav1dDecoder && string.Equals(InputVideoCodec, "av1", System.StringComparison.OrdinalIgnoreCase))
+            {
+                command.Append("-c:v libdav1d ");
+            }
+        }
+
+        private void AppendAudioParameters(StringBuilder command)
+        {
+            switch (AudioTrackMode)
+            {
+                case "remove":
+                    command.Append("-an ");
+                    return;
+                case "copy":
+                    command.Append("-c:a copy ");
+                    return;
+                default:
+                    command.Append($"-c:a {AudioCodec} ");
+                    command.Append($"-b:a {AudioBitrate}k ");
+                    return;
+            }
+        }
+
+        private static string NormalizeTimeArgument(string value)
+        {
+            value = value.Trim();
+            return Regex.IsMatch(value, @"^\d+(?::\d{1,2}){0,2}(?:[\.,]\d+)?$")
+                ? value.Replace(',', '.')
+                : "";
         }
 
         private string GetEffectiveVideoCodec()
@@ -146,10 +210,52 @@ namespace FFGUITool.Models
                     command.Append("-frames:v 1 ");
                     command.Append($"-compression_level {compression} ");
                     break;
+                case "ico":
+                case "icns":
+                    command.Append("-frames:v 1 ");
+                    break;
                 default:
                     command.Append("-frames:v 1 ");
                     break;
             }
+        }
+
+        private void AppendIconFileParameters(StringBuilder command)
+        {
+            var sizes = IconSizes.Distinct().OrderBy(size => size).ToList();
+            if (sizes.Count == 1)
+            {
+                var size = sizes[0];
+                command.Append($"-vf \"{BuildIconScaleFilter(size)}\" ");
+                command.Append("-frames:v 1 ");
+                return;
+            }
+
+            var splitOutputs = string.Join("", Enumerable.Range(0, sizes.Count).Select(index => $"[icon{index}]"));
+            var filters = new List<string> { $"[0:v]split={sizes.Count}{splitOutputs}" };
+            for (var index = 0; index < sizes.Count; index++)
+            {
+                filters.Add($"[icon{index}]{BuildIconScaleFilter(sizes[index])}[iconout{index}]");
+            }
+
+            command.Append($"-filter_complex \"{string.Join(";", filters)}\" ");
+            for (var index = 0; index < sizes.Count; index++)
+            {
+                command.Append($"-map \"[iconout{index}]\" ");
+            }
+
+            command.Append("-frames:v 1 ");
+        }
+
+        private static bool IsIconFormat(string format)
+        {
+            return format.Equals("ico", System.StringComparison.OrdinalIgnoreCase)
+                   || format.Equals("icns", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BuildIconScaleFilter(int size)
+        {
+            return $"scale={size}:{size}:force_original_aspect_ratio=decrease,pad={size}:{size}:(ow-iw)/2:(oh-ih)/2:color=0x00000000";
         }
 
         private void AppendOutputPath(StringBuilder command)

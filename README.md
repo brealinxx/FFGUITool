@@ -18,7 +18,7 @@ Download the latest ready-to-use build from:
 - Folder batch processing with per-file target ratios for video and image workflows.
 - Drag-and-drop support for files and folders.
 - Image input support for JPG, JPEG, PNG, WebP, HEIC, HEIF, BMP, GIF, TIFF, ICO, TGA, and AVIF.
-- Image output formats: JPG, PNG, and WebP.
+- Image output formats: JPG, PNG, WebP, ICO, and ICNS.
 - Video output formats: MP4, MKV, WebM, MOV, AVI, and GIF.
 - Audio extraction/conversion to MP3, AAC, M4A, WAV, FLAC, and OGG.
 - Resolution presets including original size, 2160p, 1080p, 720p, 480p, 512px, and 360p.
@@ -71,7 +71,7 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## Publish Packages
 
-The project provides PowerShell and Bash publish scripts. Package versions are read automatically from `FFGUITool.csproj`, so release files are named like `FFGUITool-v1.7.0-<platform>-Portable.zip`.
+The project provides PowerShell and Bash publish scripts. Package versions are read automatically from `FFGUITool.csproj`, so release files are named like `FFGUITool-v1.8.0-<platform>-Portable.zip`.
 
 Common commands:
 

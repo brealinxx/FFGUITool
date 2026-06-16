@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FFGUITool.Models;
 
 namespace FFGUITool.Services
@@ -30,10 +32,16 @@ namespace FFGUITool.Services
                 AudioOnly = settings.EnableAudioConversion,
                 GifOutput = settings.EnableFormatConversion && settings.OutputFormat == "gif",
                 AudioCodec = GetCommandAudioCodec(settings),
+                InputVideoCodec = settings.InputVideoCodec,
+                PreferDav1dDecoder = settings.PreferDav1dDecoder,
+                TrimStart = settings.EnableTrim ? settings.TrimStart : "",
+                TrimEnd = settings.EnableTrim ? settings.TrimEnd : "",
+                AudioTrackMode = settings.AudioTrackMode,
                 ImageOutput = settings.IsImageProcessing,
                 ImageQuality = settings.ImageQuality,
                 ImageTargetSizeKB = settings.ImageTargetSizeKB,
-                ImageFormat = settings.IsImageProcessing ? settings.ImageOutputFormat : GetOutputFormat(settings)
+                ImageFormat = settings.IsImageProcessing ? settings.ImageOutputFormat : GetOutputFormat(settings),
+                IconSizes = ParseIconSizes(settings.IconSizesCsv)
             };
 
             command.OutputPath = BuildOutputPath(settings);
@@ -118,6 +126,18 @@ namespace FFGUITool.Services
             }
 
             return "mp4";
+        }
+
+        private static List<int> ParseIconSizes(string sizesCsv)
+        {
+            var sizes = sizesCsv
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => int.TryParse(part.Trim(), out var size) ? size : 0)
+                .Where(size => size > 0)
+                .Distinct()
+                .OrderBy(size => size)
+                .ToList();
+            return sizes.Count == 0 ? new List<int> { 16, 32, 48, 256 } : sizes;
         }
 
         private static string GetImageOutputFormatFromInput(string inputPath)

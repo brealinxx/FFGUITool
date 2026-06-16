@@ -61,6 +61,52 @@ public sealed class CommandBuilderTests
     }
 
     [TestMethod]
+    public void BuildsTrimmedVideoCommand()
+    {
+        using var workspace = TestWorkspace.Create();
+        var input = workspace.File("clip.mp4");
+
+        var command = new CommandBuilder().BuildCommand(new CompressionSettings
+        {
+            InputPath = input,
+            Bitrate = 1200,
+            EnableTrim = true,
+            TrimStart = "00:00:05",
+            TrimEnd = "00:00:12.5",
+            OutputLabel = "clip_00_00_05-00_00_12_5_25MB"
+        });
+
+        var text = command.BuildCommand();
+        StringAssert.StartsWith(text, "ffmpeg -ss 00:00:05 -to 00:00:12.5 ");
+        StringAssert.Contains(text, $"-i \"{input}\"");
+        StringAssert.EndsWith(command.OutputPath, "clip_FFGUIToolOutPut_clip_00_00_05-00_00_12_5_25MB.mp4");
+    }
+
+    [TestMethod]
+    public void BuildsVideoAudioTrackModes()
+    {
+        using var workspace = TestWorkspace.Create();
+        var input = workspace.File("clip.mp4");
+
+        var muted = new CommandBuilder().BuildCommand(new CompressionSettings
+        {
+            InputPath = input,
+            AudioTrackMode = "remove"
+        }).BuildCommand();
+
+        StringAssert.Contains(muted, "-an");
+
+        var copied = new CommandBuilder().BuildCommand(new CompressionSettings
+        {
+            InputPath = input,
+            AudioTrackMode = "copy"
+        }).BuildCommand();
+
+        StringAssert.Contains(copied, "-c:a copy");
+        Assert.IsFalse(copied.Contains("-b:a"));
+    }
+
+    [TestMethod]
     public void BuildsImageCommand()
     {
         using var workspace = TestWorkspace.Create();

@@ -10,6 +10,7 @@ namespace FFGUITool.Models
         public int Bitrate { get; set; }
         public double Duration { get; set; }
         public string Resolution { get; set; } = "";
+        public string VideoCodec { get; set; } = "";
         public double Framerate { get; set; }
         public long FileSize { get; set; }
         public string FilePath { get; set; } = "";

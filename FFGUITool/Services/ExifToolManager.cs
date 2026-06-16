@@ -188,6 +188,51 @@ namespace FFGUITool.Services
             }
         }
 
+        public async Task<string> ReadAllMetadataDetails(string filePath, bool localizeLabels = false)
+        {
+            if (!IsExifToolAvailable || !File.Exists(filePath))
+            {
+                return "";
+            }
+
+            var result = await RunExifTool(_exifToolPath, $"-j -G1 -a -s \"{filePath}\"");
+            if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.Output))
+            {
+                return "";
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(result.Output);
+                var first = document.RootElement.ValueKind == JsonValueKind.Array && document.RootElement.GetArrayLength() > 0
+                    ? document.RootElement[0]
+                    : default;
+                if (first.ValueKind != JsonValueKind.Object)
+                {
+                    return "";
+                }
+
+                var lines = new List<string>();
+                foreach (var property in first.EnumerateObject())
+                {
+                    var value = FormatJsonValue(property.Value);
+                    if (string.IsNullOrWhiteSpace(value))
+                    {
+                        continue;
+                    }
+
+                    var label = localizeLabels ? FormatDetailedMetadataLabel(property.Name) : property.Name;
+                    lines.Add($"{label}: {value}");
+                }
+
+                return string.Join(Environment.NewLine, lines.Distinct().Take(240));
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
         public async Task<(bool Success, string Error)> ClearMetadata(string filePath)
         {
             if (!IsExifToolAvailable)
@@ -322,6 +367,101 @@ namespace FFGUITool.Services
                 "Model" => "Device model",
                 _ => string.Concat(key.Select((ch, index) =>
                     index > 0 && char.IsUpper(ch) ? " " + ch : ch.ToString()))
+            };
+        }
+
+        private static string FormatDetailedMetadataLabel(string key)
+        {
+            var normalized = NormalizeExifToolKey(key);
+            return normalized switch
+            {
+                "SourceFile" => "文件路径",
+                "FileName" => "文件名",
+                "Directory" => "所在文件夹",
+                "FileSize" => "文件大小",
+                "FileModifyDate" => "文件修改时间",
+                "FileAccessDate" => "文件访问时间",
+                "FileCreateDate" => "文件创建时间",
+                "FilePermissions" => "文件权限",
+                "FileType" => "文件类型",
+                "FileTypeExtension" => "文件扩展名",
+                "MIMEType" => "MIME 类型",
+                "ExifByteOrder" => "Exif 字节序",
+                "ImageWidth" => "图片宽度",
+                "ImageHeight" => "图片高度",
+                "ImageSize" => "图片尺寸",
+                "Megapixels" => "像素总量",
+                "Make" => "设备厂商",
+                "Model" => "设备型号",
+                "LensModel" => "镜头型号",
+                "LensMake" => "镜头厂商",
+                "LensInfo" => "镜头信息",
+                "SerialNumber" => "序列号",
+                "Software" => "软件",
+                "Artist" => "作者",
+                "Author" => "作者",
+                "Creator" => "创建者",
+                "Copyright" => "版权",
+                "Description" => "描述",
+                "Comment" => "注释",
+                "Title" => "标题",
+                "Subject" => "主题",
+                "Keywords" => "关键词",
+                "CreateDate" => "创建时间",
+                "DateTimeOriginal" => "拍摄时间",
+                "ModifyDate" => "修改时间",
+                "TrackCreateDate" => "轨道创建时间",
+                "TrackModifyDate" => "轨道修改时间",
+                "MediaCreateDate" => "媒体创建时间",
+                "MediaModifyDate" => "媒体修改时间",
+                "Duration" => "时长",
+                "MediaDuration" => "媒体时长",
+                "TrackDuration" => "轨道时长",
+                "AvgBitrate" => "平均码率",
+                "Bitrate" => "码率",
+                "VideoFrameRate" => "视频帧率",
+                "FrameRate" => "帧率",
+                "CompressorID" => "压缩器 ID",
+                "CompressorName" => "压缩器名称",
+                "HandlerDescription" => "处理器描述",
+                "HandlerType" => "处理器类型",
+                "HandlerVendorID" => "处理器厂商 ID",
+                "MajorBrand" => "主要品牌",
+                "CompatibleBrands" => "兼容品牌",
+                "MovieHeaderVersion" => "视频头版本",
+                "TimeScale" => "时间刻度",
+                "PreferredRate" => "首选播放速率",
+                "PreferredVolume" => "首选音量",
+                "Rotation" => "旋转角度",
+                "MatrixStructure" => "矩阵结构",
+                "AudioFormat" => "音频格式",
+                "AudioChannels" => "音频声道",
+                "AudioBitsPerSample" => "音频采样位深",
+                "AudioSampleRate" => "音频采样率",
+                "Balance" => "声道平衡",
+                "GPSLatitude" => "GPS 纬度",
+                "GPSLongitude" => "GPS 经度",
+                "GPSAltitude" => "GPS 高度",
+                "GPSPosition" => "GPS 位置",
+                "GPSCoordinates" => "GPS 坐标",
+                "Location" => "位置",
+                "LocationName" => "位置名称",
+                "UserDataGPSCoordinates" => "用户 GPS 坐标",
+                "ExposureTime" => "曝光时间",
+                "FNumber" => "光圈",
+                "ISO" => "ISO 感光度",
+                "FocalLength" => "焦距",
+                "FocalLengthIn35mmFormat" => "35mm 等效焦距",
+                "ExposureProgram" => "曝光程序",
+                "ExposureMode" => "曝光模式",
+                "MeteringMode" => "测光模式",
+                "WhiteBalance" => "白平衡",
+                "Flash" => "闪光灯",
+                "Orientation" => "方向",
+                "ColorSpace" => "色彩空间",
+                "ColorComponents" => "颜色通道数",
+                "YCbCrSubSampling" => "YCbCr 采样",
+                _ => key
             };
         }
 

@@ -232,6 +232,13 @@ namespace FFGUITool.ViewModels
         private async Task Confirm()
         {
             // 优先处理已选择的路径
+            if (SetupCompleted || _ffmpegManager.IsFFmpegAvailable)
+            {
+                SetupCompleted = true;
+                OnCloseRequested?.Invoke();
+                return;
+            }
+
             if (!string.IsNullOrWhiteSpace(FfmpegPathText))
             {
                 await ProcessCustomPath(FfmpegPathText);
@@ -303,6 +310,7 @@ namespace FFGUITool.ViewModels
             _exifToolManager = exifToolManager;
             _dialogService = dialogService;
             LocalizationService.LanguageChanged += OnLanguageChanged;
+            RefreshFFmpegStatus();
             RefreshExifToolStatus();
         }
 
@@ -328,6 +336,7 @@ namespace FFGUITool.ViewModels
                 if (success)
                 {
                     SetupCompleted = true;
+                    StatusText = LocalizationService.T("Setup.PathSuccess");
                     await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Setup.PathSuccess"));
                     OnCloseRequested?.Invoke();
                 }
@@ -347,7 +356,10 @@ namespace FFGUITool.ViewModels
             finally
             {
                 IsProcessing = false;
-                StatusText = "";
+                if (!SetupCompleted)
+                {
+                    StatusText = "";
+                }
             }
         }
 
@@ -362,11 +374,13 @@ namespace FFGUITool.ViewModels
                 if (success)
                 {
                     SetupCompleted = true;
+                    FfmpegPathText = _ffmpegManager.FFmpegPath;
                     StatusText = LocalizationService.T("Setup.PathSuccess");
                     await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Setup.PathSuccess"));
                 }
                 else
                 {
+                    StatusText = LocalizationService.T("Setup.SystemFFmpegMissing");
                     await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), LocalizationService.T("Setup.SystemFFmpegMissing"));
                 }
             }
@@ -379,7 +393,6 @@ namespace FFGUITool.ViewModels
             finally
             {
                 IsProcessing = false;
-                StatusText = "";
             }
         }
 
@@ -401,6 +414,7 @@ namespace FFGUITool.ViewModels
                 if (success)
                 {
                     SetupCompleted = true;
+                    StatusText = LocalizationService.T("Setup.InstallSuccess");
                     await _dialogService.ShowMessage(LocalizationService.T("Dialog.Success"), LocalizationService.T("Setup.InstallSuccess"));
                     OnCloseRequested?.Invoke();
                 }
@@ -418,7 +432,10 @@ namespace FFGUITool.ViewModels
             finally
             {
                 IsProcessing = false;
-                StatusText = "";
+                if (!SetupCompleted)
+                {
+                    StatusText = "";
+                }
             }
         }
 
@@ -427,11 +444,17 @@ namespace FFGUITool.ViewModels
             try
             {
                 IsProcessing = true;
+                StatusText = LocalizationService.T("ExifTool.Validating");
                 ExifToolStatusText = LocalizationService.T("ExifTool.Validating");
                 var success = await _exifToolManager.SetSystemExifTool();
                 ExifToolStatusText = success
                     ? LocalizationService.T("ExifTool.PathSuccess")
                     : LocalizationService.T("ExifTool.SystemMissing");
+                StatusText = ExifToolStatusText;
+                if (success)
+                {
+                    ExifToolPathText = _exifToolManager.ExifToolPath;
+                }
             }
             finally
             {
@@ -450,11 +473,13 @@ namespace FFGUITool.ViewModels
             try
             {
                 IsProcessing = true;
+                StatusText = LocalizationService.T("ExifTool.Validating");
                 ExifToolStatusText = LocalizationService.T("ExifTool.Validating");
                 var success = await _exifToolManager.SetCustomPath(path);
                 ExifToolStatusText = success
                     ? LocalizationService.T("ExifTool.PathSuccess")
                     : LocalizationService.T("ExifTool.Invalid");
+                StatusText = ExifToolStatusText;
             }
             finally
             {
@@ -473,11 +498,13 @@ namespace FFGUITool.ViewModels
             try
             {
                 IsProcessing = true;
+                StatusText = LocalizationService.T("ExifTool.Validating");
                 ExifToolStatusText = LocalizationService.T("ExifTool.Validating");
                 var success = await _exifToolManager.SetCustomDirectory(folder);
                 ExifToolStatusText = success
                     ? LocalizationService.T("ExifTool.PathSuccess")
                     : LocalizationService.T("ExifTool.InvalidFolder");
+                StatusText = ExifToolStatusText;
             }
             finally
             {
@@ -496,15 +523,18 @@ namespace FFGUITool.ViewModels
             try
             {
                 IsProcessing = true;
+                StatusText = LocalizationService.T("ExifTool.Installing");
                 ExifToolStatusText = LocalizationService.T("ExifTool.Installing");
                 var success = await _exifToolManager.InstallFromArchive(archivePath);
                 ExifToolStatusText = success
                     ? LocalizationService.T("ExifTool.InstallSuccess")
                     : LocalizationService.T("ExifTool.InstallFailed");
+                StatusText = ExifToolStatusText;
             }
             catch (Exception ex)
             {
                 ExifToolStatusText = LocalizationService.Format("ExifTool.InstallError", ex.Message);
+                StatusText = ExifToolStatusText;
             }
             finally
             {
@@ -517,6 +547,18 @@ namespace FFGUITool.ViewModels
             ExifToolStatusText = _exifToolManager.IsExifToolAvailable
                 ? LocalizationService.T("ExifTool.Ready")
                 : LocalizationService.T("ExifTool.OptionalNotConfigured");
+        }
+
+        private void RefreshFFmpegStatus()
+        {
+            if (!_ffmpegManager.IsFFmpegAvailable)
+            {
+                return;
+            }
+
+            SetupCompleted = true;
+            FfmpegPathText = _ffmpegManager.FFmpegPath;
+            StatusText = LocalizationService.T("Setup.PathSuccess");
         }
 
         partial void OnSelectedLanguageChanged(LanguageOption? value)

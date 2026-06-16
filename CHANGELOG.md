@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.8.0
+
+### Added
+
+- Added a system tray icon with quick actions for Video mode, Image mode, and full application exit.
+- Added ICO and ICNS image conversion output support, including selectable icon sizes written into a single icon file.
+
+### Changed
+
+- Changed the main window close button to minimize the app to the system tray instead of exiting.
+- Changed ICO export behavior to create a single `.ico` file instead of automatically packaging generated icons into a ZIP archive.
+- Updated English and Chinese README feature lists to mention ICO and ICNS conversion support.
+
+### Fixed
+
+- Fixed setup wizard completion after FFmpeg is detected from the system command path.
+- Unified FFmpeg and ExifTool setup status display through the wizard progress/status area.
+- Fixed preset and image-mode editability so WeChat/QQ presets keep target size locked while advanced mode remains editable, and image target size controls remain editable.
+- Fixed ICO/ICNS image conversion UI so resolution conversion is disabled for icon output.
+
+### Version
+
+- Updated application version metadata from `1.7.0` to `1.8.0`.
+- Updated assembly version and file version to `1.8.0.0`.
+- Updated Windows application manifest assembly identity to `1.8.0.0`.
+- Updated installer and package documentation version metadata to `1.8.0`.
+
 ## v1.7.0
 
 ### Added

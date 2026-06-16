@@ -85,6 +85,12 @@ namespace FFGUITool.Services
                 }
 
                 // 解析帧率
+                var codecMatch = Regex.Match(ffmpegOutput, @"Video:\s*([^,\s]+)", RegexOptions.IgnoreCase);
+                if (codecMatch.Success)
+                {
+                    videoInfo.VideoCodec = codecMatch.Groups[1].Value.Trim().ToLowerInvariant();
+                }
+
                 var framerateMatch = Regex.Match(ffmpegOutput, @"(\d+(?:\.\d+)?) fps");
                 if (framerateMatch.Success)
                 {

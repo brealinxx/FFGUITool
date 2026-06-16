@@ -18,6 +18,7 @@ namespace FFGUITool.Views
     public partial class MainWindow : Window
     {
         private MainWindowViewModel? _viewModel;
+        public bool AllowClose { get; set; }
 
         public MainWindow()
         {
@@ -58,18 +59,27 @@ namespace FFGUITool.Views
         private void OnDragOver(object? sender, DragEventArgs e)
         {
             var files = e.Data.GetFiles()?.ToList();
-            var path = files?.Count == 1 ? files[0].Path.LocalPath : null;
-            e.DragEffects = MediaFileSupport.IsSupportedDroppedPath(path, _viewModel?.IsImageMode == true) ? DragDropEffects.Copy : DragDropEffects.None;
+            var imageMode = _viewModel?.IsImageMode == true;
+            e.DragEffects = files?.Count > 0 && files.All(file => MediaFileSupport.IsSupportedDroppedPath(file.Path.LocalPath, imageMode))
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
             e.Handled = true;
         }
 
         private async void OnDrop(object? sender, DragEventArgs e)
         {
-            var item = e.Data.GetFiles()?.FirstOrDefault();
-            var path = item?.Path.LocalPath;
-            if (MediaFileSupport.IsSupportedDroppedPath(path, _viewModel?.IsImageMode == true) && _viewModel != null)
+            var paths = e.Data.GetFiles()?.Select(file => file.Path.LocalPath).ToList() ?? [];
+            if (_viewModel != null && paths.Count > 1 && paths.All(path => MediaFileSupport.IsSupportedDroppedPath(path, _viewModel.IsImageMode)))
             {
-                await _viewModel.ProcessSelectedInput(path!);
+                await _viewModel.ProcessSelectedInputs(paths);
+            }
+            else
+            {
+                var path = paths.FirstOrDefault();
+                if (MediaFileSupport.IsSupportedDroppedPath(path, _viewModel?.IsImageMode == true) && _viewModel != null)
+                {
+                    await _viewModel.ProcessSelectedInput(path!);
+                }
             }
 
             e.Handled = true;
@@ -110,6 +120,18 @@ namespace FFGUITool.Views
 
             WorkspaceRoot.Opacity = 1;
             WorkspaceRoot.RenderTransform = new TranslateTransform(0, 0);
+        }
+
+        protected override void OnClosing(WindowClosingEventArgs e)
+        {
+            if (!AllowClose)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+
+            base.OnClosing(e);
         }
 
         protected override void OnClosed(EventArgs e)

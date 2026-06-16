@@ -125,6 +125,19 @@
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
         </Style>
 
+        <Style Selector="Button.SourceTab">
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="MaxWidth" Value="180" />
+        </Style>
+
+        <Style Selector="Button.SourceTab.Selected">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
         <Style Selector="CheckBox.VideoTool">
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
@@ -152,6 +165,7 @@
                 <MenuItem Header="{DynamicResource Menu.FFmpegSettings}" Command="{Binding ShowFFmpegSettingsCommand}" />
                 <MenuItem Header="{DynamicResource Menu.ExifToolSettings}" Command="{Binding ConfigureExifToolCommand}" />
                 <MenuItem Header="{DynamicResource Menu.RedetectFFmpeg}" Command="{Binding RedetectFFmpegCommand}" />
+                <MenuItem Header="{DynamicResource Menu.ConfigCheck}" Command="{Binding ShowConfigCheckCommand}" />
                 <Separator />
                 <MenuItem Header="{DynamicResource Menu.OpenLogFolder}" Command="{Binding OpenLogFolderCommand}" />
                 <MenuItem Header="{DynamicResource Menu.OpenConfigFolder}" Command="{Binding OpenConfigFolderCommand}" />
@@ -274,11 +288,11 @@
                         Classes="Icon" BorderThickness="0" Background="Transparent"
                         ToolTip.Tip="{DynamicResource Theme.Toggle}">
                     <Panel Width="24" Height="24">
-                        <TextBlock Text="◐" FontSize="20" IsVisible="{Binding IsThemeSystem}"
+                        <TextBlock Text="Auto" FontSize="11" IsVisible="{Binding IsThemeSystem}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBlock Text="☀" FontSize="18" IsVisible="{Binding IsThemeLight}"
+                        <TextBlock Text="Light" FontSize="11" IsVisible="{Binding IsThemeLight}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBlock Text="☾" FontSize="18" IsVisible="{Binding IsThemeDarkManual}"
+                        <TextBlock Text="Dark" FontSize="11" IsVisible="{Binding IsThemeDarkManual}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Panel>
                 </Button>
@@ -290,9 +304,27 @@
                     <Border Classes="Card">
                         <StackPanel Spacing="12">
                             <TextBlock Classes="H1" Text="{Binding InputSourceTitle}" />
+                            <ItemsControl ItemsSource="{Binding SourceTabs}" IsVisible="{Binding IsSourceTabsVisible}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Classes.SourceTab="True"
+                                                Classes.Selected="{Binding IsSelected}"
+                                                Content="{Binding FileName}"
+                                                Command="{Binding #WorkspaceRoot.DataContext.SelectSourceTabCommand}"
+                                                CommandParameter="{Binding}"
+                                                Margin="0,0,8,6"
+                                                ToolTip.Tip="{Binding InputPath}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <Grid ColumnDefinitions="*, 10, Auto, 10, Auto">
-                                <TextBox Grid.Column="0" Text="{Binding InputPathText}"
-                                         Watermark="{DynamicResource Main.InputWatermark}" IsReadOnly="True" Height="38"
+                                <TextBox Grid.Column="0" Text="{Binding InputPathText, Mode=TwoWay}"
+                                         Watermark="{DynamicResource Main.InputWatermark}" Height="38"
                                          VerticalContentAlignment="Center" />
                                 <Button Grid.Column="2" Content="{DynamicResource Main.SelectFile}" Command="{Binding SelectFileCommand}"
                                         Height="38" />
@@ -300,25 +332,51 @@
                                         Height="38" />
                             </Grid>
                             <TextBlock Text="{Binding BatchModeText}"
-                                       IsVisible="{Binding IsBatchMode}"
+                                       IsVisible="{Binding IsInputStatusVisible}"
                                        FontSize="12"
                                        Foreground="{DynamicResource SecondaryTextBrush}" />
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6"
+                                    Padding="8" IsVisible="{Binding IsBatchTaskListVisible}">
+                                <ItemsControl ItemsSource="{Binding BatchTasks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="2*, 90, 2*" Margin="0,3">
+                                                <TextBlock Text="{Binding FileName}" Foreground="{DynamicResource PrimaryTextBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding OutputPath}" Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
                         </StackPanel>
                     </Border>
 
                     <Border Classes="Card" IsVisible="{Binding IsVideoInfoVisible}">
                         <StackPanel Spacing="10">
-                            <DockPanel LastChildFill="False" Margin="0,0,0,4">
-                                <TextBlock Classes="H1" Text="{Binding SourceInfoTitle}" DockPanel.Dock="Left" Margin="0"
+                            <Grid ColumnDefinitions="*, Auto, Auto" Margin="0,0,0,4">
+                                <TextBlock Classes="H1" Text="{Binding SourceInfoTitle}" Margin="0"
                                            VerticalAlignment="Center" />
 
-                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="8,4"
-                                        DockPanel.Dock="Right" VerticalAlignment="Center"
+                                <Button Grid.Column="1"
+                                        Content="{DynamicResource Main.SourceDetails}"
+                                        Command="{Binding ShowSourceDetailsCommand}"
+                                        Height="30"
+                                        Padding="10,0"
+                                        FontSize="12"
+                                        Margin="0,0,8,0" />
+
+                                <Border Grid.Column="2"
+                                        Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="8,4"
+                                        VerticalAlignment="Center"
                                         IsVisible="{Binding IsSourceBadgeVisible}">
                                     <TextBlock Text="{Binding SourceBadgeText}"
                                                Foreground="White" FontSize="12" FontWeight="SemiBold" />
                                 </Border>
-                            </DockPanel>
+                            </Grid>
 
                             <UniformGrid Columns="3" Rows="1" HorizontalAlignment="Stretch">
                                 <StackPanel>
@@ -420,6 +478,7 @@
                                     Padding="12,8" HorizontalAlignment="Left">
                                 <CheckBox Content="{DynamicResource Main.AdvancedMode}"
                                           IsChecked="{Binding IsAdvancedMode}"
+                                          IsEnabled="{Binding CanEditAdvancedMode}"
                                           FontWeight="Bold"
                                           Foreground="{DynamicResource PrimaryTextBrush}" />
                             </Border>
@@ -456,7 +515,7 @@
                                     <CheckBox Content="{DynamicResource Main.ResolutionConversion}"
                                               Classes="VideoTool"
                                               IsChecked="{Binding EnableResolutionConversion}"
-                                              IsEnabled="{Binding CanEditVideoConversionTools}" />
+                                              IsEnabled="{Binding CanEditResolutionConversionTools}" />
                                 </UniformGrid>
 
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsFormatConversionOptionsVisible}">
@@ -485,6 +544,19 @@
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsIconOptionsVisible}">
+                                    <TextBlock Text="{DynamicResource Image.IconSizes}" Classes="Label" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                                    <WrapPanel Grid.Column="1">
+                                        <CheckBox Content="16" IsChecked="{Binding IcoSize16}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <CheckBox Content="24" IsChecked="{Binding IcoSize24}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <CheckBox Content="32" IsChecked="{Binding IcoSize32}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <CheckBox Content="48" IsChecked="{Binding IcoSize48}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <CheckBox Content="64" IsChecked="{Binding IcoSize64}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <CheckBox Content="128" IsChecked="{Binding IcoSize128}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <CheckBox Content="256" IsChecked="{Binding IcoSize256}" Margin="0,0,12,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                    </WrapPanel>
                                 </Grid>
 
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAudioConversionOptionsVisible}">
@@ -530,6 +602,49 @@
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsVideoOutputOptionsVisible}">
+                                    <TextBlock Text="{DynamicResource Main.AudioTrackMode}" Classes="Label" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AudioTrackModeOptions}" SelectedItem="{Binding SelectedAudioTrackModeOption}"
+                                              HorizontalAlignment="Left" Width="300">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
+                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsVideoOutputOptionsVisible}">
+                                    <TextBlock Text="{DynamicResource Main.TrimSegment}" Classes="Label" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                                    <StackPanel Grid.Column="1" Spacing="6">
+                                        <CheckBox Content="{DynamicResource Main.TrimSegment}"
+                                                  IsChecked="{Binding EnableTrim}"
+                                                  Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <Grid ColumnDefinitions="*, 12, *" IsVisible="{Binding EnableTrim}">
+                                            <StackPanel Grid.Column="0" Spacing="4">
+                                                <TextBlock Text="{DynamicResource Main.TrimStart}" Classes="Label" FontSize="12"/>
+                                                <TextBox Text="{Binding TrimStartText}"
+                                                         Watermark="{DynamicResource Main.TrimWatermark}"
+                                                         Height="34"
+                                                         VerticalContentAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Spacing="4">
+                                                <TextBlock Text="{DynamicResource Main.TrimEnd}" Classes="Label" FontSize="12"/>
+                                                <TextBox Text="{Binding TrimEndText}"
+                                                         Watermark="{DynamicResource Main.TrimWatermark}"
+                                                         Height="34"
+                                                         VerticalContentAlignment="Center" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="{Binding TrimHintText}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    </StackPanel>
                                 </Grid>
 
                                 <TextBlock Text="{DynamicResource Main.Privacy}"

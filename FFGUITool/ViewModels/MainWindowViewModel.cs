@@ -1,10 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia;
@@ -33,9 +35,11 @@ namespace FFGUITool.ViewModels
         private const string LatestReleaseApiUrl = "https://api.github.com/repos/brealinxx/FFGUITool/releases/latest";
         private bool _isSyncingCompressionValues;
         private bool _isSyncingConversionToggles;
+        private bool _isUpdatingInputPathText;
         private VideoInfo? _batchPreviewInfo;
         private string _batchPreviewInfoPath = "";
         private IReadOnlySet<string> _availableVideoEncoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlySet<string> _availableVideoDecoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         #region 可观察属性
 
@@ -83,6 +87,9 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private bool _canEditTargetSize = true;
+
+        [ObservableProperty]
+        private bool _canEditAdvancedMode = true;
 
         [ObservableProperty]
         private List<string> _imageTargetSizeUnitOptions = new() { "KB", "MB" };
@@ -173,6 +180,21 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private string _inputPathText = "";
+
+        [ObservableProperty]
+        private bool _isSourceTabsVisible;
+
+        [ObservableProperty]
+        private ObservableCollection<SourceTabItem> _sourceTabs = new();
+
+        [ObservableProperty]
+        private bool _isInputStatusVisible;
+
+        [ObservableProperty]
+        private bool _isBatchTaskListVisible;
+
+        [ObservableProperty]
+        private ObservableCollection<BatchTaskItem> _batchTasks = new();
 
         [ObservableProperty]
         private string _outputPathText = "";
@@ -344,6 +366,9 @@ namespace FFGUITool.ViewModels
         private bool _canEditVideoConversionTools;
 
         [ObservableProperty]
+        private bool _canEditResolutionConversionTools;
+
+        [ObservableProperty]
         private bool _enableFormatConversion;
 
         [ObservableProperty]
@@ -360,6 +385,21 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private bool _isResolutionConversionOptionsVisible;
+
+        [ObservableProperty]
+        private bool _isVideoOutputOptionsVisible;
+
+        [ObservableProperty]
+        private bool _enableTrim;
+
+        [ObservableProperty]
+        private string _trimStartText = "";
+
+        [ObservableProperty]
+        private string _trimEndText = "";
+
+        [ObservableProperty]
+        private string _trimHintText = "未启用";
 
         [ObservableProperty]
         private bool _isAdvancedVideoControlsVisible;
@@ -410,6 +450,17 @@ namespace FFGUITool.ViewModels
         private CodecOption? _selectedAudioBitrateOption;
 
         [ObservableProperty]
+        private List<CodecOption> _audioTrackModeOptions = new()
+        {
+            new CodecOption("重新编码音频", "transcode", "兼容性最好"),
+            new CodecOption("保留原音轨", "copy", "不重新编码音频"),
+            new CodecOption("移除音轨", "remove", "输出静音视频")
+        };
+
+        [ObservableProperty]
+        private CodecOption? _selectedAudioTrackModeOption;
+
+        [ObservableProperty]
         private List<CodecOption> _resolutionOptions = new()
         {
             new CodecOption("原尺寸", "0", "不调整尺寸"),
@@ -435,6 +486,30 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private CodecOption? _selectedImageFormatOption;
 
+        [ObservableProperty]
+        private bool _isIconOptionsVisible;
+
+        [ObservableProperty]
+        private bool _icoSize16 = true;
+
+        [ObservableProperty]
+        private bool _icoSize24;
+
+        [ObservableProperty]
+        private bool _icoSize32 = true;
+
+        [ObservableProperty]
+        private bool _icoSize48 = true;
+
+        [ObservableProperty]
+        private bool _icoSize64;
+
+        [ObservableProperty]
+        private bool _icoSize128;
+
+        [ObservableProperty]
+        private bool _icoSize256 = true;
+
         #endregion
 
         #region 命令
@@ -452,6 +527,7 @@ namespace FFGUITool.ViewModels
             Bitrate = CompressionSettings.Bitrate > 0 ? CompressionSettings.Bitrate : 2000;
             RefreshModeText();
             ResetSelectedInput();
+            ApplyPresetEditability();
             UpdateConversionOptionVisibility();
             UpdateCommand();
         }
@@ -474,6 +550,7 @@ namespace FFGUITool.ViewModels
             Bitrate = CompressionSettings.ImageQuality;
             RefreshModeText();
             ResetSelectedInput();
+            ApplyPresetEditability();
             UpdateConversionOptionVisibility();
             UpdateCommand();
         }
@@ -489,7 +566,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private async Task SelectFile()
         {
-            var file = await _dialogService.OpenFileDialog(IsImageMode ? LocalizationService.T("Image.SelectFile") : LocalizationService.T("Picker.SelectVideo"), IsImageMode ? new[]
+            var files = await _dialogService.OpenFilesDialog(IsImageMode ? LocalizationService.T("Image.SelectFile") : LocalizationService.T("Picker.SelectVideo"), IsImageMode ? new[]
             {
                 new FilePickerFileType(LocalizationService.T("Image.FileType"))
                 {
@@ -515,9 +592,13 @@ namespace FFGUITool.ViewModels
                 }
             });
 
-            if (file != null)
+            if (files.Count == 1)
             {
-                await ProcessSelectedInput(file.Path.LocalPath);
+                await ProcessSelectedInput(files[0].Path.LocalPath);
+            }
+            else if (files.Count > 1)
+            {
+                await ProcessSelectedInputs(files.Select(file => file.Path.LocalPath));
             }
         }
 
@@ -909,6 +990,7 @@ namespace FFGUITool.ViewModels
             SelectedVideoFormatOption = VideoFormatOptions[0];
             SelectedAudioFormatOption = AudioFormatOptions[0];
             SelectedAudioBitrateOption = AudioBitrateOptions.Find(option => option.Value == CompressionSettings.AudioBitrate.ToString()) ?? AudioBitrateOptions[^1];
+            SelectedAudioTrackModeOption = AudioTrackModeOptions[0];
             SelectedResolutionOption = ResolutionOptions[3];
             SelectedImageFormatOption = ImageFormatOptions[0];
             RefreshAdvancedVideoLabels();
@@ -990,8 +1072,20 @@ namespace FFGUITool.ViewModels
         {
             switch (e.PropertyName)
             {
+                case nameof(InputPathText):
+                    _ = OnInputPathTextChanged();
+                    break;
                 case nameof(SelectedImageFormatOption):
                     OnImageFormatChanged();
+                    break;
+                case nameof(IcoSize16):
+                case nameof(IcoSize24):
+                case nameof(IcoSize32):
+                case nameof(IcoSize48):
+                case nameof(IcoSize64):
+                case nameof(IcoSize128):
+                case nameof(IcoSize256):
+                    OnIconSizeChanged();
                     break;
                 case nameof(SelectedImageTargetSizeUnit):
                     OnImageTargetSizeUnitChanged();
@@ -1021,6 +1115,16 @@ namespace FFGUITool.ViewModels
                     break;
                 case nameof(SelectedAudioBitrateOption):
                     OnAudioBitrateChanged();
+                    break;
+                case nameof(SelectedAudioTrackModeOption):
+                    OnAudioTrackModeChanged();
+                    break;
+                case nameof(EnableTrim):
+                    OnTrimChanged();
+                    break;
+                case nameof(TrimStartText):
+                case nameof(TrimEndText):
+                    OnTrimTextChanged();
                     break;
                 case nameof(SelectedResolutionOption):
                     OnResolutionChanged();
@@ -1157,6 +1261,7 @@ namespace FFGUITool.ViewModels
             }
 
             ApplyCompressionPreset(SelectedCompressionPresetOption);
+            ApplyPresetEditability();
 
             if (CurrentVideoInfo != null && SelectedCompressionPresetOption.TargetSizeMB > 0)
             {
@@ -1253,11 +1358,89 @@ namespace FFGUITool.ViewModels
             }
         }
 
+        private void OnAudioTrackModeChanged()
+        {
+            if (SelectedAudioTrackModeOption == null)
+            {
+                return;
+            }
+
+            CompressionSettings.AudioTrackMode = SelectedAudioTrackModeOption.Value;
+            UpdateCommand();
+        }
+
+        private void OnTrimChanged()
+        {
+            CompressionSettings.EnableTrim = EnableTrim;
+            UpdateTrimHintText();
+            UpdateBitrateWarningAndEstimation();
+            UpdateCommand();
+        }
+
+        private void OnTrimTextChanged()
+        {
+            CompressionSettings.TrimStart = TrimStartText.Trim();
+            CompressionSettings.TrimEnd = TrimEndText.Trim();
+            UpdateTrimHintText();
+            UpdateBitrateWarningAndEstimation();
+            UpdateCommand();
+        }
+
+        private void OnIconSizeChanged()
+        {
+            CompressionSettings.IconSizesCsv = string.Join(",", GetSelectedIconSizes());
+            UpdateCommand();
+        }
+
+        private List<int> GetSelectedIconSizes()
+        {
+            var sizes = new List<int>();
+            if (IcoSize16) sizes.Add(16);
+            if (IcoSize24) sizes.Add(24);
+            if (IcoSize32) sizes.Add(32);
+            if (IcoSize48) sizes.Add(48);
+            if (IcoSize64) sizes.Add(64);
+            if (IcoSize128) sizes.Add(128);
+            if (IcoSize256) sizes.Add(256);
+            return sizes.Count == 0 ? new List<int> { 16, 32, 48, 256 } : sizes;
+        }
+
+        private static bool IsIconFormat(string format)
+        {
+            return string.Equals(format, "ico", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(format, "icns", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void UpdateTrimHintText()
+        {
+            if (!EnableTrim)
+            {
+                TrimHintText = LocalizationService.CurrentLanguage == "en-US" ? "Disabled" : "未启用";
+                return;
+            }
+
+            var start = string.IsNullOrWhiteSpace(TrimStartText) ? "0" : TrimStartText.Trim();
+            var end = string.IsNullOrWhiteSpace(TrimEndText)
+                ? (LocalizationService.CurrentLanguage == "en-US" ? "end" : "结尾")
+                : TrimEndText.Trim();
+            TrimHintText = LocalizationService.CurrentLanguage == "en-US"
+                ? $"Only process {start} to {end}"
+                : $"仅处理 {start} 到 {end}";
+        }
+
         private void OnImageFormatChanged()
         {
             if (SelectedImageFormatOption != null)
             {
                 CompressionSettings.ImageOutputFormat = SelectedImageFormatOption.Value;
+                if (IsIconFormat(SelectedImageFormatOption.Value))
+                {
+                    EnableResolutionConversion = false;
+                }
+
+                IsIconOptionsVisible = IsImageMode && IsAdvancedMode && HasSelectedInput && EnableFormatConversion && IsIconFormat(SelectedImageFormatOption.Value);
+                CompressionSettings.IconSizesCsv = string.Join(",", GetSelectedIconSizes());
+                UpdateConversionOptionVisibility();
                 UpdateImageEstimation();
                 UpdateCommand();
             }
@@ -1377,10 +1560,24 @@ namespace FFGUITool.ViewModels
 
         public async Task ProcessSelectedInput(string path)
         {
+            await ProcessSelectedInput(path, clearSourceTabs: true);
+        }
+
+        private async Task ProcessSelectedInput(string path, bool clearSourceTabs)
+        {
             CompressionSettings.InputPath = path;
-            InputPathText = path;
+            SetInputPathText(path);
             HasSelectedInput = true;
             IsBatchMode = Directory.Exists(path);
+            IsInputStatusVisible = false;
+
+            if (clearSourceTabs)
+            {
+                SourceTabs.Clear();
+                IsSourceTabsVisible = false;
+            }
+
+            MarkSelectedSourceTab(path);
 
             if (IsImageMode)
             {
@@ -1441,6 +1638,64 @@ namespace FFGUITool.ViewModels
             UpdateConversionHint();
             UpdateConversionOptionVisibility();
             UpdateCommand();
+        }
+
+        public async Task ProcessSelectedInputs(IEnumerable<string> paths)
+        {
+            var supported = paths
+                .Where(path => MediaFileSupport.IsSupportedDroppedPath(path, IsImageMode))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (supported.Count == 0)
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Warning"), LocalizationService.T("Dialog.UnsupportedFile"));
+                return;
+            }
+
+            SourceTabs = new ObservableCollection<SourceTabItem>(supported.Select(path => new SourceTabItem(path)));
+            IsSourceTabsVisible = SourceTabs.Count > 1;
+            await ProcessSelectedInput(supported[0], clearSourceTabs: false);
+        }
+
+        [RelayCommand]
+        private async Task SelectSourceTab(SourceTabItem? tab)
+        {
+            if (tab == null || string.Equals(tab.InputPath, CompressionSettings.InputPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            SaveSelectedSourceTabSettings();
+            await ProcessSelectedInput(tab.InputPath, clearSourceTabs: false);
+            RestoreSourceTabSettings(tab);
+        }
+
+        private async Task OnInputPathTextChanged()
+        {
+            if (_isUpdatingInputPathText)
+            {
+                return;
+            }
+
+            var path = InputPathText.Trim().Trim('"');
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                ResetSelectedInput();
+                return;
+            }
+
+            if (!MediaFileSupport.IsSupportedDroppedPath(path, IsImageMode))
+            {
+                CompressionSettings.InputPath = path;
+                HasSelectedInput = false;
+                BatchModeText = "无效文件";
+                IsInputStatusVisible = true;
+                UpdateCommand();
+                return;
+            }
+
+            await ProcessSelectedInput(path);
         }
 
         private async Task ProcessSelectedImageInput(string path)
@@ -1698,6 +1953,18 @@ namespace FFGUITool.ViewModels
             SelectedCodecOption = CodecOptions.Find(option => option.Value == preset.Codec) ?? SelectedCodecOption;
         }
 
+        private bool IsPresetSizeEstimateLocked()
+        {
+            return !IsImageMode
+                   && string.Equals(SelectedCompressionPresetOption?.Value, "chat", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void ApplyPresetEditability()
+        {
+            CanEditAdvancedMode = true;
+            UpdateConversionOptionVisibility();
+        }
+
         private void UpdateBitrateControlsRange(int originalBitrate)
         {
             BitrateSliderMaximum = Math.Max(originalBitrate * 3 / 2, 50000);
@@ -1750,10 +2017,18 @@ namespace FFGUITool.ViewModels
         {
             ApplySelectedConversionOptions();
             CompressionSettings.ClearMetadata = ClearMetadata;
+            CompressionSettings.EnableTrim = EnableTrim;
+            CompressionSettings.TrimStart = TrimStartText.Trim();
+            CompressionSettings.TrimEnd = TrimEndText.Trim();
+            CompressionSettings.AudioTrackMode = SelectedAudioTrackModeOption?.Value ?? CompressionSettings.AudioTrackMode;
+            CompressionSettings.InputVideoCodec = CurrentVideoInfo?.VideoCodec ?? "";
+            CompressionSettings.PreferDav1dDecoder = string.Equals(CurrentVideoInfo?.VideoCodec, "av1", StringComparison.OrdinalIgnoreCase) &&
+                                                     _availableVideoDecoders.Contains("libdav1d");
             if (IsImageMode)
             {
                 CompressionSettings.ImageQuality = Bitrate;
                 CompressionSettings.ImageTargetSizeKB = ImageTargetDisplayValueToKB(TargetSizeMB);
+                CompressionSettings.IconSizesCsv = string.Join(",", GetSelectedIconSizes());
             }
             else
             {
@@ -1804,6 +2079,8 @@ namespace FFGUITool.ViewModels
             IsMetadataClearOptionVisible = IsAdvancedMode && HasSelectedInput;
             IsMetadataPreviewVisible = IsMetadataClearOptionVisible && CanClearMetadata && ClearMetadata;
             CanEditVideoConversionTools = CanUseVideoConversionTools && !EnableAudioConversion;
+            var isIconImageFormat = IsImageMode && SelectedImageFormatOption != null && IsIconFormat(SelectedImageFormatOption.Value);
+            CanEditResolutionConversionTools = CanEditVideoConversionTools && !isIconImageFormat;
             UpdateControlEditability();
 
             if (IsImageMode)
@@ -1811,18 +2088,22 @@ namespace FFGUITool.ViewModels
                 IsFormatConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableFormatConversion;
                 IsAudioConversionOptionsVisible = false;
                 IsResolutionConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableResolutionConversion;
+                IsVideoOutputOptionsVisible = false;
+                IsIconOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableFormatConversion && isIconImageFormat;
                 return;
             }
 
+            IsIconOptionsVisible = false;
             IsFormatConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && !IsSelectedAudioInput && EnableFormatConversion;
             IsAudioConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && EnableAudioConversion;
             IsResolutionConversionOptionsVisible = IsAdvancedMode && HasSelectedInput && !IsSelectedAudioInput && EnableResolutionConversion;
+            IsVideoOutputOptionsVisible = IsAdvancedMode && HasSelectedInput && !IsSelectedAudioInput && !EnableAudioConversion;
         }
 
         private void UpdateControlEditability()
         {
             IsCrfControlsVisible = IsAdvancedMode && !IsImageMode && UseCrf;
-            CanEditTargetSize = !UseCrf;
+            CanEditTargetSize = IsImageMode || (!UseCrf && !IsPresetSizeEstimateLocked());
             CanEditBitrate = IsImageMode || (!UseCrf && !IsBatchMode);
         }
 
@@ -2162,8 +2443,16 @@ namespace FFGUITool.ViewModels
                 options.Add(new("WebP", "webp", LocalizationService.T("ImageFormat.WebP.Desc")));
             }
 
+            options.Add(new("ICO", "ico", LocalizationService.CurrentLanguage == "en-US" ? "Windows icon" : "Windows 图标"));
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                options.Add(new("ICNS", "icns", LocalizationService.CurrentLanguage == "en-US" ? "macOS icon" : "macOS 图标"));
+            }
+
             ImageFormatOptions = options;
             SelectedImageFormatOption = ImageFormatOptions.Find(option => option.Value == selectedValue) ?? ImageFormatOptions[0];
+            IsIconOptionsVisible = IsImageMode && IsIconFormat(SelectedImageFormatOption.Value);
         }
 
         private void UpdateCodecOptions()
@@ -2209,6 +2498,7 @@ namespace FFGUITool.ViewModels
         {
             var selectedValue = SelectedHardwareEncoderOption?.Value ?? "";
             _availableVideoEncoders = await _ffmpegManager.GetAvailableVideoEncoders();
+            _availableVideoDecoders = await _ffmpegManager.GetAvailableVideoDecoders();
             UpdateCodecOptions();
             UpdateImageFormatOptions();
             HardwareEncoderOptions = CreateHardwareEncoderOptions(_availableVideoEncoders);
@@ -2637,12 +2927,17 @@ namespace FFGUITool.ViewModels
         private void ResetSelectedInput()
         {
             CompressionSettings.InputPath = "";
-            InputPathText = "";
+            SetInputPathText("");
             CurrentVideoInfo = null;
             IsVideoInfoVisible = false;
             HasSelectedInput = false;
             IsBatchMode = false;
             BatchFileCount = 0;
+            SourceTabs.Clear();
+            IsSourceTabsVisible = false;
+            BatchTasks.Clear();
+            IsBatchTaskListVisible = false;
+            IsInputStatusVisible = false;
             _batchPreviewInfo = null;
             _batchPreviewInfoPath = "";
             BatchModeText = "";
@@ -2653,6 +2948,116 @@ namespace FFGUITool.ViewModels
             SourceMetadataText = "";
             IsMetadataPreviewVisible = false;
             UpdateSourceInfoTexts();
+        }
+
+        private void SetInputPathText(string path)
+        {
+            _isUpdatingInputPathText = true;
+            InputPathText = path;
+            _isUpdatingInputPathText = false;
+        }
+
+        private void MarkSelectedSourceTab(string path)
+        {
+            foreach (var tab in SourceTabs)
+            {
+                tab.IsSelected = string.Equals(tab.InputPath, path, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private void SaveSelectedSourceTabSettings()
+        {
+            var tab = SourceTabs.FirstOrDefault(item => item.IsSelected);
+            if (tab == null)
+            {
+                return;
+            }
+
+            tab.Settings = CloneSettings(CompressionSettings);
+            tab.IsAdvancedMode = IsAdvancedMode;
+            tab.TargetSizeMB = TargetSizeMB;
+            tab.Bitrate = Bitrate;
+            tab.UseCrf = UseCrf;
+            tab.Crf = Crf;
+            tab.SelectedPresetValue = SelectedCompressionPresetOption?.Value ?? "none";
+            tab.SelectedVideoFormatValue = SelectedVideoFormatOption?.Value ?? "mp4";
+            tab.SelectedAudioFormatValue = SelectedAudioFormatOption?.Value ?? "mp3";
+            tab.SelectedAudioBitrateValue = SelectedAudioBitrateOption?.Value ?? "96";
+            tab.SelectedAudioTrackModeValue = SelectedAudioTrackModeOption?.Value ?? "transcode";
+            tab.SelectedResolutionValue = SelectedResolutionOption?.Value ?? "720";
+            tab.SelectedImageFormatValue = SelectedImageFormatOption?.Value ?? "jpg";
+            tab.SelectedCodecValue = SelectedCodecOption?.Value ?? SelectedCodec;
+            tab.HasSettings = true;
+        }
+
+        private void RestoreSourceTabSettings(SourceTabItem tab)
+        {
+            if (!tab.HasSettings)
+            {
+                return;
+            }
+
+            CompressionSettings = CloneSettings(tab.Settings);
+            IsAdvancedMode = tab.IsAdvancedMode;
+            TargetSizeMB = tab.TargetSizeMB;
+            Bitrate = tab.Bitrate;
+            UseCrf = tab.UseCrf;
+            Crf = tab.Crf;
+            SelectedCompressionPresetOption = CompressionPresetOptions.Find(option => option.Value == tab.SelectedPresetValue) ?? CompressionPresetOptions[0];
+            SelectedVideoFormatOption = VideoFormatOptions.Find(option => option.Value == tab.SelectedVideoFormatValue) ?? VideoFormatOptions[0];
+            SelectedAudioFormatOption = AudioFormatOptions.Find(option => option.Value == tab.SelectedAudioFormatValue) ?? AudioFormatOptions[0];
+            SelectedAudioBitrateOption = AudioBitrateOptions.Find(option => option.Value == tab.SelectedAudioBitrateValue) ?? AudioBitrateOptions[^1];
+            SelectedAudioTrackModeOption = AudioTrackModeOptions.Find(option => option.Value == tab.SelectedAudioTrackModeValue) ?? AudioTrackModeOptions[0];
+            SelectedResolutionOption = ResolutionOptions.Find(option => option.Value == tab.SelectedResolutionValue) ?? ResolutionOptions[0];
+            SelectedImageFormatOption = ImageFormatOptions.Find(option => option.Value == tab.SelectedImageFormatValue) ?? ImageFormatOptions[0];
+            SelectedCodecOption = CodecOptions.Find(option => option.Value == tab.SelectedCodecValue) ?? SelectedCodecOption;
+            EnableFormatConversion = CompressionSettings.EnableFormatConversion;
+            EnableAudioConversion = CompressionSettings.EnableAudioConversion;
+            EnableResolutionConversion = CompressionSettings.EnableResolutionConversion;
+            EnableTrim = CompressionSettings.EnableTrim;
+            TrimStartText = CompressionSettings.TrimStart;
+            TrimEndText = CompressionSettings.TrimEnd;
+            ClearMetadata = CompressionSettings.ClearMetadata;
+            UpdateConversionOptionVisibility();
+            UpdateCommand();
+        }
+
+        private static CompressionSettings CloneSettings(CompressionSettings source)
+        {
+            return new CompressionSettings
+            {
+                CompressionPercentage = source.CompressionPercentage,
+                TargetSizeMB = source.TargetSizeMB,
+                Bitrate = source.Bitrate,
+                Codec = source.Codec,
+                HardwareEncoder = source.HardwareEncoder,
+                UseCrf = source.UseCrf,
+                Crf = source.Crf,
+                AudioBitrate = source.AudioBitrate,
+                MaxHeight = source.MaxHeight,
+                MaxFramerate = source.MaxFramerate,
+                EnableFormatConversion = source.EnableFormatConversion,
+                OutputFormat = source.OutputFormat,
+                EnableAudioConversion = source.EnableAudioConversion,
+                AudioOutputFormat = source.AudioOutputFormat,
+                EnableResolutionConversion = source.EnableResolutionConversion,
+                ClearMetadata = source.ClearMetadata,
+                EnableTrim = source.EnableTrim,
+                TrimStart = source.TrimStart,
+                TrimEnd = source.TrimEnd,
+                AudioTrackMode = source.AudioTrackMode,
+                InputVideoCodec = source.InputVideoCodec,
+                PreferDav1dDecoder = source.PreferDav1dDecoder,
+                ResolutionHeight = source.ResolutionHeight,
+                InputPath = source.InputPath,
+                OutputPath = source.OutputPath,
+                OutputLabel = source.OutputLabel,
+                IsImageProcessing = source.IsImageProcessing,
+                ImageQuality = source.ImageQuality,
+                ImageTargetSizeKB = source.ImageTargetSizeKB,
+                ImageOutputFormat = source.ImageOutputFormat,
+                IconSizesCsv = source.IconSizesCsv
+            };
         }
 
         private void UpdateSourceInfoTexts()
@@ -2765,6 +3170,13 @@ namespace FFGUITool.ViewModels
                 AudioOutputFormat = CompressionSettings.AudioOutputFormat,
                 EnableResolutionConversion = CompressionSettings.EnableResolutionConversion,
                 ClearMetadata = CompressionSettings.ClearMetadata,
+                EnableTrim = CompressionSettings.EnableTrim,
+                TrimStart = CompressionSettings.TrimStart,
+                TrimEnd = CompressionSettings.TrimEnd,
+                AudioTrackMode = CompressionSettings.AudioTrackMode,
+                InputVideoCodec = inputInfo?.VideoCodec ?? CompressionSettings.InputVideoCodec,
+                PreferDav1dDecoder = string.Equals(inputInfo?.VideoCodec ?? CompressionSettings.InputVideoCodec, "av1", StringComparison.OrdinalIgnoreCase) &&
+                                     _availableVideoDecoders.Contains("libdav1d"),
                 ResolutionHeight = CompressionSettings.ResolutionHeight,
                 InputPath = inputPath,
                 OutputPath = CompressionSettings.OutputPath,
@@ -2772,7 +3184,8 @@ namespace FFGUITool.ViewModels
                 IsImageProcessing = CompressionSettings.IsImageProcessing,
                 ImageQuality = CompressionSettings.ImageQuality,
                 ImageTargetSizeKB = CompressionSettings.ImageTargetSizeKB,
-                ImageOutputFormat = CompressionSettings.ImageOutputFormat
+                ImageOutputFormat = CompressionSettings.ImageOutputFormat,
+                IconSizesCsv = CompressionSettings.IconSizesCsv
             };
 
             if (IsBatchMode)
@@ -2829,9 +3242,14 @@ namespace FFGUITool.ViewModels
 
         private string BuildOutputLabel(CompressionSettings settings)
         {
+            if (settings.IsImageProcessing && settings.EnableFormatConversion && IsIconFormat(settings.ImageOutputFormat))
+            {
+                return $"{settings.ImageOutputFormat}_{settings.IconSizesCsv.Replace(',', '-')}";
+            }
+
             if (settings.UseCrf && !settings.IsImageProcessing)
             {
-                return $"crf{settings.Crf}";
+                return settings.EnableTrim ? $"clip_crf{settings.Crf}" : $"crf{settings.Crf}";
             }
 
             if (IsBatchMode)
@@ -2846,9 +3264,10 @@ namespace FFGUITool.ViewModels
                     : $"q{settings.ImageQuality}";
             }
 
-            return settings.TargetSizeMB > 0
+            var label = settings.TargetSizeMB > 0
                 ? $"{settings.TargetSizeMB:F0}MB"
                 : $"{settings.CompressionPercentage}pct";
+            return settings.EnableTrim ? $"clip_{label}" : label;
         }
 
         private async Task<VideoInfo?> GetInputInfo(string inputPath)
@@ -2904,14 +3323,15 @@ namespace FFGUITool.ViewModels
                     outputDiagnostics.Summary);
             }
 
-            var output = command.ImageOutput && command.ImageTargetSizeKB > 0
-                ? await RunImageCommandWithTargetSize(command, inputInfo)
-                : await RunSingleFFmpegCommand(command);
+            var output = command.ImageOutput && command.ImageTargetSizeKB > 0 && !IsIconFormat(command.ImageFormat)
+                    ? await RunImageCommandWithTargetSize(command, inputInfo)
+                    : await RunSingleFFmpegCommand(command);
 
             if (output.ExitCode != 0)
             {
+                var av1Message = BuildAv1DecodeFailureMessage(command, output.Error);
                 throw new FFmpegExecutionException(
-                    $"FFmpeg执行失败，退出代码: {output.ExitCode}",
+                    av1Message ?? $"FFmpeg执行失败，退出代码: {output.ExitCode}",
                     output.ExitCode,
                     output.Error,
                     command.BuildCommand(),
@@ -2945,6 +3365,24 @@ namespace FFGUITool.ViewModels
             }
 
             return new ConversionResult(command.InputPath, command.OutputPath, command, inputInfo, outputInfo);
+        }
+
+        private static string? BuildAv1DecodeFailureMessage(FFmpegCommand command, string ffmpegOutput)
+        {
+            if (!string.Equals(command.InputVideoCodec, "av1", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var output = ffmpegOutput ?? "";
+            var hasKnownFailure = output.Contains("libaom-av1", StringComparison.OrdinalIgnoreCase) ||
+                                  output.Contains("frame=    0", StringComparison.OrdinalIgnoreCase) ||
+                                  output.Contains("frame=0", StringComparison.OrdinalIgnoreCase) ||
+                                  output.Contains("Nothing was written into output file", StringComparison.OrdinalIgnoreCase);
+
+            return hasKnownFailure
+                ? "源视频 AV1 解码失败，可能是录屏文件损坏或当前 FFmpeg 构建兼容性不足，建议更换 full build FFmpeg 或重新导出/修复源视频。"
+                : null;
         }
 
         private async Task<(int ExitCode, string Error)> RunImageCommandWithTargetSize(FFmpegCommand command, VideoInfo? inputInfo)

@@ -21,6 +21,12 @@ namespace FFGUITool.Models
         public string AudioOutputFormat { get; set; } = "mp3";
         public bool EnableResolutionConversion { get; set; }
         public bool ClearMetadata { get; set; }
+        public bool EnableTrim { get; set; }
+        public string TrimStart { get; set; } = "";
+        public string TrimEnd { get; set; } = "";
+        public string AudioTrackMode { get; set; } = "transcode";
+        public string InputVideoCodec { get; set; } = "";
+        public bool PreferDav1dDecoder { get; set; }
         public int ResolutionHeight { get; set; } = 720;
         public string InputPath { get; set; } = "";
         public string OutputPath { get; set; } = "";
@@ -29,6 +35,7 @@ namespace FFGUITool.Models
         public int ImageQuality { get; set; } = 80;
         public double ImageTargetSizeKB { get; set; }
         public string ImageOutputFormat { get; set; } = "jpg";
+        public string IconSizesCsv { get; set; } = "16,32,48,256";
         
         /// <summary>
         /// 验证设置是否有效

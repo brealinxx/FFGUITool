@@ -1,7 +1,9 @@
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -37,6 +39,46 @@ namespace FFGUITool.Services
 
             await dialog.ShowDialog<string?>(mainWindow);
             return "OK";
+        }
+
+        public async Task<string?> ShowScrollableMessage(string title, string message)
+        {
+            var mainWindow = GetMainWindow();
+            if (mainWindow == null) return null;
+
+            var dialog = CreateDialogWindow(mainWindow, title);
+            dialog.Width = 720;
+            dialog.Height = 560;
+            dialog.MinHeight = 360;
+            dialog.SizeToContent = SizeToContent.Manual;
+            dialog.CanResize = true;
+
+            var okButton = CreatePrimaryButton(LocalizationService.T("Dialog.Ok"));
+            okButton.Click += (s, e) => dialog.Close("OK");
+
+            dialog.Content = CreateDialogContent(mainWindow, title, message, new[] { okButton }, scrollMessage: true);
+
+            await dialog.ShowDialog<string?>(mainWindow);
+            return "OK";
+        }
+
+        public async Task<string?> ShowActionMessage(string title, string message, IReadOnlyList<(string Id, string Text)> actions)
+        {
+            var mainWindow = GetMainWindow();
+            if (mainWindow == null) return null;
+
+            var dialog = CreateDialogWindow(mainWindow, title);
+            dialog.Width = 560;
+            var buttons = new List<Button>();
+            foreach (var action in actions)
+            {
+                var button = action.Id == "OK" ? CreatePrimaryButton(action.Text) : CreateSecondaryButton(action.Text);
+                button.Click += (s, e) => dialog.Close(action.Id);
+                buttons.Add(button);
+            }
+
+            dialog.Content = CreateDialogContent(mainWindow, title, message, buttons.ToArray());
+            return await dialog.ShowDialog<string?>(mainWindow);
         }
 
         public async Task<bool> ShowConfirmation(string title, string message)
@@ -84,6 +126,21 @@ namespace FFGUITool.Services
             return files.Count > 0 ? files[0] : null;
         }
 
+        public async Task<IReadOnlyList<IStorageFile>> OpenFilesDialog(string title, FilePickerFileType[]? filters = null)
+        {
+            var mainWindow = GetMainWindow();
+            if (mainWindow?.StorageProvider == null) return [];
+
+            filters ??= new[] { new FilePickerFileType(LocalizationService.T("Picker.AllFiles")) { Patterns = new[] { "*.*" } } };
+
+            return await mainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = true,
+                FileTypeFilter = filters
+            });
+        }
+
         public async Task<IStorageFolder?> OpenFolderDialog(string title)
         {
             var mainWindow = GetMainWindow();
@@ -117,7 +174,7 @@ namespace FFGUITool.Services
             };
         }
 
-        private static Control CreateDialogContent(Window owner, string title, string message, Button[] buttons)
+        private static Control CreateDialogContent(Window owner, string title, string message, Button[] buttons, bool scrollMessage = false)
         {
             var isDark = owner.ActualThemeVariant == ThemeVariant.Dark;
             var accentBrush = BrushFor(isDark ? "#60A5FA" : "#2563EB");
@@ -137,6 +194,38 @@ namespace FFGUITool.Services
             foreach (var button in buttons)
             {
                 buttonPanel.Children.Add(button);
+            }
+
+            Control messageControl = new SelectableTextBlock
+            {
+                Text = message,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = secondaryTextBrush,
+                FontSize = 14,
+                Margin = new Thickness(0, 22, 0, 22)
+            };
+
+            if (scrollMessage)
+            {
+                messageControl = new ScrollViewer
+                {
+                    [Grid.RowProperty] = 1,
+                    Margin = new Thickness(0, 22, 0, 22),
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Content = new SelectableTextBlock
+                    {
+                        Text = message,
+                        TextWrapping = TextWrapping.Wrap,
+                        Foreground = secondaryTextBrush,
+                        FontSize = 13,
+                        FontFamily = FontFamily.Parse("Consolas, Cascadia Code, Monospace")
+                    }
+                };
+            }
+            else
+            {
+                messageControl[Grid.RowProperty] = 1;
             }
 
             return new Border
@@ -196,15 +285,7 @@ namespace FFGUITool.Services
                                 }
                             }
                         },
-                        new SelectableTextBlock
-                        {
-                            [Grid.RowProperty] = 1,
-                            Text = message,
-                            TextWrapping = TextWrapping.Wrap,
-                            Foreground = secondaryTextBrush,
-                            FontSize = 14,
-                            Margin = new Thickness(0, 22, 0, 22)
-                        },
+                        messageControl,
                         buttonPanel
                     }
                 }

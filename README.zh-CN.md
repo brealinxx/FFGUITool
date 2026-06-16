@@ -18,7 +18,7 @@ FFGUITool 是一个基于 FFmpeg 的轻量跨平台桌面 GUI 工具。它可以
 - 文件夹批量处理，视频和图片批量模式支持按每个文件原始大小的比例压缩。
 - 支持拖拽文件和文件夹。
 - 图片输入支持 JPG、JPEG、PNG、WebP、HEIC、HEIF、BMP、GIF、TIFF、ICO、TGA、AVIF。
-- 图片输出支持 JPG、PNG、WebP。
+- 图片输出支持 JPG、PNG、WebP、ICO 和 ICNS。
 - 视频输出支持 MP4、MKV、WebM、MOV、AVI、GIF。
 - 音频提取和转换支持 MP3、AAC、M4A、WAV、FLAC、OGG。
 - 分辨率预设支持原始尺寸、2160p、1080p、720p、480p、512px、360p。
@@ -71,7 +71,7 @@ dotnet run --project FFGUITool/FFGUITool.csproj
 
 ## 发布
 
-项目提供 PowerShell 和 Bash 发布脚本。包版本会自动从 `FFGUITool.csproj` 读取，因此发布文件会命名为类似 `FFGUITool-v1.7.0-<platform>-Portable.zip` 的格式。
+项目提供 PowerShell 和 Bash 发布脚本。包版本会自动从 `FFGUITool.csproj` 读取，因此发布文件会命名为类似 `FFGUITool-v1.8.0-<platform>-Portable.zip` 的格式。
 
 常用命令：
 
