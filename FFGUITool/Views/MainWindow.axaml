@@ -125,17 +125,38 @@
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
         </Style>
 
-        <Style Selector="Button.SourceTab">
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="MaxWidth" Value="180" />
+        <Style Selector="Border.SourceTab">
+            <Setter Property="Background" Value="{DynamicResource PageBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8,8,0,0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="MinWidth" Value="180" />
+            <Setter Property="MaxWidth" Value="240" />
         </Style>
 
-        <Style Selector="Button.SourceTab.Selected">
-            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="Foreground" Value="White" />
+        <Style Selector="Border.SourceTab.Selected">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="1,1,1,3" />
+        </Style>
+
+        <Style Selector="Button.SourceTabMain">
+            <Setter Property="Padding" Value="10,7,6,6" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8,0,0,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+
+        <Style Selector="Button.SourceTabClose">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="MinWidth" Value="26" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="13" />
+            <Setter Property="FontSize" Value="16" />
         </Style>
 
         <Style Selector="CheckBox.VideoTool">
@@ -304,24 +325,68 @@
                     <Border Classes="Card">
                         <StackPanel Spacing="12">
                             <TextBlock Classes="H1" Text="{Binding InputSourceTitle}" />
-                            <ItemsControl ItemsSource="{Binding SourceTabs}" IsVisible="{Binding IsSourceTabsVisible}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Classes.SourceTab="True"
-                                                Classes.Selected="{Binding IsSelected}"
-                                                Content="{Binding FileName}"
-                                                Command="{Binding #WorkspaceRoot.DataContext.SelectSourceTabCommand}"
-                                                CommandParameter="{Binding}"
-                                                Margin="0,0,8,6"
-                                                ToolTip.Tip="{Binding InputPath}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <ScrollViewer IsVisible="{Binding IsSourceTabsVisible}"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding SourceTabs}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Classes.SourceTab="True"
+                                                    Classes.Selected="{Binding IsSelected}"
+                                                    ToolTip.Tip="{Binding InputPath}">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <Button Grid.Column="0"
+                                                            Classes="SourceTabMain"
+                                                            Command="{Binding #WorkspaceRoot.DataContext.SelectSourceTabCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*">
+                                                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                                                       Text="●"
+                                                                       FontSize="9"
+                                                                       Margin="0,0,6,0"
+                                                                       VerticalAlignment="Center"
+                                                                       ToolTip.Tip="{Binding Status}"
+                                                                       Foreground="{Binding StatusColor, Converter={StaticResource StringToColorConverter}}" />
+                                                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                                                       Text="{Binding FileName}"
+                                                                       FontSize="12"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Grid.Row="1" Grid.Column="1"
+                                                                       Text="{Binding SettingsSummary}"
+                                                                       FontSize="10"
+                                                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </Grid>
+                                                    </Button>
+                                                    <Button Grid.Column="1"
+                                                            Classes="SourceTabClose"
+                                                            Content="×"
+                                                            Command="{Binding #WorkspaceRoot.DataContext.CloseSourceTabCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsEnabled="{Binding #WorkspaceRoot.DataContext.IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                                            ToolTip.Tip="{DynamicResource SourceTabs.Remove}"
+                                                            Margin="0,6,5,0"
+                                                            VerticalAlignment="Top" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <Button Content="{DynamicResource SourceTabs.ApplyToAll}"
+                                    Command="{Binding ApplyCurrentSettingsToAllCommand}"
+                                    IsVisible="{Binding IsSourceTabsVisible}"
+                                    IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                    HorizontalAlignment="Left"
+                                    Height="30"
+                                    Padding="10,0" />
                             <Grid ColumnDefinitions="*, 10, Auto, 10, Auto">
                                 <TextBox Grid.Column="0" Text="{Binding InputPathText, Mode=TwoWay}"
                                          Watermark="{DynamicResource Main.InputWatermark}" Height="38"
@@ -337,20 +402,48 @@
                                        Foreground="{DynamicResource SecondaryTextBrush}" />
                             <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6"
                                     Padding="8" IsVisible="{Binding IsBatchTaskListVisible}">
-                                <ItemsControl ItemsSource="{Binding BatchTasks}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid ColumnDefinitions="2*, 90, 2*" Margin="0,3">
-                                                <TextBlock Text="{Binding FileName}" Foreground="{DynamicResource PrimaryTextBrush}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="{DynamicResource SecondaryTextBrush}"
-                                                           HorizontalAlignment="Center" />
-                                                <TextBlock Grid.Column="2" Text="{Binding OutputPath}" Foreground="{DynamicResource SecondaryTextBrush}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto,8,Auto">
+                                        <CheckBox Content="{DynamicResource Batch.IncludeSubfolders}"
+                                                  IsChecked="{Binding IncludeSubfolders}"
+                                                  IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}" />
+                                        <Button Grid.Column="1" Content="{DynamicResource Batch.SelectAll}"
+                                                Command="{Binding IncludeAllBatchTasksCommand}"
+                                                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                                Height="28" Padding="9,0" FontSize="11" />
+                                        <Button Grid.Column="3" Content="{DynamicResource Batch.SelectNone}"
+                                                Command="{Binding ExcludeAllBatchTasksCommand}"
+                                                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                                Height="28" Padding="9,0" FontSize="11" />
+                                    </Grid>
+                                    <Separator />
+                                    <ScrollViewer MaxHeight="210" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding BatchTasks}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid ColumnDefinitions="Auto,2*,90,2*" Margin="0,4">
+                                                        <CheckBox IsChecked="{Binding IsIncluded}"
+                                                                  Command="{Binding #WorkspaceRoot.DataContext.RefreshBatchTaskSelectionCommand}"
+                                                                  IsEnabled="{Binding #WorkspaceRoot.DataContext.IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                                                  VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding FileName}"
+                                                                   Foreground="{DynamicResource PrimaryTextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip.Tip="{Binding InputPath}" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Status}"
+                                                                   Foreground="{Binding StatusColor, Converter={StaticResource StringToColorConverter}}"
+                                                                   HorizontalAlignment="Center"
+                                                                   ToolTip.Tip="{Binding Message}" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding OutputPath}"
+                                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip.Tip="{Binding OutputPath}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </Border>
@@ -865,19 +958,39 @@
                             FontSize="12" />
                 </StackPanel>
 
-                <Grid Grid.Row="2" ColumnDefinitions="*, 20, Auto" HorizontalAlignment="Stretch">
+                <Grid Grid.Row="2" ColumnDefinitions="*,12,Auto,8,Auto,8,Auto" HorizontalAlignment="Stretch">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="5">
-                        <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}" IsIndeterminate="True"
+                        <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}"
+                                     Minimum="0" Maximum="100" Value="{Binding ProgressValue}"
                                      Foreground="{DynamicResource AccentBrush}"
                                      Background="{DynamicResource BorderBrush}" CornerRadius="3" />
-                        <TextBlock Text="{DynamicResource Main.Processing}" IsVisible="{Binding IsProcessing}"
+                        <TextBlock Text="{Binding ProgressText}" IsVisible="{Binding IsProcessing}"
                                    FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
 
-                    <Button Grid.Column="2" Classes="Accent" Command="{Binding ExecuteCommand}"
+                    <Button Grid.Column="2" Command="{Binding RetryFailedCommand}"
+                            Content="{DynamicResource Queue.RetryFailed}"
+                            IsVisible="{Binding CanRetryFailed}"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                            Height="44" Padding="12,0" />
+
+                    <Button Grid.Column="4" Command="{Binding ExecuteCurrentCommand}"
+                            Content="{DynamicResource Queue.ProcessCurrent}"
+                            IsVisible="{Binding IsSourceTabsVisible}"
                             IsEnabled="{Binding CanExecute}"
-                            Height="44" Width="140" FontSize="16"
+                            Height="44" Padding="12,0" />
+
+                    <Button Grid.Column="6" Command="{Binding CancelExecutionCommand}"
+                            Content="{DynamicResource Queue.Cancel}"
+                            IsVisible="{Binding IsProcessing}"
+                            IsEnabled="{Binding CanCancel}"
+                            Height="44" Padding="14,0" />
+
+                    <Button Grid.Column="6" Classes="Accent" Command="{Binding ExecuteCommand}"
+                            IsEnabled="{Binding CanExecute}"
+                            IsVisible="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                            Height="44" MinWidth="150" Padding="16,0" FontSize="15"
                             HorizontalAlignment="Right"
                             HorizontalContentAlignment="Center"
                             VerticalContentAlignment="Center">
@@ -885,7 +998,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center">
                             <TextBlock Text="▶" />
-                            <TextBlock Text="{DynamicResource Main.StartConvert}" />
+                            <TextBlock Text="{Binding ExecuteAllText}" />
                         </StackPanel>
                     </Button>
                 </Grid>

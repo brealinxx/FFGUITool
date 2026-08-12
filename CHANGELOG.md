@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.9.0
+
+### Added
+
+- Added browser-style source tabs for video and image files. Every file task keeps its own processing settings and analysis state.
+- Added a shared-settings folder workflow with a batch preview, per-file inclusion controls, and optional subfolder scanning.
+- Added task queue actions for processing the current file or all files, cancelling an active queue, and retrying failed tasks.
+- Added queue progress and per-task status reporting. A failed task no longer prevents the remaining tasks from running.
+- Added output conflict handling with automatic renaming or explicit overwrite behavior.
+- Added automated coverage for processing workspaces, task selection, failure continuation, cancellation, and output conflicts.
+
+### Changed
+
+- Unified independent file tabs and shared folder entries around the `ProcessingTask` model.
+- Extracted media discovery, command execution, result formatting, and queue coordination from `MainWindowViewModel` into focused services and a processing-specific partial view model.
+- Updated drag-and-drop so multiple supported video or image files become independent tasks instead of replacing the current input.
+- Updated the main window layout to expose source tabs, batch controls, queue progress, retry, and cancellation actions.
+
+### Fixed
+
+- Preserved each file tab's settings when switching between multiple video or image inputs.
+- Prevented folder batches from accidentally diverging into per-file settings by keeping one shared configuration for the batch.
+- Prevented existing or duplicate output paths from being overwritten silently.
+
+### Version
+
+- Updated application version metadata from `1.8.0` to `1.9.0`.
+- Updated assembly version and file version to `1.9.0.0`.
+- Updated Windows application manifest assembly identity to `1.9.0.0`.
+- Updated installer and package documentation version metadata to `1.9.0`.
+
 ## v1.8.0
 
 ### Added

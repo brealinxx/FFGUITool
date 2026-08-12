@@ -43,5 +43,10 @@ namespace FFGUITool.Models
         public bool IsValid => 
             !string.IsNullOrEmpty(InputPath) && 
             Bitrate > 0;
+
+        public CompressionSettings Clone()
+        {
+            return (CompressionSettings)MemberwiseClone();
+        }
     }
 }

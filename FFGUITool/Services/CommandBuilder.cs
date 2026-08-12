@@ -41,7 +41,8 @@ namespace FFGUITool.Services
                 ImageQuality = settings.ImageQuality,
                 ImageTargetSizeKB = settings.ImageTargetSizeKB,
                 ImageFormat = settings.IsImageProcessing ? settings.ImageOutputFormat : GetOutputFormat(settings),
-                IconSizes = ParseIconSizes(settings.IconSizesCsv)
+                IconSizes = ParseIconSizes(settings.IconSizesCsv),
+                ClearMetadata = settings.ClearMetadata
             };
 
             command.OutputPath = BuildOutputPath(settings);

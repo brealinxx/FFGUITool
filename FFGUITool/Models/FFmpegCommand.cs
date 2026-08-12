@@ -34,6 +34,7 @@ namespace FFGUITool.Models
         public double ImageTargetSizeKB { get; set; }
         public string ImageFormat { get; set; } = "jpg";
         public List<int> IconSizes { get; set; } = new();
+        public bool ClearMetadata { get; set; }
         public string AdditionalParameters { get; set; } = "";
 
         public string BuildCommand()

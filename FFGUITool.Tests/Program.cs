@@ -132,6 +132,28 @@ public sealed class CommandBuilderTests
     }
 
     [TestMethod]
+    public void CarriesPerTaskMetadataSettingIntoCommand()
+    {
+        using var workspace = TestWorkspace.Create();
+        var input = workspace.File("clip.mp4");
+        var builder = new CommandBuilder();
+
+        var clearCommand = builder.BuildCommand(new CompressionSettings
+        {
+            InputPath = input,
+            ClearMetadata = true
+        });
+        var keepCommand = builder.BuildCommand(new CompressionSettings
+        {
+            InputPath = input,
+            ClearMetadata = false
+        });
+
+        Assert.IsTrue(clearCommand.ClearMetadata);
+        Assert.IsFalse(keepCommand.ClearMetadata);
+    }
+
+    [TestMethod]
     public void BuildsOutputPaths()
     {
         using var workspace = TestWorkspace.Create();
@@ -203,6 +225,95 @@ public sealed class MediaFileSupportTests
             .Select(Path.GetFileName)
             .ToArray();
         CollectionAssert.AreEqual(new[] { "c.ico", "e.avif" }, images);
+    }
+
+    [TestMethod]
+    public void OptionallyScansBatchSubfolders()
+    {
+        using var workspace = TestWorkspace.Create();
+        workspace.File("top.mp4");
+        var nested = workspace.Directory("nested");
+        System.IO.File.WriteAllText(Path.Combine(nested, "inside.mp4"), "test");
+
+        var topOnly = MediaFileSupport.GetBatchInputFiles(
+                workspace.Root,
+                imageMode: false,
+                enableAudioConversion: false,
+                includeSubfolders: false)
+            .Select(Path.GetFileName)
+            .ToArray();
+        var recursive = MediaFileSupport.GetBatchInputFiles(
+                workspace.Root,
+                imageMode: false,
+                enableAudioConversion: false,
+                includeSubfolders: true)
+            .Select(Path.GetFileName)
+            .ToArray();
+
+        CollectionAssert.AreEqual(new[] { "top.mp4" }, topOnly);
+        CollectionAssert.AreEquivalent(new[] { "top.mp4", "inside.mp4" }, recursive);
+    }
+}
+
+[TestClass]
+public sealed class ProcessingWorkspaceTests
+{
+    [TestMethod]
+    public void IndependentTasksOwnSeparateSettingsSnapshots()
+    {
+        var workspace = new ProcessingWorkspace();
+        var template = new CompressionSettings { Bitrate = 1200 };
+
+        workspace.AddIndependentTasks(
+            new[] { "one.mp4", "two.mp4" },
+            path => new ProcessingTask(
+                path,
+                template.Clone(),
+                ProcessingSettingsScope.Independent));
+
+        Assert.AreEqual(2, workspace.IndependentTasks.Count);
+        Assert.AreNotSame(workspace.IndependentTasks[0].Settings, workspace.IndependentTasks[1].Settings);
+        workspace.IndependentTasks[0].Settings.Bitrate = 800;
+        Assert.AreEqual(1200, workspace.IndependentTasks[1].Settings.Bitrate);
+    }
+
+    [TestMethod]
+    public void FolderTasksReferenceOneSharedSettingsInstance()
+    {
+        var workspace = new ProcessingWorkspace();
+        var shared = new CompressionSettings { Bitrate = 1600 };
+
+        workspace.ReplaceSharedTasks(
+            new[] { "one.mp4", "two.mp4" },
+            path => new ProcessingTask(path, shared, ProcessingSettingsScope.Shared));
+
+        Assert.AreSame(shared, workspace.SharedTasks[0].Settings);
+        Assert.AreSame(workspace.SharedTasks[0].Settings, workspace.SharedTasks[1].Settings);
+        shared.Bitrate = 900;
+        Assert.AreEqual(900, workspace.SharedTasks[1].Settings.Bitrate);
+    }
+
+    [TestMethod]
+    public void WorkspaceSelectsCurrentAndFailedTasks()
+    {
+        var workspace = new ProcessingWorkspace();
+        workspace.AddIndependentTasks(
+            new[] { "one.mp4", "two.mp4" },
+            path => new ProcessingTask(path, new CompressionSettings(), ProcessingSettingsScope.Independent));
+        workspace.SelectIndependentTask("two.mp4");
+        workspace.IndependentTasks[0].IsFailed = true;
+
+        var current = workspace.GetExecutionTasks(
+            sharedMode: false,
+            ProcessingTaskSelection.Current,
+            failedOnly: false);
+        var failed = workspace.GetExecutionTasks(
+            sharedMode: false,
+            ProcessingTaskSelection.All,
+            failedOnly: true);
+
+        Assert.AreEqual("two.mp4", current.Single().InputPath);
+        Assert.AreEqual("one.mp4", failed.Single().InputPath);
     }
 }
 

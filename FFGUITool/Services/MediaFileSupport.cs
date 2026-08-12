@@ -55,14 +55,24 @@ namespace FFGUITool.Services
                 : IsVideoExtension(Path.GetExtension(path)) || IsAudioExtension(Path.GetExtension(path));
         }
 
-        public static IEnumerable<string> GetBatchInputFiles(string inputPath, bool imageMode, bool enableAudioConversion)
+        public static IEnumerable<string> GetBatchInputFiles(
+            string inputPath,
+            bool imageMode,
+            bool enableAudioConversion,
+            bool includeSubfolders = false)
         {
             if (!Directory.Exists(inputPath))
             {
                 return Array.Empty<string>();
             }
 
-            return Directory.EnumerateFiles(inputPath, "*.*", SearchOption.TopDirectoryOnly)
+            var enumerationOptions = new EnumerationOptions
+            {
+                RecurseSubdirectories = includeSubfolders,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            return Directory.EnumerateFiles(inputPath, "*.*", enumerationOptions)
                 .Where(file =>
                 {
                     var extension = Path.GetExtension(file);

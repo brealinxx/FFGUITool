@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -29,6 +30,9 @@ namespace FFGUITool.ViewModels
         private readonly ExifToolManager _exifToolManager;
         private readonly VideoAnalyzer _videoAnalyzer;
         private readonly CommandBuilder _commandBuilder;
+        private readonly ProcessingExecutor _processingExecutor;
+        private readonly ProcessingWorkspace _processingWorkspace = new();
+        private readonly MediaInputService _mediaInputService;
         private readonly IDialogService _dialogService;
         private readonly AppConfig _appConfig;
         private const string ReleasesUrl = "https://github.com/brealinxx/FFGUITool/releases";
@@ -36,6 +40,10 @@ namespace FFGUITool.ViewModels
         private bool _isSyncingCompressionValues;
         private bool _isSyncingConversionToggles;
         private bool _isUpdatingInputPathText;
+        private bool _isRestoringSourceTab;
+        private bool _isLoadingSourceTab;
+        private CancellationTokenSource? _executionCancellation;
+        private OutputConflictPolicy _outputConflictPolicy = OutputConflictPolicy.AutoRename;
         private VideoInfo? _batchPreviewInfo;
         private string _batchPreviewInfoPath = "";
         private IReadOnlySet<string> _availableVideoEncoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -176,7 +184,19 @@ namespace FFGUITool.ViewModels
         private double _progressValue;
 
         [ObservableProperty]
+        private string _progressText = "";
+
+        [ObservableProperty]
         private bool _isProgressVisible;
+
+        [ObservableProperty]
+        private bool _canCancel;
+
+        [ObservableProperty]
+        private bool _canRetryFailed;
+
+        [ObservableProperty]
+        private string _executeAllText = LocalizationService.T("Main.StartConvert");
 
         [ObservableProperty]
         private string _inputPathText = "";
@@ -184,8 +204,7 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private bool _isSourceTabsVisible;
 
-        [ObservableProperty]
-        private ObservableCollection<SourceTabItem> _sourceTabs = new();
+        public ObservableCollection<ProcessingTask> SourceTabs => _processingWorkspace.IndependentTasks;
 
         [ObservableProperty]
         private bool _isInputStatusVisible;
@@ -193,8 +212,7 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private bool _isBatchTaskListVisible;
 
-        [ObservableProperty]
-        private ObservableCollection<BatchTaskItem> _batchTasks = new();
+        public ObservableCollection<ProcessingTask> BatchTasks => _processingWorkspace.SharedTasks;
 
         [ObservableProperty]
         private string _outputPathText = "";
@@ -352,6 +370,9 @@ namespace FFGUITool.ViewModels
 
         [ObservableProperty]
         private bool _isBatchMode;
+
+        [ObservableProperty]
+        private bool _includeSubfolders;
 
         [ObservableProperty]
         private int _batchFileCount;
@@ -592,11 +613,7 @@ namespace FFGUITool.ViewModels
                 }
             });
 
-            if (files.Count == 1)
-            {
-                await ProcessSelectedInput(files[0].Path.LocalPath);
-            }
-            else if (files.Count > 1)
+            if (files.Count > 0)
             {
                 await ProcessSelectedInputs(files.Select(file => file.Path.LocalPath));
             }
@@ -621,48 +638,6 @@ namespace FFGUITool.ViewModels
                 CompressionSettings.OutputPath = folder.Path.LocalPath;
                 OutputPathText = folder.Path.LocalPath;
                 UpdateCommand();
-            }
-        }
-
-        [RelayCommand]
-        private async Task Execute()
-        {
-            if (IsProcessing || !_ffmpegManager.IsFFmpegAvailable) return;
-
-            IsProcessing = true;
-            CanExecute = false;
-            IsProgressVisible = true;
-
-            try
-            {
-                ClearLastFailure();
-                var summary = await ExecuteFFmpegCommand();
-                var message = BuildCompletionMessage(summary);
-                SystemNotificationService.Show(LocalizationService.T(IsImageMode ? "Result.ImageComplete" : "Result.VideoComplete"), message);
-                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Done"), message);
-            }
-            catch (FFmpegExecutionException ex)
-            {
-                CaptureFailure(ex);
-                var message = BuildFailureMessage(ex);
-                SystemNotificationService.Show(LocalizationService.T("Dialog.Error"), message, isError: true);
-                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Error("Unexpected execution error.", ex);
-                LastFailureDetails = ex.ToString();
-                LastFailureCommand = CommandText;
-                IsFailureActionsVisible = true;
-                var message = LocalizationService.Format("Dialog.ExecuteError", ex.Message);
-                SystemNotificationService.Show(LocalizationService.T("Dialog.Error"), message, isError: true);
-                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Error"), message);
-            }
-            finally
-            {
-                IsProcessing = false;
-                CanExecute = true;
-                IsProgressVisible = false;
             }
         }
 
@@ -977,7 +952,13 @@ namespace FFGUITool.ViewModels
             _dialogService = dialogService;
             _exifToolManager = new ExifToolManager();
             _videoAnalyzer = new VideoAnalyzer(_ffmpegManager);
+            _mediaInputService = new MediaInputService(_videoAnalyzer);
             _commandBuilder = new CommandBuilder();
+            _processingExecutor = new ProcessingExecutor(
+                _ffmpegManager,
+                _exifToolManager,
+                _videoAnalyzer,
+                _commandBuilder);
             _appConfig = AppConfigService.Load();
             CurrentTheme = ParseThemeVariant(_appConfig.Theme);
 
@@ -1070,10 +1051,23 @@ namespace FFGUITool.ViewModels
 
         private void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            if (_isRestoringSourceTab)
+            {
+                return;
+            }
+
+            MarkSelectedSourceTabPending(e.PropertyName);
+
             switch (e.PropertyName)
             {
                 case nameof(InputPathText):
                     _ = OnInputPathTextChanged();
+                    break;
+                case nameof(IncludeSubfolders):
+                    if (IsBatchMode)
+                    {
+                        _ = RefreshFolderPreviewAsync();
+                    }
                     break;
                 case nameof(SelectedImageFormatOption):
                     OnImageFormatChanged();
@@ -1570,10 +1564,11 @@ namespace FFGUITool.ViewModels
             HasSelectedInput = true;
             IsBatchMode = Directory.Exists(path);
             IsInputStatusVisible = false;
+            ClearBatchTasks();
 
             if (clearSourceTabs)
             {
-                SourceTabs.Clear();
+                _processingWorkspace.ClearIndependentTasks();
                 IsSourceTabsVisible = false;
             }
 
@@ -1601,7 +1596,7 @@ namespace FFGUITool.ViewModels
                 EstimatedBitrateText = LocalizationService.T("Estimate.Analyzing");
                 EstimatedBitrateColor = "Blue";
 
-                CurrentVideoInfo = await _videoAnalyzer.AnalyzeVideo(path);
+                CurrentVideoInfo = await _mediaInputService.AnalyzeAsync(path);
 
                 if (CurrentVideoInfo != null)
                 {
@@ -1653,22 +1648,143 @@ namespace FFGUITool.ViewModels
                 return;
             }
 
-            SourceTabs = new ObservableCollection<SourceTabItem>(supported.Select(path => new SourceTabItem(path)));
-            IsSourceTabsVisible = SourceTabs.Count > 1;
-            await ProcessSelectedInput(supported[0], clearSourceTabs: false);
+            if (supported.Count == 1 && Directory.Exists(supported[0]))
+            {
+                await ProcessSelectedInput(supported[0]);
+                return;
+            }
+
+            supported = supported.Where(File.Exists).ToList();
+            if (supported.Count == 0)
+            {
+                await _dialogService.ShowMessage(LocalizationService.T("Dialog.Warning"), LocalizationService.T("Dialog.UnsupportedFile"));
+                return;
+            }
+
+            PreserveCurrentFileAsSourceTab();
+            SaveSelectedSourceTabSettings();
+
+            var tabToSelect = _processingWorkspace.AddIndependentTasks(
+                supported,
+                path => new ProcessingTask(
+                        path,
+                        new CompressionSettings { InputPath = path, IsImageProcessing = IsImageMode },
+                        ProcessingSettingsScope.Independent)
+                    {
+                        Status = LocalizationService.T("SourceTabs.Pending"),
+                        StatusColor = "Gray"
+                    });
+
+            IsSourceTabsVisible = SourceTabs.Count > 0;
+            IsInputStatusVisible = true;
+            BatchModeText = LocalizationService.Format("SourceTabs.Mode", SourceTabs.Count);
+
+            if (tabToSelect != null)
+            {
+                await SelectSourceTabCore(tabToSelect, force: true);
+            }
         }
 
-        [RelayCommand]
-        private async Task SelectSourceTab(SourceTabItem? tab)
+        private void MarkSelectedSourceTabPending(string? propertyName)
         {
-            if (tab == null || string.Equals(tab.InputPath, CompressionSettings.InputPath, StringComparison.OrdinalIgnoreCase))
+            if (_isLoadingSourceTab || IsProcessing)
             {
                 return;
             }
 
-            SaveSelectedSourceTabSettings();
-            await ProcessSelectedInput(tab.InputPath, clearSourceTabs: false);
-            RestoreSourceTabSettings(tab);
+            var isProcessingSetting = propertyName is nameof(CompressionPercentage)
+                or nameof(TargetSizeMB)
+                or nameof(IsAdvancedMode)
+                or nameof(Bitrate)
+                or nameof(SelectedCodecOption)
+                or nameof(SelectedHardwareEncoderOption)
+                or nameof(UseCrf)
+                or nameof(Crf)
+                or nameof(SelectedCompressionPresetOption)
+                or nameof(EnableFormatConversion)
+                or nameof(EnableAudioConversion)
+                or nameof(EnableResolutionConversion)
+                or nameof(SelectedVideoFormatOption)
+                or nameof(SelectedAudioFormatOption)
+                or nameof(SelectedAudioBitrateOption)
+                or nameof(SelectedAudioTrackModeOption)
+                or nameof(SelectedResolutionOption)
+                or nameof(SelectedImageFormatOption)
+                or nameof(SelectedImageTargetSizeUnit)
+                or nameof(EnableTrim)
+                or nameof(TrimStartText)
+                or nameof(TrimEndText)
+                or nameof(ClearMetadata)
+                or nameof(IcoSize16)
+                or nameof(IcoSize24)
+                or nameof(IcoSize32)
+                or nameof(IcoSize48)
+                or nameof(IcoSize64)
+                or nameof(IcoSize128)
+                or nameof(IcoSize256)
+                or nameof(OutputPathText);
+            if (!isProcessingSetting)
+            {
+                return;
+            }
+
+            if (IsBatchMode)
+            {
+                foreach (var task in BatchTasks.Where(task => task.IsIncluded))
+                {
+                    task.Status = LocalizationService.T("SourceTabs.Pending");
+                    task.StatusColor = "Gray";
+                    task.Message = "";
+                    task.IsFailed = false;
+                }
+
+                CanRetryFailed = false;
+                return;
+            }
+
+            var tab = SourceTabs.FirstOrDefault(item => item.IsSelected);
+            if (tab == null)
+            {
+                return;
+            }
+
+            tab.Status = LocalizationService.T("SourceTabs.Pending");
+            tab.StatusColor = "Gray";
+            tab.Message = "";
+            tab.IsFailed = false;
+            CanRetryFailed = SourceTabs.Any(item => item.IsFailed);
+        }
+
+        [RelayCommand]
+        private async Task SelectSourceTab(ProcessingTask? tab)
+        {
+            await SelectSourceTabCore(tab, force: false);
+        }
+
+        [RelayCommand]
+        private async Task CloseSourceTab(ProcessingTask? tab)
+        {
+            if (tab == null || IsProcessing)
+            {
+                return;
+            }
+
+            var nextTask = _processingWorkspace.RemoveIndependentTask(tab);
+            CanRetryFailed = SourceTabs.Any(item => item.IsFailed);
+
+            if (SourceTabs.Count == 0)
+            {
+                ResetSelectedInput();
+                return;
+            }
+
+            IsSourceTabsVisible = true;
+            IsInputStatusVisible = true;
+            BatchModeText = LocalizationService.Format("SourceTabs.Mode", SourceTabs.Count);
+            if (nextTask != null)
+            {
+                await SelectSourceTabCore(nextTask, force: true);
+            }
         }
 
         private async Task OnInputPathTextChanged()
@@ -1702,36 +1818,21 @@ namespace FFGUITool.ViewModels
         {
             if (IsBatchMode)
             {
-                BatchFileCount = GetBatchInputFiles().Count();
-                BatchModeText = BatchFileCount == 0
-                    ? LocalizationService.T("Image.NoSupportedFiles")
-                    : LocalizationService.Format("Image.BatchMode", BatchFileCount);
-                CurrentVideoInfo = null;
-                IsVideoInfoVisible = false;
-                ConfigureBatchTargetRange();
+                await ProcessSelectedFolder(path);
+                return;
             }
-            else
-            {
-                CurrentVideoInfo = await _videoAnalyzer.AnalyzeVideo(path);
-                if (CurrentVideoInfo == null && File.Exists(path))
-                {
-                    CurrentVideoInfo = new VideoInfo
-                    {
-                        FilePath = path,
-                        FileSize = new FileInfo(path).Length
-                    };
-                }
 
-                await RefreshCurrentInputMetadata();
+            CurrentVideoInfo = await _mediaInputService.AnalyzeAsync(path, fallbackToFileInfo: true);
 
-                IsVideoInfoVisible = CurrentVideoInfo != null;
-                BatchModeText = "";
-                var sourceSizeKB = CurrentVideoInfo?.FileSize > 0
-                    ? CurrentVideoInfo.FileSize / 1024.0
-                    : 1;
-                var targetKB = Math.Max(1, sourceSizeKB);
-                ConfigureImageTargetRange(targetKB);
-            }
+            await RefreshCurrentInputMetadata();
+
+            IsVideoInfoVisible = CurrentVideoInfo != null;
+            BatchModeText = "";
+            var sourceSizeKB = CurrentVideoInfo?.FileSize > 0
+                ? CurrentVideoInfo.FileSize / 1024.0
+                : 1;
+            var targetKB = Math.Max(1, sourceSizeKB);
+            ConfigureImageTargetRange(targetKB);
 
             IsSelectedAudioInput = false;
             CanUseVideoConversionTools = true;
@@ -1749,19 +1850,25 @@ namespace FFGUITool.ViewModels
 
         private async Task ProcessSelectedFolder(string path)
         {
-            var files = GetBatchInputFiles().ToList();
+            IsInputStatusVisible = true;
+            var files = GetDiscoveredBatchInputFiles().ToList();
             if (files.Count == 0 && !IsImageMode)
             {
-                var audioFiles = Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly)
+                var audioFiles = _mediaInputService.DiscoverFolderFiles(
+                        path,
+                        imageMode: false,
+                        enableAudioConversion: true,
+                        includeSubfolders: IncludeSubfolders)
                     .Where(file => IsAudioExtension(Path.GetExtension(file)))
                     .ToList();
                 if (audioFiles.Count > 0)
                 {
                     EnableAudioConversion = true;
-                    files = GetBatchInputFiles().ToList();
+                    files = GetDiscoveredBatchInputFiles().ToList();
                 }
             }
 
+            PopulateBatchTasks(files);
             BatchFileCount = files.Count;
             CurrentVideoInfo = null;
             IsVideoInfoVisible = false;
@@ -1787,6 +1894,17 @@ namespace FFGUITool.ViewModels
             UpdateConversionOptionVisibility();
             UpdateSourceInfoTexts();
             UpdateCommand();
+            UpdateExecuteAllText();
+        }
+
+        private async Task RefreshFolderPreviewAsync()
+        {
+            if (!IsBatchMode || !Directory.Exists(CompressionSettings.InputPath))
+            {
+                return;
+            }
+
+            await ProcessSelectedFolder(CompressionSettings.InputPath);
         }
 
         private async Task PrimeBatchPreviewInfoAsync(string? firstFile)
@@ -1799,7 +1917,7 @@ namespace FFGUITool.ViewModels
                 return;
             }
 
-            _batchPreviewInfo = await _videoAnalyzer.AnalyzeVideo(firstFile);
+            _batchPreviewInfo = await _mediaInputService.AnalyzeAsync(firstFile);
             _batchPreviewInfoPath = _batchPreviewInfo == null ? "" : firstFile;
         }
 
@@ -2047,29 +2165,38 @@ namespace FFGUITool.ViewModels
             if (IsBatchMode)
             {
                 RefreshBatchModeSummary();
-                var firstFile = GetBatchInputFiles().FirstOrDefault();
-                var previewInfo = !string.IsNullOrWhiteSpace(firstFile) && string.Equals(firstFile, _batchPreviewInfoPath, StringComparison.OrdinalIgnoreCase)
+                RefreshSharedTaskPolicy();
+                var firstTask = BatchTasks.FirstOrDefault(task => task.IsIncluded);
+                var previewInfo = firstTask != null && string.Equals(firstTask.InputPath, _batchPreviewInfoPath, StringComparison.OrdinalIgnoreCase)
                     ? _batchPreviewInfo
                     : null;
-                var firstCommand = firstFile == null
-                    ? LocalizationService.T("Batch.Empty")
-                    : _commandBuilder.BuildCommand(CreateSettingsForInput(firstFile, previewInfo)).BuildCommand();
-                if (ClearMetadata && CanClearMetadata && firstFile != null && firstCommand != LocalizationService.T("Batch.Empty"))
+                var previewCommand = firstTask == null
+                    ? null
+                    : _processingExecutor.BuildCommand(
+                        firstTask,
+                        new ProcessingExecutionOptions { AvailableVideoDecoders = _availableVideoDecoders },
+                        previewInfo);
+                var firstCommand = previewCommand?.BuildCommand() ?? LocalizationService.T("Batch.Empty");
+                if (ClearMetadata && CanClearMetadata && previewCommand != null)
                 {
-                    var firstOutput = _commandBuilder.BuildCommand(CreateSettingsForInput(firstFile, previewInfo)).OutputPath;
-                    firstCommand = AppendExifToolPreview(firstCommand, firstOutput);
+                    firstCommand = AppendExifToolPreview(firstCommand, previewCommand.OutputPath);
                 }
                 CommandText = BuildBatchCommandPreview(firstCommand);
             }
             else
             {
                 var command = _commandBuilder.BuildCommand(CompressionSettings, CurrentVideoInfo);
-                CommandText = ClearMetadata && CanClearMetadata
+                var commandPreview = ClearMetadata && CanClearMetadata
                     ? AppendExifToolPreview(command.BuildCommand(), command.OutputPath)
                     : command.BuildCommand();
+                CommandText = SourceTabs.Count > 0
+                    ? $"{LocalizationService.Format("SourceTabs.Preview", SourceTabs.Count, Path.GetFileName(CompressionSettings.InputPath))}\n{commandPreview}"
+                    : commandPreview;
             }
             
             CanExecute = CompressionSettings.IsValid && _ffmpegManager.IsFFmpegAvailable && (!IsBatchMode || BatchFileCount > 0);
+            SaveSelectedSourceTabSettings();
+            UpdateExecuteAllText();
         }
 
         private void UpdateConversionOptionVisibility()
@@ -2161,14 +2288,55 @@ namespace FFGUITool.ViewModels
             return $"{ffmpegCommand}\n{_exifToolManager.BuildClearMetadataCommand(outputPath)}";
         }
 
-        private IEnumerable<string> GetBatchInputFiles()
+        private IEnumerable<string> GetDiscoveredBatchInputFiles()
         {
             if (!Directory.Exists(CompressionSettings.InputPath))
             {
                 return Array.Empty<string>();
             }
 
-            return MediaFileSupport.GetBatchInputFiles(CompressionSettings.InputPath, IsImageMode, EnableAudioConversion);
+            return _mediaInputService.DiscoverFolderFiles(
+                CompressionSettings.InputPath,
+                IsImageMode,
+                EnableAudioConversion,
+                IncludeSubfolders);
+        }
+
+        private IEnumerable<string> GetBatchInputFiles()
+        {
+            if (BatchTasks.Count > 0)
+            {
+                return BatchTasks.Where(task => task.IsIncluded).Select(task => task.InputPath);
+            }
+
+            return GetDiscoveredBatchInputFiles();
+        }
+
+        private void PopulateBatchTasks(IEnumerable<string> files)
+        {
+            _processingWorkspace.ReplaceSharedTasks(
+                files,
+                path => new ProcessingTask(path, CompressionSettings, ProcessingSettingsScope.Shared)
+                {
+                    Status = LocalizationService.T("SourceTabs.Pending"),
+                    StatusColor = "Gray"
+                });
+            foreach (var task in BatchTasks)
+            {
+                task.Settings = CompressionSettings;
+                task.UsesRelativeTarget = true;
+                task.RelativeTargetPercentage = TargetSizeMB;
+                task.MinimumVideoBitrateKbps = SelectedCompressionPresetOption?.MinVideoBitrateKbps ?? 0;
+                task.MaximumVideoBitrateKbps = SelectedCompressionPresetOption?.MaxVideoBitrateKbps ?? 0;
+            }
+
+            IsBatchTaskListVisible = BatchTasks.Count > 0;
+        }
+
+        private void ClearBatchTasks()
+        {
+            _processingWorkspace.ClearSharedTasks();
+            IsBatchTaskListVisible = false;
         }
 
         private void RefreshBatchModeSummary()
@@ -2180,17 +2348,12 @@ namespace FFGUITool.ViewModels
 
             BatchFileCount = GetBatchInputFiles().Count();
             var isEnglish = LocalizationService.CurrentLanguage == "en-US";
-            BatchModeText = IsImageMode
-                ? BatchFileCount == 0
-                    ? LocalizationService.T("Image.NoSupportedFiles")
-                    : isEnglish
-                        ? $"{LocalizationService.Format("Image.BatchMode", BatchFileCount)}; each file targets {TargetSizeMB:0.0}% of its original size"
-                        : $"{LocalizationService.Format("Image.BatchMode", BatchFileCount)}；每个文件按 {TargetSizeMB:0.0}% 原始大小压缩"
-                : BatchFileCount == 0
-                    ? LocalizationService.T("Batch.Empty")
-                    : isEnglish
-                        ? $"{LocalizationService.Format("Batch.Mode", BatchFileCount)} Each file targets {TargetSizeMB:0.0}% of its original size."
-                        : $"{LocalizationService.Format("Batch.Mode", BatchFileCount)} 每个文件按 {TargetSizeMB:0.0}% 原始大小压缩。";
+            BatchModeText = BatchFileCount == 0
+                ? LocalizationService.T(IsImageMode ? "Image.NoSupportedFiles" : "Batch.Empty")
+                : $"{LocalizationService.Format("Batch.Included", BatchFileCount, BatchTasks.Count)} " +
+                  (isEnglish
+                      ? $"Each file targets {TargetSizeMB:0.0}% of its original size."
+                      : $"每个文件按 {TargetSizeMB:0.0}% 原始大小压缩。");
             EstimatedBitrateText = IsImageMode
                 ? BatchFileCount == 0
                     ? LocalizationService.T("Image.NoSupportedFiles")
@@ -2199,6 +2362,8 @@ namespace FFGUITool.ViewModels
                     ? LocalizationService.T("Estimate.NonVideo")
                     : LocalizationService.Format("Batch.Found", BatchFileCount);
             EstimatedBitrateColor = BatchFileCount == 0 ? "Gray" : "Green";
+            CanRetryFailed = BatchTasks.Any(task => task.IsIncluded && task.IsFailed);
+            UpdateExecuteAllText();
         }
 
         private void UpdateConversionHint()
@@ -2281,6 +2446,36 @@ namespace FFGUITool.ViewModels
             UpdateConversionHint();
             UpdateConversionOptionVisibility();
             UpdateExifToolStatus();
+
+            foreach (var tab in SourceTabs)
+            {
+                tab.Status = tab.StatusColor switch
+                {
+                    "Blue" => LocalizationService.T("SourceTabs.Processing"),
+                    "Green" => LocalizationService.T("SourceTabs.Completed"),
+                    "Red" => LocalizationService.T("SourceTabs.Failed"),
+                    _ => LocalizationService.T("SourceTabs.Pending")
+                };
+            }
+
+            foreach (var task in BatchTasks)
+            {
+                task.Status = task.StatusColor switch
+                {
+                    "Blue" => LocalizationService.T("SourceTabs.Processing"),
+                    "Green" => LocalizationService.T("SourceTabs.Completed"),
+                    "Red" => LocalizationService.T("SourceTabs.Failed"),
+                    _ => LocalizationService.T("SourceTabs.Pending")
+                };
+            }
+
+            if (SourceTabs.Count > 0)
+            {
+                IsInputStatusVisible = true;
+                BatchModeText = LocalizationService.Format("SourceTabs.Mode", SourceTabs.Count);
+            }
+
+            UpdateExecuteAllText();
 
             if (CurrentVideoInfo == null && string.IsNullOrWhiteSpace(CompressionSettings.InputPath))
             {
@@ -2933,21 +3128,26 @@ namespace FFGUITool.ViewModels
             HasSelectedInput = false;
             IsBatchMode = false;
             BatchFileCount = 0;
-            SourceTabs.Clear();
+            _processingWorkspace.ClearIndependentTasks();
             IsSourceTabsVisible = false;
-            BatchTasks.Clear();
+            _processingWorkspace.ClearSharedTasks();
             IsBatchTaskListVisible = false;
             IsInputStatusVisible = false;
             _batchPreviewInfo = null;
             _batchPreviewInfoPath = "";
             BatchModeText = "";
             CanExecute = false;
+            CanRetryFailed = false;
+            CanCancel = false;
+            ProgressValue = 0;
+            ProgressText = "";
             CommandText = LocalizationService.T("Command.SelectInput");
             EstimatedBitrateText = "";
             EstimatedBitrateColor = "Gray";
             SourceMetadataText = "";
             IsMetadataPreviewVisible = false;
             UpdateSourceInfoTexts();
+            UpdateExecuteAllText();
         }
 
         private void SetInputPathText(string path)
@@ -2959,22 +3159,84 @@ namespace FFGUITool.ViewModels
 
         private void MarkSelectedSourceTab(string path)
         {
-            foreach (var tab in SourceTabs)
+            _processingWorkspace.SelectIndependentTask(path);
+        }
+
+        private void PreserveCurrentFileAsSourceTab()
+        {
+            var currentPath = CompressionSettings.InputPath;
+            if (IsBatchMode || !File.Exists(currentPath) ||
+                SourceTabs.Any(item => string.Equals(item.InputPath, currentPath, StringComparison.OrdinalIgnoreCase)))
             {
-                tab.IsSelected = string.Equals(tab.InputPath, path, StringComparison.OrdinalIgnoreCase);
+                return;
             }
+
+            var currentTab = new ProcessingTask(
+                currentPath,
+                CompressionSettings.Clone(),
+                ProcessingSettingsScope.Independent)
+            {
+                IsSelected = true,
+                Status = LocalizationService.T("SourceTabs.Pending"),
+                StatusColor = "Gray"
+            };
+            _processingWorkspace.AddIndependentTasks(new[] { currentPath }, _ => currentTab);
+            SaveSelectedSourceTabSettings();
+        }
+
+        private async Task SelectSourceTabCore(ProcessingTask? tab, bool force)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            var isCurrent = string.Equals(tab.InputPath, CompressionSettings.InputPath, StringComparison.OrdinalIgnoreCase);
+            if (isCurrent && !force)
+            {
+                MarkSelectedSourceTab(tab.InputPath);
+                return;
+            }
+
+            SaveSelectedSourceTabSettings();
+            _isLoadingSourceTab = true;
+            try
+            {
+                await ProcessSelectedInput(tab.InputPath, clearSourceTabs: false);
+            }
+            finally
+            {
+                _isLoadingSourceTab = false;
+            }
+
+            if (tab.HasSettings)
+            {
+                RestoreSourceTabSettings(tab);
+            }
+            else
+            {
+                SaveSelectedSourceTabSettings();
+            }
+            IsInputStatusVisible = true;
+            BatchModeText = LocalizationService.Format("SourceTabs.Mode", SourceTabs.Count);
         }
 
         private void SaveSelectedSourceTabSettings()
         {
+            if (_isLoadingSourceTab)
+            {
+                return;
+            }
+
             var tab = SourceTabs.FirstOrDefault(item => item.IsSelected);
             if (tab == null)
             {
                 return;
             }
 
-            tab.Settings = CloneSettings(CompressionSettings);
+            tab.Settings = CompressionSettings.Clone();
             tab.IsAdvancedMode = IsAdvancedMode;
+            tab.CompressionPercentage = CompressionPercentage;
             tab.TargetSizeMB = TargetSizeMB;
             tab.Bitrate = Bitrate;
             tab.UseCrf = UseCrf;
@@ -2987,77 +3249,132 @@ namespace FFGUITool.ViewModels
             tab.SelectedResolutionValue = SelectedResolutionOption?.Value ?? "720";
             tab.SelectedImageFormatValue = SelectedImageFormatOption?.Value ?? "jpg";
             tab.SelectedCodecValue = SelectedCodecOption?.Value ?? SelectedCodec;
+            tab.SelectedHardwareEncoderValue = SelectedHardwareEncoderOption?.Value ?? "";
+            tab.SelectedImageTargetSizeUnit = SelectedImageTargetSizeUnit;
+            tab.SettingsSummary = BuildSourceTabSettingsSummary(tab.Settings);
+            if (string.IsNullOrWhiteSpace(tab.Status))
+            {
+                tab.Status = LocalizationService.T("SourceTabs.Pending");
+                tab.StatusColor = "Gray";
+            }
             tab.HasSettings = true;
         }
 
-        private void RestoreSourceTabSettings(SourceTabItem tab)
+        private void RestoreSourceTabSettings(ProcessingTask tab)
         {
             if (!tab.HasSettings)
             {
                 return;
             }
 
-            CompressionSettings = CloneSettings(tab.Settings);
-            IsAdvancedMode = tab.IsAdvancedMode;
-            TargetSizeMB = tab.TargetSizeMB;
-            Bitrate = tab.Bitrate;
-            UseCrf = tab.UseCrf;
-            Crf = tab.Crf;
-            SelectedCompressionPresetOption = CompressionPresetOptions.Find(option => option.Value == tab.SelectedPresetValue) ?? CompressionPresetOptions[0];
-            SelectedVideoFormatOption = VideoFormatOptions.Find(option => option.Value == tab.SelectedVideoFormatValue) ?? VideoFormatOptions[0];
-            SelectedAudioFormatOption = AudioFormatOptions.Find(option => option.Value == tab.SelectedAudioFormatValue) ?? AudioFormatOptions[0];
-            SelectedAudioBitrateOption = AudioBitrateOptions.Find(option => option.Value == tab.SelectedAudioBitrateValue) ?? AudioBitrateOptions[^1];
-            SelectedAudioTrackModeOption = AudioTrackModeOptions.Find(option => option.Value == tab.SelectedAudioTrackModeValue) ?? AudioTrackModeOptions[0];
-            SelectedResolutionOption = ResolutionOptions.Find(option => option.Value == tab.SelectedResolutionValue) ?? ResolutionOptions[0];
-            SelectedImageFormatOption = ImageFormatOptions.Find(option => option.Value == tab.SelectedImageFormatValue) ?? ImageFormatOptions[0];
-            SelectedCodecOption = CodecOptions.Find(option => option.Value == tab.SelectedCodecValue) ?? SelectedCodecOption;
-            EnableFormatConversion = CompressionSettings.EnableFormatConversion;
-            EnableAudioConversion = CompressionSettings.EnableAudioConversion;
-            EnableResolutionConversion = CompressionSettings.EnableResolutionConversion;
-            EnableTrim = CompressionSettings.EnableTrim;
-            TrimStartText = CompressionSettings.TrimStart;
-            TrimEndText = CompressionSettings.TrimEnd;
-            ClearMetadata = CompressionSettings.ClearMetadata;
+            _isRestoringSourceTab = true;
+            try
+            {
+                CompressionSettings = tab.Settings.Clone();
+                CompressionSettings.InputPath = tab.InputPath;
+                IsAdvancedMode = tab.IsAdvancedMode;
+                CompressionPercentage = tab.CompressionPercentage;
+                SelectedImageTargetSizeUnit = tab.SelectedImageTargetSizeUnit;
+                TargetSizeMB = tab.TargetSizeMB;
+                TargetSizeSliderValue = tab.TargetSizeMB;
+                Bitrate = tab.Bitrate;
+                BitrateSliderValue = tab.Bitrate;
+                UseCrf = tab.UseCrf;
+                Crf = tab.Crf;
+                CrfSliderValue = tab.Crf;
+                SelectedCompressionPresetOption = CompressionPresetOptions.Find(option => option.Value == tab.SelectedPresetValue) ?? CompressionPresetOptions[0];
+                SelectedVideoFormatOption = VideoFormatOptions.Find(option => option.Value == tab.SelectedVideoFormatValue) ?? VideoFormatOptions[0];
+                SelectedAudioFormatOption = AudioFormatOptions.Find(option => option.Value == tab.SelectedAudioFormatValue) ?? AudioFormatOptions[0];
+                SelectedAudioBitrateOption = AudioBitrateOptions.Find(option => option.Value == tab.SelectedAudioBitrateValue) ?? AudioBitrateOptions[^1];
+                SelectedAudioTrackModeOption = AudioTrackModeOptions.Find(option => option.Value == tab.SelectedAudioTrackModeValue) ?? AudioTrackModeOptions[0];
+                SelectedResolutionOption = ResolutionOptions.Find(option => option.Value == tab.SelectedResolutionValue) ?? ResolutionOptions[0];
+                SelectedImageFormatOption = ImageFormatOptions.Find(option => option.Value == tab.SelectedImageFormatValue) ?? ImageFormatOptions[0];
+                SelectedCodecOption = CodecOptions.Find(option => option.Value == tab.SelectedCodecValue) ?? SelectedCodecOption;
+                SelectedHardwareEncoderOption = HardwareEncoderOptions.Find(option => option.Value == tab.SelectedHardwareEncoderValue) ?? HardwareEncoderOptions[0];
+                EnableFormatConversion = CompressionSettings.EnableFormatConversion;
+                EnableAudioConversion = CompressionSettings.EnableAudioConversion;
+                EnableResolutionConversion = CompressionSettings.EnableResolutionConversion;
+                EnableTrim = CompressionSettings.EnableTrim;
+                TrimStartText = CompressionSettings.TrimStart;
+                TrimEndText = CompressionSettings.TrimEnd;
+                ClearMetadata = CompressionSettings.ClearMetadata;
+                OutputPathText = CompressionSettings.OutputPath;
+                RestoreIconSizeSelection(CompressionSettings.IconSizesCsv);
+            }
+            finally
+            {
+                _isRestoringSourceTab = false;
+            }
+
+            UpdateTargetSizeTexts();
+            UpdateBitrateTexts();
+            UpdateCrfText();
             UpdateConversionOptionVisibility();
             UpdateCommand();
         }
 
-        private static CompressionSettings CloneSettings(CompressionSettings source)
+        private string BuildSourceTabSettingsSummary(CompressionSettings settings)
         {
-            return new CompressionSettings
+            if (settings.IsImageProcessing)
             {
-                CompressionPercentage = source.CompressionPercentage,
-                TargetSizeMB = source.TargetSizeMB,
-                Bitrate = source.Bitrate,
-                Codec = source.Codec,
-                HardwareEncoder = source.HardwareEncoder,
-                UseCrf = source.UseCrf,
-                Crf = source.Crf,
-                AudioBitrate = source.AudioBitrate,
-                MaxHeight = source.MaxHeight,
-                MaxFramerate = source.MaxFramerate,
-                EnableFormatConversion = source.EnableFormatConversion,
-                OutputFormat = source.OutputFormat,
-                EnableAudioConversion = source.EnableAudioConversion,
-                AudioOutputFormat = source.AudioOutputFormat,
-                EnableResolutionConversion = source.EnableResolutionConversion,
-                ClearMetadata = source.ClearMetadata,
-                EnableTrim = source.EnableTrim,
-                TrimStart = source.TrimStart,
-                TrimEnd = source.TrimEnd,
-                AudioTrackMode = source.AudioTrackMode,
-                InputVideoCodec = source.InputVideoCodec,
-                PreferDav1dDecoder = source.PreferDav1dDecoder,
-                ResolutionHeight = source.ResolutionHeight,
-                InputPath = source.InputPath,
-                OutputPath = source.OutputPath,
-                OutputLabel = source.OutputLabel,
-                IsImageProcessing = source.IsImageProcessing,
-                ImageQuality = source.ImageQuality,
-                ImageTargetSizeKB = source.ImageTargetSizeKB,
-                ImageOutputFormat = source.ImageOutputFormat,
-                IconSizesCsv = source.IconSizesCsv
-            };
+                var target = settings.ImageTargetSizeKB > 0 ? $"{settings.ImageTargetSizeKB:0} KB" : $"Q{settings.ImageQuality}";
+                var imageFormat = settings.EnableFormatConversion
+                    ? settings.ImageOutputFormat
+                    : Path.GetExtension(settings.InputPath).TrimStart('.');
+                return $"{imageFormat.ToUpperInvariant()} · {target}";
+            }
+
+            var format = settings.EnableAudioConversion
+                ? settings.AudioOutputFormat
+                : settings.EnableFormatConversion
+                    ? settings.OutputFormat
+                    : Path.GetExtension(settings.InputPath).TrimStart('.');
+            var quality = settings.UseCrf ? $"CRF {settings.Crf}" : $"{settings.TargetSizeMB:0.#} MB";
+            return $"{format.ToUpperInvariant()} · {quality}";
+        }
+
+        private void RestoreIconSizeSelection(string sizesCsv)
+        {
+            var sizes = sizesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(value => int.TryParse(value, out _))
+                .Select(int.Parse)
+                .ToHashSet();
+            IcoSize16 = sizes.Contains(16);
+            IcoSize24 = sizes.Contains(24);
+            IcoSize32 = sizes.Contains(32);
+            IcoSize48 = sizes.Contains(48);
+            IcoSize64 = sizes.Contains(64);
+            IcoSize128 = sizes.Contains(128);
+            IcoSize256 = sizes.Contains(256);
+        }
+
+        private void CopySourceTabSettings(ProcessingTask source, ProcessingTask target)
+        {
+            target.Settings = source.Settings.Clone();
+            target.Settings.InputPath = target.InputPath;
+            target.IsAdvancedMode = source.IsAdvancedMode;
+            target.CompressionPercentage = source.CompressionPercentage;
+            target.TargetSizeMB = source.TargetSizeMB;
+            target.Bitrate = source.Bitrate;
+            target.UseCrf = source.UseCrf;
+            target.Crf = source.Crf;
+            target.SelectedPresetValue = source.SelectedPresetValue;
+            target.SelectedVideoFormatValue = source.SelectedVideoFormatValue;
+            target.SelectedAudioFormatValue = source.SelectedAudioFormatValue;
+            target.SelectedAudioBitrateValue = source.SelectedAudioBitrateValue;
+            target.SelectedAudioTrackModeValue = source.SelectedAudioTrackModeValue;
+            target.SelectedResolutionValue = source.SelectedResolutionValue;
+            target.SelectedImageFormatValue = source.SelectedImageFormatValue;
+            target.SelectedCodecValue = source.SelectedCodecValue;
+            target.SelectedHardwareEncoderValue = source.SelectedHardwareEncoderValue;
+            target.SelectedImageTargetSizeUnit = source.SelectedImageTargetSizeUnit;
+            target.SettingsSummary = BuildSourceTabSettingsSummary(target.Settings);
+            target.Status = LocalizationService.T("SourceTabs.Pending");
+            target.StatusColor = "Gray";
+            target.OutputPath = "";
+            target.Message = "";
+            target.IsFailed = false;
+            target.HasSettings = true;
         }
 
         private void UpdateSourceInfoTexts()
@@ -3086,7 +3403,7 @@ namespace FFGUITool.ViewModels
             if (IsImageMode)
             {
                 SourceSecondMetricLabel = LocalizationService.T("Image.Format");
-                SourceSecondMetricValue = GetDisplayExtension(CurrentVideoInfo.FilePath);
+                SourceSecondMetricValue = ProcessingResultFormatter.GetDisplayExtension(CurrentVideoInfo.FilePath);
                 SourceThirdMetricLabel = LocalizationService.T("Image.Resolution");
                 SourceThirdMetricValue = string.IsNullOrWhiteSpace(CurrentVideoInfo.Resolution)
                     ? LocalizationService.T("Result.Unknown")
@@ -3113,131 +3430,6 @@ namespace FFGUITool.ViewModels
             SourceMetadataText = LocalizationService.CurrentLanguage == "en-US"
                 ? "None"
                 : "无";
-        }
-
-        private async Task<ConversionSummary> ExecuteFFmpegCommand()
-        {
-            if (!_ffmpegManager.IsFFmpegAvailable)
-            {
-                throw new Exception(LocalizationService.T("Status.NotConfigured"));
-            }
-
-            var stopwatch = Stopwatch.StartNew();
-            var results = new List<ConversionResult>();
-
-            if (IsBatchMode)
-            {
-                var files = GetBatchInputFiles().ToList();
-                if (files.Count == 0)
-                {
-                    throw new Exception(LocalizationService.T("Batch.Empty"));
-                }
-
-                foreach (var file in files)
-                {
-                    var inputInfo = await GetInputInfo(file);
-                    var command = _commandBuilder.BuildCommand(CreateSettingsForInput(file, inputInfo));
-                    results.Add(await RunFFmpegCommand(command));
-                }
-
-                stopwatch.Stop();
-                return new ConversionSummary(results, stopwatch.Elapsed);
-            }
-
-            var singleCommand = _commandBuilder.BuildCommand(CompressionSettings);
-            results.Add(await RunFFmpegCommand(singleCommand));
-            stopwatch.Stop();
-            return new ConversionSummary(results, stopwatch.Elapsed);
-        }
-
-        private CompressionSettings CreateSettingsForInput(string inputPath, VideoInfo? inputInfo = null)
-        {
-            var settings = new CompressionSettings
-            {
-                CompressionPercentage = CompressionSettings.CompressionPercentage,
-                TargetSizeMB = CompressionSettings.TargetSizeMB,
-                Bitrate = CompressionSettings.Bitrate,
-                Codec = CompressionSettings.Codec,
-                HardwareEncoder = CompressionSettings.HardwareEncoder,
-                UseCrf = CompressionSettings.UseCrf,
-                Crf = CompressionSettings.Crf,
-                AudioBitrate = CompressionSettings.AudioBitrate,
-                MaxHeight = CompressionSettings.MaxHeight,
-                MaxFramerate = CompressionSettings.MaxFramerate,
-                EnableFormatConversion = CompressionSettings.EnableFormatConversion,
-                OutputFormat = CompressionSettings.OutputFormat,
-                EnableAudioConversion = CompressionSettings.EnableAudioConversion,
-                AudioOutputFormat = CompressionSettings.AudioOutputFormat,
-                EnableResolutionConversion = CompressionSettings.EnableResolutionConversion,
-                ClearMetadata = CompressionSettings.ClearMetadata,
-                EnableTrim = CompressionSettings.EnableTrim,
-                TrimStart = CompressionSettings.TrimStart,
-                TrimEnd = CompressionSettings.TrimEnd,
-                AudioTrackMode = CompressionSettings.AudioTrackMode,
-                InputVideoCodec = inputInfo?.VideoCodec ?? CompressionSettings.InputVideoCodec,
-                PreferDav1dDecoder = string.Equals(inputInfo?.VideoCodec ?? CompressionSettings.InputVideoCodec, "av1", StringComparison.OrdinalIgnoreCase) &&
-                                     _availableVideoDecoders.Contains("libdav1d"),
-                ResolutionHeight = CompressionSettings.ResolutionHeight,
-                InputPath = inputPath,
-                OutputPath = CompressionSettings.OutputPath,
-                OutputLabel = CompressionSettings.OutputLabel,
-                IsImageProcessing = CompressionSettings.IsImageProcessing,
-                ImageQuality = CompressionSettings.ImageQuality,
-                ImageTargetSizeKB = CompressionSettings.ImageTargetSizeKB,
-                ImageOutputFormat = CompressionSettings.ImageOutputFormat,
-                IconSizesCsv = CompressionSettings.IconSizesCsv
-            };
-
-            if (IsBatchMode)
-            {
-                ApplyPerFileBatchTarget(settings, inputInfo);
-            }
-
-            settings.ClearMetadata = CompressionSettings.ClearMetadata;
-            return settings;
-        }
-
-        private void ApplyPerFileBatchTarget(CompressionSettings settings, VideoInfo? inputInfo)
-        {
-            var sourceBytes = inputInfo?.FileSize > 0
-                ? inputInfo.FileSize
-                : File.Exists(settings.InputPath)
-                    ? new FileInfo(settings.InputPath).Length
-                    : 0;
-            var ratio = Math.Max(1, Math.Min(TargetSizeMB, 100)) / 100.0;
-
-            if (settings.IsImageProcessing)
-            {
-                settings.ImageTargetSizeKB = sourceBytes > 0
-                    ? Math.Max(1, sourceBytes / 1024.0 * ratio)
-                    : Math.Max(1, TargetSizeMB);
-                settings.OutputLabel = $"ratio{TargetSizeMB:0.0}pct";
-                return;
-            }
-
-            settings.TargetSizeMB = sourceBytes > 0
-                ? Math.Max(0.1, sourceBytes / 1024.0 / 1024.0 * ratio)
-                : Math.Max(0.1, TargetSizeMB);
-            settings.OutputLabel = settings.UseCrf ? $"crf{settings.Crf}" : $"ratio{TargetSizeMB:0.0}pct";
-
-            if (!settings.UseCrf && inputInfo?.Duration > 0)
-            {
-                var targetBitrate = _commandBuilder.CalculateBitrateForTargetSize(inputInfo, settings.TargetSizeMB);
-                if (SelectedCompressionPresetOption != null && SelectedCompressionPresetOption.Value != "none")
-                {
-                    if (SelectedCompressionPresetOption.MinVideoBitrateKbps > 0)
-                    {
-                        targetBitrate = Math.Max(targetBitrate, SelectedCompressionPresetOption.MinVideoBitrateKbps);
-                    }
-
-                    if (SelectedCompressionPresetOption.MaxVideoBitrateKbps > 0)
-                    {
-                        targetBitrate = Math.Min(targetBitrate, SelectedCompressionPresetOption.MaxVideoBitrateKbps);
-                    }
-                }
-
-                settings.Bitrate = targetBitrate;
-            }
         }
 
         private string BuildOutputLabel(CompressionSettings settings)
@@ -3270,316 +3462,6 @@ namespace FFGUITool.ViewModels
             return settings.EnableTrim ? $"clip_{label}" : label;
         }
 
-        private async Task<VideoInfo?> GetInputInfo(string inputPath)
-        {
-            var inputInfo = CurrentVideoInfo?.FilePath == inputPath
-                ? CurrentVideoInfo
-                : await _videoAnalyzer.AnalyzeVideo(inputPath);
-
-            if (inputInfo == null && File.Exists(inputPath))
-            {
-                inputInfo = new VideoInfo
-                {
-                    FilePath = inputPath,
-                    FileSize = new FileInfo(inputPath).Length
-                };
-            }
-
-            return inputInfo;
-        }
-
-        private static long EstimateExpectedOutputBytes(FFmpegCommand command, VideoInfo? inputInfo)
-        {
-            if (command.ImageOutput && command.ImageTargetSizeKB > 0)
-            {
-                return (long)(command.ImageTargetSizeKB * 1024);
-            }
-
-            if (!command.UseCrf && command.Bitrate > 0 && inputInfo?.Duration > 0)
-            {
-                var totalKbps = command.AudioOnly
-                    ? command.AudioBitrate
-                    : command.Bitrate + command.AudioBitrate;
-                return (long)(totalKbps * 1024.0 * inputInfo.Duration / 8.0);
-            }
-
-            return inputInfo?.FileSize > 0 ? inputInfo.FileSize : 0;
-        }
-
-        private async Task<ConversionResult> RunFFmpegCommand(FFmpegCommand command)
-        {
-            var inputInfo = await GetInputInfo(command.InputPath);
-            var expectedOutputBytes = EstimateExpectedOutputBytes(command, inputInfo);
-            var outputDiagnostics = OutputDiagnostics.Check(command, expectedOutputBytes);
-            AppLogger.Info($"Output diagnostics before FFmpeg run:{Environment.NewLine}{outputDiagnostics.Summary}");
-            if (!outputDiagnostics.CanWrite)
-            {
-                throw new FFmpegExecutionException(
-                    "Output path check failed before running FFmpeg.",
-                    1,
-                    outputDiagnostics.Summary,
-                    command.BuildCommand(),
-                    command.OutputPath,
-                    outputDiagnostics.Summary);
-            }
-
-            var output = command.ImageOutput && command.ImageTargetSizeKB > 0 && !IsIconFormat(command.ImageFormat)
-                    ? await RunImageCommandWithTargetSize(command, inputInfo)
-                    : await RunSingleFFmpegCommand(command);
-
-            if (output.ExitCode != 0)
-            {
-                var av1Message = BuildAv1DecodeFailureMessage(command, output.Error);
-                throw new FFmpegExecutionException(
-                    av1Message ?? $"FFmpeg执行失败，退出代码: {output.ExitCode}",
-                    output.ExitCode,
-                    output.Error,
-                    command.BuildCommand(),
-                    command.OutputPath,
-                    outputDiagnostics.Summary);
-            }
-
-            if (CompressionSettings.ClearMetadata && _exifToolManager.IsExifToolAvailable)
-            {
-                var clearResult = await _exifToolManager.ClearMetadata(command.OutputPath);
-                if (!clearResult.Success)
-                {
-                    throw new FFmpegExecutionException(
-                        "ExifTool元数据清除失败",
-                        1,
-                        clearResult.Error,
-                        command.BuildCommand(),
-                        command.OutputPath,
-                        outputDiagnostics.Summary);
-                }
-            }
-
-            var outputInfo = await _videoAnalyzer.AnalyzeVideo(command.OutputPath);
-            if (outputInfo == null && File.Exists(command.OutputPath))
-            {
-                outputInfo = new VideoInfo
-                {
-                    FilePath = command.OutputPath,
-                    FileSize = new FileInfo(command.OutputPath).Length
-                };
-            }
-
-            return new ConversionResult(command.InputPath, command.OutputPath, command, inputInfo, outputInfo);
-        }
-
-        private static string? BuildAv1DecodeFailureMessage(FFmpegCommand command, string ffmpegOutput)
-        {
-            if (!string.Equals(command.InputVideoCodec, "av1", StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            var output = ffmpegOutput ?? "";
-            var hasKnownFailure = output.Contains("libaom-av1", StringComparison.OrdinalIgnoreCase) ||
-                                  output.Contains("frame=    0", StringComparison.OrdinalIgnoreCase) ||
-                                  output.Contains("frame=0", StringComparison.OrdinalIgnoreCase) ||
-                                  output.Contains("Nothing was written into output file", StringComparison.OrdinalIgnoreCase);
-
-            return hasKnownFailure
-                ? "源视频 AV1 解码失败，可能是录屏文件损坏或当前 FFmpeg 构建兼容性不足，建议更换 full build FFmpeg 或重新导出/修复源视频。"
-                : null;
-        }
-
-        private async Task<(int ExitCode, string Error)> RunImageCommandWithTargetSize(FFmpegCommand command, VideoInfo? inputInfo)
-        {
-            var targetBytes = (long)Math.Max(1, command.ImageTargetSizeKB * 1024);
-            var baseHeight = command.MaxHeight > 0 ? command.MaxHeight : TryParseHeight(inputInfo?.Resolution);
-            var lastResult = (ExitCode: 0, Error: "");
-
-            foreach (var quality in BuildImageQualityAttempts(command.ImageQuality))
-            {
-                command.ImageQuality = quality;
-                lastResult = await RunSingleFFmpegCommand(command);
-                if (lastResult.ExitCode != 0 || IsOutputWithinTarget(command.OutputPath, targetBytes))
-                {
-                    return lastResult;
-                }
-            }
-
-            if (baseHeight <= 0)
-            {
-                return lastResult;
-            }
-
-            var currentHeight = Math.Max(128, (int)Math.Round(baseHeight * 0.85));
-            while (currentHeight >= 128)
-            {
-                command.MaxHeight = currentHeight;
-                foreach (var quality in new[] { 35, 25, 15, 8, 1 })
-                {
-                    command.ImageQuality = quality;
-                    lastResult = await RunSingleFFmpegCommand(command);
-                    if (lastResult.ExitCode != 0 || IsOutputWithinTarget(command.OutputPath, targetBytes))
-                    {
-                        return lastResult;
-                    }
-                }
-
-                currentHeight = (int)Math.Round(currentHeight * 0.85);
-            }
-
-            return lastResult;
-        }
-
-        private async Task<(int ExitCode, string Error)> RunSingleFFmpegCommand(FFmpegCommand command)
-        {
-            if (File.Exists(command.OutputPath))
-            {
-                File.Delete(command.OutputPath);
-            }
-
-            var commandText = command.BuildCommand();
-            AppLogger.Info($"Running FFmpeg command:{Environment.NewLine}{commandText}");
-            var arguments = commandText.StartsWith("ffmpeg ", StringComparison.OrdinalIgnoreCase)
-                ? commandText["ffmpeg ".Length..]
-                : commandText;
-
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = _ffmpegManager.FFmpegPath,
-                Arguments = arguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            using var process = new Process { StartInfo = processInfo };
-            process.Start();
-
-            var error = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            AppLogger.Info($"FFmpeg exited with code {process.ExitCode}.");
-            var errorSummary = AppLogger.Summarize(error);
-            if (!string.IsNullOrWhiteSpace(errorSummary))
-            {
-                AppLogger.Info($"FFmpeg stderr summary:{Environment.NewLine}{errorSummary}");
-            }
-
-            return (process.ExitCode, error);
-        }
-
-        private static IEnumerable<int> BuildImageQualityAttempts(int startQuality)
-        {
-            var quality = Math.Max(1, Math.Min(100, startQuality));
-            for (var current = quality; current >= 1; current -= 8)
-            {
-                yield return current;
-            }
-
-            if (quality != 1)
-            {
-                yield return 1;
-            }
-        }
-
-        private static bool IsOutputWithinTarget(string outputPath, long targetBytes)
-        {
-            return File.Exists(outputPath) && new FileInfo(outputPath).Length <= targetBytes;
-        }
-
-        private static int TryParseHeight(string? resolution)
-        {
-            if (string.IsNullOrWhiteSpace(resolution))
-            {
-                return 0;
-            }
-
-            var parts = resolution.Split('x', 'X');
-            return parts.Length == 2 && int.TryParse(parts[1], out var height) ? height : 0;
-        }
-
-        private static string BuildCompletionMessage(ConversionSummary summary)
-        {
-            var lines = new List<string>
-            {
-                summary.Results.Count > 1
-                    ? LocalizationService.Format("Result.BatchComplete", summary.Results.Count)
-                    : LocalizationService.T(summary.Results.FirstOrDefault()?.Command.ImageOutput == true ? "Result.ImageComplete" : "Result.VideoComplete"),
-                LocalizationService.Format("Result.Elapsed", FormatDuration(summary.Elapsed))
-            };
-
-            foreach (var result in summary.Results)
-            {
-                lines.Add("");
-                lines.Add(Path.GetFileName(result.InputPath));
-                lines.Add(LocalizationService.Format("Result.Output", result.OutputPath));
-
-                if (result.InputInfo != null && result.OutputInfo != null)
-                {
-                    lines.Add(LocalizationService.Format("Result.SizeCompare", FormatBytes(result.InputInfo.FileSize), FormatBytes(result.OutputInfo.FileSize), FormatSizeChange(result.InputInfo.FileSize, result.OutputInfo.FileSize)));
-
-                    if (result.Command.ImageOutput)
-                    {
-                        lines.Add(LocalizationService.Format("Result.ImageFormat", GetDisplayExtension(result.InputPath), GetDisplayExtension(result.OutputPath)));
-                        if (!string.IsNullOrWhiteSpace(result.InputInfo.Resolution) || !string.IsNullOrWhiteSpace(result.OutputInfo.Resolution))
-                        {
-                            lines.Add(LocalizationService.Format(
-                                "Result.Resolution",
-                                string.IsNullOrWhiteSpace(result.InputInfo.Resolution) ? LocalizationService.T("Result.Unknown") : result.InputInfo.Resolution,
-                                string.IsNullOrWhiteSpace(result.OutputInfo.Resolution) ? LocalizationService.T("Result.Unknown") : result.OutputInfo.Resolution));
-                        }
-
-                        continue;
-                    }
-
-                    if (result.Command.AudioOnly)
-                    {
-                        lines.Add(LocalizationService.Format("Result.AudioFormat", GetDisplayExtension(result.InputPath), GetDisplayExtension(result.OutputPath)));
-                        lines.Add(LocalizationService.Format("Result.AudioBitrate", $"{result.Command.AudioBitrate} kb/s"));
-                        continue;
-                    }
-
-                    if (result.InputInfo.Bitrate > 0 || result.OutputInfo.Bitrate > 0)
-                    {
-                        lines.Add(LocalizationService.Format("Result.BitrateCompare", FormatBitrate(result.InputInfo.Bitrate), FormatBitrate(result.OutputInfo.Bitrate)));
-                    }
-                }
-                else if (result.OutputInfo != null)
-                {
-                    lines.Add(LocalizationService.Format("Result.OutputSize", FormatBytes(result.OutputInfo.FileSize)));
-                }
-            }
-
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        private static string BuildFailureMessage(FFmpegExecutionException exception)
-        {
-            var lines = new List<string> { exception.Message };
-
-            if (!string.IsNullOrWhiteSpace(exception.OutputDiagnostics))
-            {
-                lines.Add("");
-                lines.Add("Diagnostics:");
-                lines.Add(exception.OutputDiagnostics);
-            }
-
-            if (!string.IsNullOrWhiteSpace(exception.FFmpegOutput))
-            {
-                lines.Add("");
-                lines.Add(LocalizationService.T("Result.FFmpegInfo"));
-                lines.Add(TrimFFmpegOutput(exception.FFmpegOutput));
-            }
-
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        private void CaptureFailure(FFmpegExecutionException exception)
-        {
-            LastFailureCommand = string.IsNullOrWhiteSpace(exception.CommandText)
-                ? CommandText
-                : exception.CommandText;
-            LastFailureDetails = BuildFailureDetails(exception);
-            IsFailureActionsVisible = true;
-            AppLogger.Error($"FFmpeg execution failed. Details:{Environment.NewLine}{LastFailureDetails}", exception);
-        }
-
         private void ClearLastFailure()
         {
             IsFailureActionsVisible = false;
@@ -3587,134 +3469,18 @@ namespace FFGUITool.ViewModels
             LastFailureCommand = "";
         }
 
-        private static string BuildFailureDetails(FFmpegExecutionException exception)
+        private enum ExecutionScope
         {
-            var lines = new List<string>
-            {
-                exception.Message,
-                $"Exit code: {exception.ExitCode}"
-            };
-
-            if (!string.IsNullOrWhiteSpace(exception.CommandText))
-            {
-                lines.Add("");
-                lines.Add("Command:");
-                lines.Add(exception.CommandText);
-            }
-
-            if (!string.IsNullOrWhiteSpace(exception.OutputPath))
-            {
-                lines.Add("");
-                lines.Add($"Output path: {exception.OutputPath}");
-            }
-
-            if (!string.IsNullOrWhiteSpace(exception.OutputDiagnostics))
-            {
-                lines.Add("");
-                lines.Add("Diagnostics:");
-                lines.Add(exception.OutputDiagnostics);
-            }
-
-            if (!string.IsNullOrWhiteSpace(exception.FFmpegOutput))
-            {
-                lines.Add("");
-                lines.Add("stderr summary:");
-                lines.Add(TrimFFmpegOutput(exception.FFmpegOutput));
-                lines.Add("");
-                lines.Add("stderr full:");
-                lines.Add(exception.FFmpegOutput);
-            }
-
-            lines.Add("");
-            lines.Add($"Log file: {AppLogger.CurrentLogPath}");
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        private static string TrimFFmpegOutput(string output)
-        {
-            var lines = output
-                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Trim())
-                .Where(line => !string.IsNullOrWhiteSpace(line))
-                .TakeLast(12);
-
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        private static string FormatDuration(TimeSpan duration)
-        {
-            return duration.TotalHours >= 1
-                ? duration.ToString(@"hh\:mm\:ss")
-                : duration.ToString(@"mm\:ss");
-        }
-
-        private static string FormatBytes(long bytes)
-        {
-            return VideoInfo.FormatFileSize(bytes);
-        }
-
-        private static string FormatSizeChange(long before, long after)
-        {
-            if (before <= 0)
-            {
-                return LocalizationService.T("Result.ChangeUnavailable");
-            }
-
-            var percentage = (after - before) * 100.0 / before;
-            return percentage <= 0
-                ? LocalizationService.Format("Result.Reduced", Math.Abs(percentage))
-                : LocalizationService.Format("Result.Increased", percentage);
-        }
-
-        private static string FormatBitrate(int bitrate)
-        {
-            return bitrate > 0 ? $"{bitrate} kb/s" : LocalizationService.T("Result.Unknown");
-        }
-
-        private static string GetDisplayExtension(string path)
-        {
-            var extension = Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
-            return string.IsNullOrWhiteSpace(extension) ? LocalizationService.T("Result.Unknown") : extension;
-        }
-
-        private sealed record ConversionSummary(List<ConversionResult> Results, TimeSpan Elapsed);
-
-        private sealed record ConversionResult(
-            string InputPath,
-            string OutputPath,
-            FFmpegCommand Command,
-            VideoInfo? InputInfo,
-            VideoInfo? OutputInfo);
-
-        private sealed class FFmpegExecutionException : Exception
-        {
-            public FFmpegExecutionException(
-                string message,
-                int exitCode,
-                string ffmpegOutput,
-                string commandText = "",
-                string outputPath = "",
-                string outputDiagnostics = "")
-                : base(message)
-            {
-                ExitCode = exitCode;
-                FFmpegOutput = ffmpegOutput;
-                CommandText = commandText;
-                OutputPath = outputPath;
-                OutputDiagnostics = outputDiagnostics;
-            }
-
-            public int ExitCode { get; }
-            public string FFmpegOutput { get; }
-            public string CommandText { get; }
-            public string OutputPath { get; }
-            public string OutputDiagnostics { get; }
+            Current,
+            All
         }
 
         #endregion
 
         public override void Dispose()
         {
+            _executionCancellation?.Cancel();
+            _executionCancellation?.Dispose();
             LocalizationService.LanguageChanged -= OnLanguageChanged;
             base.Dispose();
         }

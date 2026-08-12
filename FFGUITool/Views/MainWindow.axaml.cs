@@ -69,17 +69,9 @@ namespace FFGUITool.Views
         private async void OnDrop(object? sender, DragEventArgs e)
         {
             var paths = e.Data.GetFiles()?.Select(file => file.Path.LocalPath).ToList() ?? [];
-            if (_viewModel != null && paths.Count > 1 && paths.All(path => MediaFileSupport.IsSupportedDroppedPath(path, _viewModel.IsImageMode)))
+            if (_viewModel != null && paths.Count > 0 && paths.All(path => MediaFileSupport.IsSupportedDroppedPath(path, _viewModel.IsImageMode)))
             {
                 await _viewModel.ProcessSelectedInputs(paths);
-            }
-            else
-            {
-                var path = paths.FirstOrDefault();
-                if (MediaFileSupport.IsSupportedDroppedPath(path, _viewModel?.IsImageMode == true) && _viewModel != null)
-                {
-                    await _viewModel.ProcessSelectedInput(path!);
-                }
             }
 
             e.Handled = true;

@@ -1,6 +1,6 @@
 #define MyAppName "FFGUITool"
 #ifndef MyAppVersion
-#define MyAppVersion "1.8.0"
+#define MyAppVersion "1.9.0"
 #endif
 #define MyAppPublisher "brealin"
 #define MyAppExeName "FFGUITool.exe"
