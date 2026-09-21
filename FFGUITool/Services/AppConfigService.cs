@@ -8,13 +8,22 @@ namespace FFGUITool.Services
     {
         public string Theme { get; set; } = "Default";
         public string Language { get; set; } = "zh-CN";
+        public bool CloseToTray { get; set; } = false;
+        public bool TrayHintShown { get; set; }
+        public int ImageParallelism { get; set; } = 2;
     }
 
     public static class AppConfigService
     {
-        public static string AppDataPath { get; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "FFGUITool");
+        public static string AppDataPath { get; } = ResolveAppDataPath();
+
+        private static string ResolveAppDataPath()
+        {
+            var path = Environment.GetEnvironmentVariable("FFGUITOOL_APP_DATA");
+            return !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path)
+                ? Path.GetFullPath(path)
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFGUITool");
+        }
 
         public static string ConfigPath => Path.Combine(AppDataPath, "config.json");
 
@@ -42,7 +51,9 @@ namespace FFGUITool.Services
             {
                 Directory.CreateDirectory(AppDataPath);
                 var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(ConfigPath, json);
+                using var transaction = new OutputTransaction(ConfigPath, true);
+                File.WriteAllText(transaction.TemporaryPath, json);
+                transaction.Commit();
             }
             catch
             {

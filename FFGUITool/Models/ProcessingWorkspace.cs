@@ -26,14 +26,15 @@ namespace FFGUITool.Models
             Func<string, ProcessingTask> taskFactory)
         {
             ProcessingTask? first = null;
+            var existing = IndependentTasks.ToDictionary(task => task.InputPath, FFGUITool.Services.PathIdentity.Comparer);
             foreach (var path in paths)
             {
-                var task = IndependentTasks.FirstOrDefault(item =>
-                    string.Equals(item.InputPath, path, StringComparison.OrdinalIgnoreCase));
+                existing.TryGetValue(path, out var task);
                 if (task == null)
                 {
                     task = taskFactory(path);
                     IndependentTasks.Add(task);
+                    existing[path] = task;
                 }
 
                 first ??= task;
@@ -59,7 +60,7 @@ namespace FFGUITool.Models
         {
             foreach (var task in IndependentTasks)
             {
-                task.IsSelected = string.Equals(task.InputPath, inputPath, StringComparison.OrdinalIgnoreCase);
+                task.IsSelected = FFGUITool.Services.PathIdentity.Equals(task.InputPath, inputPath);
             }
         }
 
@@ -67,7 +68,7 @@ namespace FFGUITool.Models
             IEnumerable<string> paths,
             Func<string, ProcessingTask> taskFactory)
         {
-            var existing = SharedTasks.ToDictionary(task => task.InputPath, StringComparer.OrdinalIgnoreCase);
+            var existing = SharedTasks.ToDictionary(task => task.InputPath, FFGUITool.Services.PathIdentity.Comparer);
             SharedTasks.Clear();
             foreach (var path in paths)
             {

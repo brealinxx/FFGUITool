@@ -1,117 +1,63 @@
 # FFGUITool
 
-[中文说明](README.zh-CN.md)
+[中文](README.zh-CN.md) · [Download](https://github.com/brealinxx/FFGUITool/releases/latest) · [Changelog](CHANGELOG.md)
 
-FFGUITool is a lightweight cross-platform desktop GUI for FFmpeg. It helps you compress and convert videos, audio, and images, configure multiple files as independent tasks, process folders with shared settings, preview generated CLI commands, and run common FFmpeg workflows without writing commands by hand.
+A cross-platform FFmpeg desktop app for compressing and converting video, audio, and images—without writing commands.
 
-## Download
+![FFGUITool interface showing the file queue, compression settings, and command preview](Assets/intro.png)
 
-Download the latest ready-to-use build from:
+## Download and install
 
-[GitHub Releases](https://github.com/brealinxx/FFGUITool/releases/latest)
+Choose your system and architecture from [GitHub Releases](https://github.com/brealinxx/FFGUITool/releases/latest):
+
+| System | Architectures | Packages |
+| --- | --- | --- |
+| Windows | x64, x86, ARM64 | `.exe` installer or portable `.zip` |
+| macOS | Intel, Apple Silicon | `.dmg` or portable `.zip` |
+| Linux | x64, ARM64 | Portable `.zip` |
+
+Configure **FFmpeg** on first launch by selecting an existing executable or installing from an archive. ffprobe is recommended; ExifTool is optional for metadata inspection and removal.
 
 ## Features
 
-- Video compression by target size, target bitrate, preset, or CRF quality mode.
-- Image compression by target size or quality, with KB/MB target-size controls.
-- Video, audio, and image format conversion.
-- Browser-style source tabs for multiple video or image files, with independent settings for every file.
-- Folder batch processing with shared settings, a file preview, per-file inclusion controls, optional subfolder scanning, and per-file target ratios.
-- Queue controls for processing the current task or all tasks, progress tracking, cancellation, failure continuation, and retrying failed tasks.
-- Output conflict choices for automatic renaming or overwriting existing files.
-- Drag-and-drop support for one or multiple files and folders.
-- Image input support for JPG, JPEG, PNG, WebP, HEIC, HEIF, BMP, GIF, TIFF, ICO, TGA, and AVIF.
-- Image output formats: JPG, PNG, WebP, ICO, and ICNS.
-- Video output formats: MP4, MKV, WebM, MOV, AVI, and GIF.
-- Audio extraction/conversion to MP3, AAC, M4A, WAV, FLAC, and OGG.
-- Resolution presets including original size, 2160p, 1080p, 720p, 480p, 512px, and 360p.
-- Hardware encoder options, including NVIDIA, Intel, AMD, Apple VideoToolbox, and VAAPI when available.
-- Optional ExifTool integration for reading and removing privacy metadata from videos and images.
-- Chinese and English UI, plus light, dark, and system themes.
-- Portable archives, Windows installers, and macOS DMG packages.
+- **Compress and convert** by target size, quality, or bitrate, with trimming, resizing, audio extraction, and stream copy for compatible formats.
+- **Independent files and folder batches**: each imported file keeps its settings; folder tasks share settings. Includes subfolder scanning, search, failure filtering, and sorting.
+- **Samples and presets**: compare short video samples or images, save presets, review history, and reuse settings.
+- **Output protection**: customize names and subfolders, preserve previous outputs when encoding fails or is cancelled, and retry failed tasks.
+- **Convenient interface**: Chinese/English, light/dark themes, optional tray mode, and a copyable CLI command preview.
 
-## Basic Usage
+Common formats include MP4, MKV, WebM, MOV, MP3, WAV, FLAC, JPG, PNG, WebP, and ICO. Available encoders depend on the FFmpeg build and your device.
 
-1. Start FFGUITool.
-2. Configure FFmpeg when prompted:
-   - Select an existing FFmpeg executable, or
-   - Install FFmpeg from a `.zip` or `.7z` archive.
-3. Choose **Video mode** or **Image mode**.
-4. Select or drag in one or more files, or select a folder.
-5. For files, switch between source tabs and configure each task independently. Use **Apply to all** when several files should share the current tab's settings.
-6. For a folder, configure the shared settings, choose whether to scan subfolders, and include or exclude files in the batch preview.
-7. Adjust target size, preset, output format, quality, resolution, or advanced options, then check the CLI command preview if needed.
-8. Process the current tab or the whole queue. You can cancel an active queue or retry failed tasks afterward.
+## Quick start
 
-You can change FFmpeg, ExifTool, language, theme, and local data settings later from the Settings menu.
+1. Choose **Video mode** (also handles audio) or **Image mode**.
+2. Drop files or select a folder. Check the import count and reasons for skipped entries.
+3. Choose the processing goal, size/quality, and output format. The editor identifies whether settings apply to the current file or the whole folder.
+4. Select the destination and naming rules under **Output settings**. Use **Sample and compare** if needed.
+5. Process the current file or all tasks, then open outputs from **Results**.
 
-## Optional Privacy Cleanup
+Use **Apply current settings to all** to copy settings across independent files. **Preferences → Application settings** controls tray behavior and image concurrency; these settings save automatically and remain independent of presets.
 
-ExifTool is optional. When configured, FFGUITool can inspect and remove metadata such as GPS location, device model, author, creation time, software, lens, and media handler fields after FFmpeg creates the output file.
+Shortcuts: `Ctrl+O` import · `Ctrl+Enter` process · `Escape` cancel.
 
-Compression and conversion still work without ExifTool.
+## Things to know
 
-## Build From Source
+- Images and video/audio are filtered by the current mode; there is no unified mixed-media queue. Import folders separately.
+- A target size may be unattainable; oversized outputs receive a warning. Images are resized to meet a target only when explicitly allowed.
+- Video samples cover up to 10 seconds and cannot accurately predict whole-file size. Restored unfinished tasks restart from the beginning.
+- Hardware encoding depends on the device and drivers. Two-pass encoding is limited to compatible software H.264/VP9 bitrate modes.
+- Animated images export only the first frame in the still-image workflow. HDR-to-SDR conversion is not automatic; check a sample first.
 
-Requirements:
+## Development
 
-- .NET 8 SDK
-- Git
-
-Clone and build:
+Requires the .NET 8 SDK; media processing and integration tests also require FFmpeg.
 
 ```bash
-git clone https://github.com/brealinxx/FFGUITool.git
-cd FFGUITool
 dotnet restore FFGUIToolAvalonia.sln
-dotnet build FFGUIToolAvalonia.sln
-```
-
-Run locally:
-
-```bash
 dotnet run --project FFGUITool/FFGUITool.csproj
 ```
 
-## Publish Packages
-
-The project provides PowerShell and Bash publish scripts. Package versions are read automatically from `FFGUITool.csproj`, so release files are named like `FFGUITool-v1.9.0-<platform>-Portable.zip`.
-
-Common commands:
-
-```powershell
-.\publish.ps1 -Windows -Installer
-.\publish.ps1 -MacOS
-.\publish.ps1 -Linux
-.\publish.ps1 -All
-```
-
-```bash
-chmod +x publish.sh
-./publish.sh -macos --dmg
-./publish.sh -linux
-./publish.sh -all
-```
-
-Targets and package labels:
-
-| Platform | Runtime | Package label |
-|---|---|---|
-| Windows | `win-x64` | `windows-x64` |
-| Windows | `win-x86` | `windows-x86` |
-| Windows | `win-arm64` | `windows-arm64` |
-| macOS | `osx-x64` | `macos-intel` |
-| macOS | `osx-arm64` | `macos-arm64` |
-
-Package names use this format:
-
-- Portable: `FFGUITool-vx.x.x-<platform>-Portable.zip`
-- Windows installer: `FFGUITool-vx.x.x-<platform>-Installer.exe`
-- macOS installer: `FFGUITool-vx.x.x-<platform>-Installer.dmg`
-
-Outputs are written to `FFGUITool/bin/publish/`, Portable archives to `archives/`, Windows installers to `installer/`, and macOS DMGs to `dmg/`.
-
-> Build macOS DMG packages on macOS because DMG creation uses `hdiutil`. The macOS app bundle uses `FFGUITool/Resources/AppIcon.icns`; Windows builds use `FFGUITool/Resources/icon.ico`.
+See the [development and release guide](docs/DEVELOPMENT.md) for tests, the 1,000-file UI check, and packaging. Current portable naming example: `FFGUITool-v1.10.0-<platform>-Portable.zip`.
 
 ## License
 

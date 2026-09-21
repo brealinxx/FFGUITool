@@ -20,7 +20,7 @@ namespace FFGUITool.Services
             {
                 InputPath = settings.InputPath,
                 Codec = GetVideoCodec(settings),
-                HardwareEncoder = settings.HardwareEncoder,
+                HardwareEncoder = EncodingPolicy.CompatibleHardware(settings.HardwareEncoder, GetOutputFormat(settings)),
                 Bitrate = settings.Bitrate,
                 AudioBitrate = settings.AudioBitrate,
                 UseCrf = settings.UseCrf,
@@ -39,13 +39,31 @@ namespace FFGUITool.Services
                 AudioTrackMode = settings.AudioTrackMode,
                 ImageOutput = settings.IsImageProcessing,
                 ImageQuality = settings.ImageQuality,
-                ImageTargetSizeKB = settings.ImageTargetSizeKB,
-                ImageFormat = settings.IsImageProcessing ? settings.ImageOutputFormat : GetOutputFormat(settings),
+                ImageTargetSizeKB = settings.LimitFileSize ? settings.ImageTargetSizeKB : 0,
+                ImageFormat = GetOutputFormat(settings),
                 IconSizes = ParseIconSizes(settings.IconSizesCsv),
-                ClearMetadata = settings.ClearMetadata
+                ClearMetadata = settings.ClearMetadata,
+                StreamCopy = settings.StreamCopy && !settings.IsImageProcessing && !settings.EnableAudioConversion,
+                TwoPass = settings.TwoPass,
+                AllowImageResize = settings.AllowImageResize,
+                PngCompressionLevel = settings.PngCompressionLevel,
+                AllowHardwareFallback = settings.AllowHardwareFallback,
+                TargetBytes = settings.LimitFileSize && !settings.UseCrf && !settings.StreamCopy && !settings.EnableAudioConversion && !settings.IsImageProcessing
+                    ? (long)(settings.TargetSizeMB * 1024 * 1024) : 0,
+                Duration = videoInfo == null ? 0 : EncodingPolicy.OutputDuration(settings, videoInfo)
             };
 
             command.OutputPath = BuildOutputPath(settings);
+            if (command.ImageFormat == "webm" && command.AudioTrackMode == "copy" && videoInfo?.HasAudio == true &&
+                videoInfo.AudioCodec is not ("opus" or "vorbis"))
+                throw new ArgumentException(LocalizationService.T("Improve.CopyContainer"));
+            if (command.StreamCopy && (command.MaxHeight > 0 || command.MaxFramerate > 0 || settings.EnableResolutionConversion ||
+                settings.OutputFormat == "gif")) throw new ArgumentException(LocalizationService.T("Improve.CopyConflict"));
+            if (command.TargetBytes > 0 && videoInfo?.Duration > 0)
+                command.Bitrate = EncodingPolicy.TargetBitrate(settings.TargetSizeMB, command.Duration, EncodingPolicy.AudioBudget(settings, videoInfo));
+            if (command.TwoPass && (command.UseCrf || command.StreamCopy || !string.IsNullOrEmpty(command.HardwareEncoder) ||
+                command.Codec is not ("libx264" or "libvpx-vp9")))
+                command.TwoPass = false;
 
             return command;
         }
@@ -73,11 +91,19 @@ namespace FFGUITool.Services
                 : settings.UseCrf
                 ? $"crf{settings.Crf}"
                 : settings.IsImageProcessing && settings.ImageTargetSizeKB > 0
-                ? $"{settings.ImageTargetSizeKB:F0}KB"
+                ? $"{settings.ImageTargetSizeKB:0.##}KB"
                 : settings.TargetSizeMB > 0
-                ? $"{settings.TargetSizeMB:F0}MB"
+                ? $"{settings.TargetSizeMB:0.##}MB"
                 : $"{settings.CompressionPercentage}%";
-            var outputFileName = $"{inputFileName}_FFGUIToolOutPut_{SanitizeFileNameToken(targetSize)}.{outputFormat}";
+            var pattern = string.IsNullOrWhiteSpace(settings.OutputNamePattern) ? "{name}_FFGUIToolOutPut_{label}" : settings.OutputNamePattern;
+            if (!pattern.Contains("{name}", StringComparison.Ordinal)) pattern = "{name}_" + pattern;
+            var outputFileName = SanitizeFileNameToken(pattern.Replace("{name}", inputFileName).Replace("{label}", targetSize.Replace(' ', '_'))) + "." + outputFormat;
+            if (settings.PreserveFolderStructure && !string.IsNullOrWhiteSpace(settings.OutputPath) && !string.IsNullOrWhiteSpace(settings.InputRoot))
+            {
+                var relative = Path.GetRelativePath(settings.InputRoot, Path.GetDirectoryName(settings.InputPath)!);
+                if (!Path.IsPathRooted(relative) && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar))
+                    outputDirectory = Path.Combine(outputDirectory, relative);
+            }
 
             return Path.Combine(outputDirectory, outputFileName);
         }
@@ -89,7 +115,7 @@ namespace FFGUITool.Services
                 token = token.Replace(invalidChar, '_');
             }
 
-            return token.Replace(' ', '_');
+            return token;
         }
 
         private static string GetDefaultOutputDirectory(string inputPath)
@@ -230,10 +256,10 @@ namespace FFGUITool.Services
             }
 
             var targetBytes = targetSizeMB * 1024 * 1024;
-            var totalBitrateKbps = targetBytes * 8 / videoInfo.Duration / 1024;
-            var videoBitrateKbps = totalBitrateKbps / 1.12;
+            var totalBitrateKbps = targetBytes * 8 * 0.97 / videoInfo.Duration / 1000;
+            var videoBitrateKbps = totalBitrateKbps - (videoInfo.HasAudio ? 96 : 0);
 
-            return Math.Max(80, (int)Math.Round(videoBitrateKbps));
+            return Math.Max(16, (int)Math.Round(videoBitrateKbps));
         }
 
         private int AdjustBitrateForCodec(int baseBitrate, string codec)
@@ -250,12 +276,12 @@ namespace FFGUITool.Services
         /// <summary>
         /// 计算预估文件大小
         /// </summary>
-        public long CalculateEstimatedFileSize(int bitrateKbps, double durationSeconds)
+        public long CalculateEstimatedFileSize(int bitrateKbps, double durationSeconds, int audioBitrateKbps = 96)
         {
             // 文件大小 = 比特率 * 时长 / 8 (转换为字节)
             // 考虑音频轨道大约占总比特率的10-15%
-            var totalBitrateKbps = bitrateKbps + (bitrateKbps * 0.12); // 视频+音频
-            return (long)(totalBitrateKbps * 1024 * durationSeconds / 8);
+            var totalBitrateKbps = bitrateKbps + audioBitrateKbps; // 视频+音频
+            return (long)(totalBitrateKbps * 1000 * durationSeconds / 8 / 0.97);
         }
     }
 }

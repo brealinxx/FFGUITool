@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Concurrent;
+using System.Threading;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Globalization;
@@ -23,35 +26,42 @@ namespace FFGUITool.Services
         /// <summary>
         /// 分析视频文件
         /// </summary>
-        public async Task<VideoInfo?> AnalyzeVideo(string videoPath)
-        {
-            if (!_ffmpegManager.IsFFmpegAvailable || !File.Exists(videoPath))
-                return null;
+        private readonly ConcurrentDictionary<string, (long Size, long Modified, VideoInfo Info)> _cache = new(PathIdentity.Comparer);
 
+        public async Task<VideoInfo?> AnalyzeVideo(string videoPath, CancellationToken cancellationToken = default)
+        {
+            if (!_ffmpegManager.IsFFmpegAvailable || !File.Exists(videoPath)) return null;
+            var file = new FileInfo(videoPath);
+            var key = Path.GetFullPath(videoPath);
+            if (_cache.TryGetValue(key, out var cached) && cached.Size == file.Length && cached.Modified == file.LastWriteTimeUtc.Ticks)
+                return cached.Info;
+            var directory = Path.GetDirectoryName(_ffmpegManager.FFmpegPath);
+            var probe = string.IsNullOrWhiteSpace(directory) ? "ffprobe" :
+                Path.Combine(directory, OperatingSystem.IsWindows() ? "ffprobe.exe" : "ffprobe");
+            VideoInfo? info;
             try
             {
-                var processInfo = new ProcessStartInfo
-                {
-                    FileName = _ffmpegManager.FFmpegPath,
-                    Arguments = $"-i \"{videoPath}\" -hide_banner",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processInfo };
-                process.Start();
-
-                var output = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                return ParseVideoInfo(output, videoPath);
+                var result = await ProcessRunner.RunAsync(probe,
+                    new[] { "-v", "error", "-show_format", "-show_streams", "-of", "json", videoPath },
+                    cancellationToken, TimeSpan.FromSeconds(20));
+                if (result.ExitCode != 0) throw new InvalidDataException(result.Error);
+                info = MediaProbe.Parse(result.Output, videoPath, file.Length);
             }
-            catch
+            catch (System.ComponentModel.Win32Exception)
             {
-                return null;
+                var result = await ProcessRunner.RunAsync(_ffmpegManager.FFmpegPath,
+                    new[] { "-hide_banner", "-i", videoPath }, cancellationToken, TimeSpan.FromSeconds(20));
+                info = ParseVideoInfo(result.Error, videoPath);
+                if (info != null) info.HasAudio = result.Error.Contains("Audio:", StringComparison.Ordinal);
             }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { AppLogger.Warn($"Media analysis failed: {ex.Message}"); return null; }
+            if (info != null)
+            {
+                if (_cache.Count >= 512) _cache.Clear();
+                _cache[key] = (file.Length, file.LastWriteTimeUtc.Ticks, info);
+            }
+            return info;
         }
 
         private VideoInfo? ParseVideoInfo(string ffmpegOutput, string filePath)

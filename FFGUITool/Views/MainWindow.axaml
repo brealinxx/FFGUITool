@@ -1,61 +1,23 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FFGUITool.ViewModels"
+        xmlns:views="using:FFGUITool.Views"
+        xmlns:models="using:FFGUITool.Models"
+        x:CompileBindings="True"
         x:Class="FFGUITool.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Title}"
         Width="960" Height="800"
-        MinWidth="800" MinHeight="700"
+        MinWidth="760" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PageBackgroundBrush}"
         Icon="/Resources/icon.ico">
 
-    <!-- <Window.Resources> -->
-    <!--     <ResourceDictionary> -->
-    <!--         <ResourceDictionary.ThemeDictionaries> -->
-    <!--             <ResourceDictionary x:Key="Light"> -->
-    <!--                 <Color x:Key="PageBackgroundColor">#F3F4F6</Color> -->
-    <!--                 <Color x:Key="CardBackgroundColor">#FFFFFF</Color> -->
-    <!--                 <Color x:Key="PrimaryTextColor">#1F2937</Color> -->
-    <!--                 <Color x:Key="SecondaryTextColor">#6B7280</Color> -->
-    <!--                 <Color x:Key="AccentColor">#3B82F6</Color> -->
-    <!--                 <Color x:Key="AccentHoverColor">#2563EB</Color> -->
-    <!--                 <Color x:Key="BorderColor">#E5E7EB</Color> -->
-    <!--                 <Color x:Key="ConsoleBgColor">#111827</Color> -->
-    <!-- -->
-    <!--                 <SolidColorBrush x:Key="PageBackgroundBrush" Color="{StaticResource PageBackgroundColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" /> -->
-    <!-- -->
-    <!--                 <BoxShadows x:Key="CardShadow">0 4 6 -1 #1A000000, 0 2 4 -1 #0D000000, 0 2 10 0 #15000000, 0 4 12 0 #40000000</BoxShadows> -->
-    <!--             </ResourceDictionary> -->
-    <!-- -->
-    <!--             <ResourceDictionary x:Key="Dark"> -->
-    <!--                 <Color x:Key="PageBackgroundColor">#121212</Color> -->
-    <!--                 <Color x:Key="CardBackgroundColor">#1E1E1E</Color> -->
-    <!--                 <Color x:Key="PrimaryTextColor">#E5E7EB</Color> -->
-    <!--                 <Color x:Key="SecondaryTextColor">#9CA3AF</Color> -->
-    <!--                 <Color x:Key="AccentColor">#60A5FA</Color> -->
-    <!--                 <Color x:Key="AccentHoverColor">#3B82F6</Color> -->
-    <!--                 <Color x:Key="BorderColor">#374151</Color> -->
-    <!--                 <Color x:Key="ConsoleBgColor">#000000</Color> -->
-    <!-- -->
-    <!--                 <SolidColorBrush x:Key="PageBackgroundBrush" Color="{StaticResource PageBackgroundColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" /> -->
-    <!--                 <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" /> -->
-    <!-- -->
-    <!--                 <BoxShadows x:Key="CardShadow">0 4 6 -1 #66000000</BoxShadows> -->
-    <!--             </ResourceDictionary> -->
-    <!--         </ResourceDictionary.ThemeDictionaries> -->
-    <!--     </ResourceDictionary> -->
-    <!-- </Window.Resources> -->
-
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding SelectAnyFileCommand}"/>
+        <KeyBinding Gesture="Ctrl+Enter" Command="{Binding ExecuteCommand}"/>
+        <KeyBinding Gesture="Escape" Command="{Binding CancelExecutionCommand}"/>
+    </Window.KeyBindings>
     <Window.Styles>
         <Style Selector="Border.Card">
             <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
@@ -78,6 +40,8 @@
         </Style>
 
         <Style Selector="TextBlock.Label">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -193,6 +157,8 @@
                 <MenuItem Header="{DynamicResource Menu.CleanupLocalData}" Command="{Binding CleanupLocalDataCommand}" />
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu.Preferences}" Foreground="{DynamicResource PrimaryTextBrush}">
+                <MenuItem Header="{DynamicResource Improve.AppSettings}" Command="{Binding ShowAppPreferencesCommand}"/>
+                <MenuItem Header="{DynamicResource Improve.Restore}" Command="{Binding RestoreQueueCommand}" IsEnabled="{Binding HasSavedQueue}"/>
                 <MenuItem Header="{DynamicResource Menu.Language}">
                     <MenuItem Header="{DynamicResource Menu.Language.Chinese}" Command="{Binding SetLanguageCommand}" CommandParameter="zh-CN" />
                     <MenuItem Header="{DynamicResource Menu.Language.English}" Command="{Binding SetLanguageCommand}" CommandParameter="en-US" />
@@ -216,10 +182,19 @@
                 IsVisible="{Binding IsModeSelectionVisible}"
                 Margin="24"
                 Classes="Card"
-                HorizontalAlignment="Center"
+                HorizontalAlignment="Stretch"
                 VerticalAlignment="Center"
-                Width="720">
+                MaxWidth="720">
             <StackPanel Spacing="24">
+                <TextBlock Text="{DynamicResource Improve.Drop}" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                <Button Content="{DynamicResource Improve.SelectAny}" Command="{Binding SelectAnyFileCommand}" HorizontalAlignment="Center"/>
+                <StackPanel IsVisible="{Binding HasSavedQueue}" Spacing="8">
+                    <TextBlock Text="{DynamicResource Improve.Recovery}" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{DynamicResource Improve.Restore}" Command="{Binding RestoreQueueCommand}"/>
+                        <Button Content="{DynamicResource Improve.Discard}" Command="{Binding DiscardSavedQueueCommand}"/>
+                    </StackPanel>
+                </StackPanel>
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
                     <TextBlock Text="FFGUITool" FontSize="34" FontWeight="ExtraBold"
                                Foreground="{DynamicResource AccentBrush}"
@@ -287,7 +262,7 @@
               IsVisible="{Binding IsWorkspaceVisible}">
 
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="0,0,0,20">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <WrapPanel VerticalAlignment="Center">
                     <TextBlock Text="FFGUITool" FontSize="28" FontWeight="ExtraBold"
                                Foreground="{DynamicResource AccentBrush}" LetterSpacing="1" />
                     <TextBlock Text="{Binding CurrentModeTitle}" FontSize="16" FontWeight="SemiBold"
@@ -296,9 +271,9 @@
                     <Border Background="{DynamicResource BorderBrush}" CornerRadius="4" Margin="12,0,0,0" Padding="8,2"
                             VerticalAlignment="Center">
                         <TextBlock Text="{Binding FfmpegStatusText}" FontSize="12"
-                                   Foreground="{Binding FfmpegStatusColor}" />
+                                   Foreground="{Binding FfmpegStatusColor, Converter={StaticResource StringToColorConverter}}" />
                     </Border>
-                </StackPanel>
+                </WrapPanel>
 
                 <Button Grid.Column="1" Command="{Binding BackToModeSelectionCommand}"
                         Content="{DynamicResource Mode.Switch}"
@@ -308,24 +283,24 @@
                 <Button Grid.Column="2" Command="{Binding ToggleThemeCommand}"
                         Classes="Icon" BorderThickness="0" Background="Transparent"
                         ToolTip.Tip="{DynamicResource Theme.Toggle}">
-                    <Panel Width="24" Height="24">
-                        <TextBlock Text="Auto" FontSize="11" IsVisible="{Binding IsThemeSystem}"
+                    <Panel Width="36" Height="24">
+                        <TextBlock Text="Auto" FontSize="12" IsVisible="{Binding IsThemeSystem}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBlock Text="Light" FontSize="11" IsVisible="{Binding IsThemeLight}"
+                        <TextBlock Text="Light" FontSize="12" IsVisible="{Binding IsThemeLight}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBlock Text="Dark" FontSize="11" IsVisible="{Binding IsThemeDarkManual}"
+                        <TextBlock Text="Dark" FontSize="12" IsVisible="{Binding IsThemeDarkManual}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Panel>
                 </Button>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" Padding="0,0,16,0">
+            <ScrollViewer x:Name="WorkspaceScroll" Grid.Row="1" Padding="0,0,16,0">
                 <StackPanel>
 
                     <Border Classes="Card">
                         <StackPanel Spacing="12">
                             <TextBlock Classes="H1" Text="{Binding InputSourceTitle}" />
-                            <ScrollViewer IsVisible="{Binding IsSourceTabsVisible}"
+                            <ScrollViewer IsVisible="{Binding UseSourceTabs}"
                                           HorizontalScrollBarVisibility="Auto"
                                           VerticalScrollBarVisibility="Disabled">
                                 <ItemsControl ItemsSource="{Binding SourceTabs}">
@@ -335,7 +310,7 @@
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate x:CompileBindings="False">
                                             <Border Classes.SourceTab="True"
                                                     Classes.Selected="{Binding IsSelected}"
                                                     ToolTip.Tip="{Binding InputPath}">
@@ -360,7 +335,7 @@
                                                                        TextTrimming="CharacterEllipsis" />
                                                             <TextBlock Grid.Row="1" Grid.Column="1"
                                                                        Text="{Binding SettingsSummary}"
-                                                                       FontSize="10"
+                                                                       FontSize="12"
                                                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                                                        TextTrimming="CharacterEllipsis" />
                                                         </Grid>
@@ -387,7 +362,7 @@
                                     HorizontalAlignment="Left"
                                     Height="30"
                                     Padding="10,0" />
-                            <Grid ColumnDefinitions="*, 10, Auto, 10, Auto">
+                            <Grid ColumnDefinitions="*, 10, Auto, 10, Auto" IsEnabled="{Binding !IsProcessing}">
                                 <TextBox Grid.Column="0" Text="{Binding InputPathText, Mode=TwoWay}"
                                          Watermark="{DynamicResource Main.InputWatermark}" Height="38"
                                          VerticalContentAlignment="Center" />
@@ -396,7 +371,7 @@
                                 <Button Grid.Column="4" Content="{DynamicResource Main.SelectFolder}" Command="{Binding SelectFolderCommand}"
                                         Height="38" />
                             </Grid>
-                            <TextBlock Text="{Binding BatchModeText}"
+                            <TextBlock Text="{Binding BatchModeText}" TextWrapping="Wrap"
                                        IsVisible="{Binding IsInputStatusVisible}"
                                        FontSize="12"
                                        Foreground="{DynamicResource SecondaryTextBrush}" />
@@ -410,41 +385,23 @@
                                         <Button Grid.Column="1" Content="{DynamicResource Batch.SelectAll}"
                                                 Command="{Binding IncludeAllBatchTasksCommand}"
                                                 IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
-                                                Height="28" Padding="9,0" FontSize="11" />
+                                                Height="28" Padding="9,0" FontSize="12" />
                                         <Button Grid.Column="3" Content="{DynamicResource Batch.SelectNone}"
                                                 Command="{Binding ExcludeAllBatchTasksCommand}"
                                                 IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
-                                                Height="28" Padding="9,0" FontSize="11" />
+                                                Height="28" Padding="9,0" FontSize="12" />
                                     </Grid>
                                     <Separator />
-                                    <ScrollViewer MaxHeight="210" VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl ItemsSource="{Binding BatchTasks}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid ColumnDefinitions="Auto,2*,90,2*" Margin="0,4">
-                                                        <CheckBox IsChecked="{Binding IsIncluded}"
-                                                                  Command="{Binding #WorkspaceRoot.DataContext.RefreshBatchTaskSelectionCommand}"
-                                                                  IsEnabled="{Binding #WorkspaceRoot.DataContext.IsProcessing, Converter={StaticResource InverseBoolConverter}}"
-                                                                  VerticalAlignment="Center" Margin="0,0,8,0" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding FileName}"
-                                                                   Foreground="{DynamicResource PrimaryTextBrush}"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   ToolTip.Tip="{Binding InputPath}" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding Status}"
-                                                                   Foreground="{Binding StatusColor, Converter={StaticResource StringToColorConverter}}"
-                                                                   HorizontalAlignment="Center"
-                                                                   ToolTip.Tip="{Binding Message}" />
-                                                        <TextBlock Grid.Column="3" Text="{Binding OutputPath}"
-                                                                   Foreground="{DynamicResource SecondaryTextBrush}"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   ToolTip.Tip="{Binding OutputPath}" />
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
+
                                 </StackPanel>
                             </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding IsScanning}">
+                                <TextBlock Text="{DynamicResource Improve.Scan}" VerticalAlignment="Center"/>
+                                <Button Content="{DynamicResource Improve.CancelScan}" Command="{Binding CancelScanCommand}"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding ImportSummary}" IsVisible="{Binding HasImportSummary}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <views:QueuePanel/>
                         </StackPanel>
                     </Border>
 
@@ -493,11 +450,25 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Classes="Card">
-                        <StackPanel Spacing="20">
+                    <Border x:Name="ParametersCard" Classes="Card">
+                        <StackPanel Spacing="20" IsEnabled="{Binding !IsProcessing}">
                             <TextBlock Classes="H1" Text="{Binding CompressionParamsTitle}" />
+                            <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="6" Padding="10" IsVisible="{Binding HasSelectedInput}">
+                                <TextBlock Text="{Binding SettingsScopeText}" TextWrapping="Wrap" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}"/>
+                            </Border>
+                            <Grid ColumnDefinitions="100,*">
+                                <TextBlock Text="{DynamicResource Improve.Mode}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding GoalOptions}" SelectedItem="{Binding SelectedGoal}" HorizontalAlignment="Stretch"/>
+                            </Grid>
+                            <TextBlock Text="{Binding QualityHelp}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <TextBlock Text="{Binding MediaNotice}" IsVisible="{Binding HasMediaNotice}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="{DynamicResource Improve.Preview}" Command="{Binding PreviewSampleCommand}" IsEnabled="{Binding !IsPreviewing}"/>
+                                <Button Content="{DynamicResource Improve.CancelPreview}" Command="{Binding CancelPreviewCommand}" IsVisible="{Binding IsPreviewing}"/>
+                            </StackPanel>
 
-                            <Grid ColumnDefinitions="100, *" Margin="0,0,0,16">
+                            <Grid ColumnDefinitions="100, *" Margin="0,0,0,16" IsVisible="{Binding LimitFileSize}">
                                 <TextBlock Grid.Column="0" Text="{Binding TargetSizeLabel}" Classes="Label" VerticalAlignment="Center"/>
     
                                 <StackPanel Grid.Column="1">
@@ -555,12 +526,12 @@
                                             ToolTip.Tip="{DynamicResource Preset.HelpTitle}" />
                                 </StackPanel>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding CompressionPresetOptions}" SelectedItem="{Binding SelectedCompressionPresetOption}" 
-                                          HorizontalAlignment="Left" Width="360">
+                                          HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <DataTemplate x:DataType="models:CompressionPresetOption">
+                                            <StackPanel Spacing="2">
                                                 <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
@@ -615,24 +586,24 @@
                                     <TextBlock Text="{Binding FormatOptionLabel}" Classes="Label" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding VideoFormatOptions}" SelectedItem="{Binding SelectedVideoFormatOption}"
                                               IsVisible="{Binding !IsImageMode}"
-                                              HorizontalAlignment="Left" Width="300">
+                                              HorizontalAlignment="Stretch">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <DataTemplate x:DataType="models:CodecOption">
+                                                <StackPanel Spacing="2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding ImageFormatOptions}" SelectedItem="{Binding SelectedImageFormatOption}"
                                               IsVisible="{Binding IsImageMode}"
-                                              HorizontalAlignment="Left" Width="300">
+                                              HorizontalAlignment="Stretch">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <DataTemplate x:DataType="models:CodecOption">
+                                                <StackPanel Spacing="2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
@@ -655,12 +626,12 @@
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAudioConversionOptionsVisible}">
                                     <TextBlock Text="{DynamicResource Main.AudioFormat}" Classes="Label" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AudioFormatOptions}" SelectedItem="{Binding SelectedAudioFormatOption}"
-                                              HorizontalAlignment="Left" Width="300">
+                                              HorizontalAlignment="Stretch">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <DataTemplate x:DataType="models:CodecOption">
+                                                <StackPanel Spacing="2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
@@ -670,12 +641,12 @@
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAudioConversionOptionsVisible}">
                                     <TextBlock Text="{DynamicResource Main.AudioBitrate}" Classes="Label" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AudioBitrateOptions}" SelectedItem="{Binding SelectedAudioBitrateOption}"
-                                              HorizontalAlignment="Left" Width="300">
+                                              HorizontalAlignment="Stretch">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <DataTemplate x:DataType="models:CodecOption">
+                                                <StackPanel Spacing="2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
@@ -685,12 +656,12 @@
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsResolutionConversionOptionsVisible}">
                                     <TextBlock Text="{DynamicResource Main.TargetResolution}" Classes="Label" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding ResolutionOptions}" SelectedItem="{Binding SelectedResolutionOption}"
-                                              HorizontalAlignment="Left" Width="300">
+                                              HorizontalAlignment="Stretch">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <DataTemplate x:DataType="models:CodecOption">
+                                                <StackPanel Spacing="2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
@@ -700,12 +671,12 @@
                                 <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsVideoOutputOptionsVisible}">
                                     <TextBlock Text="{DynamicResource Main.AudioTrackMode}" Classes="Label" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AudioTrackModeOptions}" SelectedItem="{Binding SelectedAudioTrackModeOption}"
-                                              HorizontalAlignment="Left" Width="300">
+                                              HorizontalAlignment="Stretch">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <DataTemplate x:DataType="models:CodecOption">
+                                                <StackPanel Spacing="2">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
@@ -810,49 +781,34 @@
                             <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
                                 <TextBlock Text="{DynamicResource Main.Codec}" Classes="Label" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding CodecOptions}" SelectedItem="{Binding SelectedCodecOption}" 
-                                          HorizontalAlignment="Left" Width="300">
+                                          HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <DataTemplate x:DataType="models:CodecOption">
+                                            <StackPanel Spacing="2">
                                                 <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
+                                                <TextBlock TextWrapping="Wrap" Text="{Binding Description}" Foreground="{DynamicResource SecondaryTextBrush}" FontStyle="Italic"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
                             </Grid>
 
-                            <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
-                                <Grid ColumnDefinitions="*, 6, 30" VerticalAlignment="Center">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding HardwareEncoderLabel}"
-                                               Classes="Label"
-                                               VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"/>
-                                    <Button Content="{Binding HardwareEncoderHelpLabel}"
-                                            Grid.Column="2"
-                                            Command="{Binding ShowHardwareAccelerationHelpCommand}"
-                                            Width="30"
-                                            Height="30"
-                                            MinWidth="30"
-                                            MinHeight="30"
-                                            Padding="0"
-                                            FontSize="14"
-                                            FontWeight="SemiBold"
-                                            HorizontalContentAlignment="Center"
-                                            VerticalContentAlignment="Center" />
-                                </Grid>
+                            <Grid ColumnDefinitions="100, *, 6, 30" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
+                                <TextBlock Text="{Binding HardwareEncoderLabel}" Classes="Label" VerticalAlignment="Center"/>
+                                <Button Grid.Column="3" Content="{Binding HardwareEncoderHelpLabel}"
+                                        Command="{Binding ShowHardwareAccelerationHelpCommand}"
+                                        Width="30" Height="30" MinWidth="30" MinHeight="30"
+                                        Padding="0" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
+                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding HardwareEncoderOptions}" SelectedItem="{Binding SelectedHardwareEncoderOption}" 
                                           HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <DataTemplate x:DataType="models:CodecOption">
+                                            <StackPanel Spacing="2">
                                                 <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
-                                                <TextBlock Text="{Binding Description}"
+                                                <TextBlock TextWrapping="Wrap" Text="{Binding Description}"
                                                            Foreground="{DynamicResource SecondaryTextBrush}"
-                                                           FontStyle="Italic"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxWidth="180"/>
+                                                           FontStyle="Italic"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
@@ -895,24 +851,32 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Classes="Card">
+                    <Border x:Name="OutputSettingsCard" Classes="Card">
                         <StackPanel Spacing="12">
                             <TextBlock Classes="H1" Text="{DynamicResource Main.OutputSettings}" />
+                            <TextBlock Text="{Binding SettingsScopeText}" IsVisible="{Binding HasSelectedInput}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
                             <Grid ColumnDefinitions="*, 10, Auto">
                                 <TextBox Grid.Column="0" Text="{Binding OutputPathText}"
                                          Watermark="{DynamicResource Main.OutputWatermark}" IsReadOnly="True" Height="38"
                                          VerticalContentAlignment="Center" />
-                                <Button Grid.Column="2" Content="{DynamicResource Main.ChangeOutput}" Command="{Binding SelectOutputFolderCommand}"
+                                <Button Grid.Column="2" Content="{DynamicResource Main.ChangeOutput}" Command="{Binding SelectOutputFolderCommand}" IsEnabled="{Binding !IsProcessing}"
                                         Height="38" />
                             </Grid>
+                            <StackPanel Spacing="8" IsEnabled="{Binding !IsProcessing}">
+                                <TextBlock Text="{DynamicResource Improve.Pattern}" TextWrapping="Wrap"/>
+                                <TextBox Text="{Binding OutputNamePattern}"/>
+                                <CheckBox Content="{DynamicResource Improve.Folders}" IsChecked="{Binding PreserveFolderStructure}" IsVisible="{Binding IsBatchMode}"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
+                    <Border Classes="Card"><views:WorkspaceTools/></Border>
                 </StackPanel>
             </ScrollViewer>
 
             <Grid Grid.Row="2" Margin="0,10,0,0" RowDefinitions="Auto, Auto, Auto">
 
-                <Border Grid.Row="0" CornerRadius="8" Background="{StaticResource ConsoleBgColor}"
+                <Border Grid.Row="0" CornerRadius="8" Background="{DynamicResource ConsoleBackgroundBrush}"
                         Padding="12" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <Grid RowDefinitions="Auto, *">
                         <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,6">
@@ -929,16 +893,16 @@
                                     Background="#1F2937"
                                     ToolTip.Tip="{DynamicResource Main.CopyCommand}"/>
                         </Grid>
-                        <SelectableTextBlock Grid.Row="1" Text="{Binding CommandText}"
-                                             FontFamily="Consolas, Cascadia Code, Monospace" FontSize="12"
-                                             Foreground="#10B981" TextWrapping="Wrap" />
+                        <ScrollViewer Grid.Row="1" MaxHeight="100">
+                            <SelectableTextBlock Text="{Binding CommandText}"
+                                                 FontFamily="Consolas, Cascadia Code, Monospace" FontSize="12"
+                                                 Foreground="{DynamicResource ConsoleForegroundBrush}" TextWrapping="Wrap" />
+                        </ScrollViewer>
                     </Grid>
                 </Border>
 
-                <StackPanel Grid.Row="1"
-                            Orientation="Horizontal"
+                <WrapPanel Grid.Row="1"
                             HorizontalAlignment="Right"
-                            Spacing="8"
                             Margin="0,0,0,16"
                             IsVisible="{Binding IsFailureActionsVisible}">
                     <Button Content="{DynamicResource Failure.CopyErrorDetails}"
@@ -956,41 +920,43 @@
                             Height="30"
                             Padding="10,0"
                             FontSize="12" />
-                </StackPanel>
+                </WrapPanel>
 
-                <Grid Grid.Row="2" ColumnDefinitions="*,12,Auto,8,Auto,8,Auto" HorizontalAlignment="Stretch">
+                <StackPanel Grid.Row="2" Spacing="8" HorizontalAlignment="Stretch">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="5">
+                        <TextBlock Text="{Binding ValidationMessage}" IsVisible="{Binding HasValidationMessage}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
                         <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}"
                                      Minimum="0" Maximum="100" Value="{Binding ProgressValue}"
                                      Foreground="{DynamicResource AccentBrush}"
                                      Background="{DynamicResource BorderBrush}" CornerRadius="3" />
-                        <TextBlock Text="{Binding ProgressText}" IsVisible="{Binding IsProcessing}"
+                        <TextBlock Text="{Binding ProgressText}" IsVisible="{Binding IsProgressVisible}" TextWrapping="Wrap"
                                    FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
 
-                    <Button Grid.Column="2" Command="{Binding RetryFailedCommand}"
+                    <WrapPanel HorizontalAlignment="Right">
+                    <Button Command="{Binding RetryFailedCommand}"
                             Content="{DynamicResource Queue.RetryFailed}"
                             IsVisible="{Binding CanRetryFailed}"
                             IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
-                            Height="44" Padding="12,0" />
+                            Height="44" Padding="12,0" Margin="4,4,0,0" />
 
-                    <Button Grid.Column="4" Command="{Binding ExecuteCurrentCommand}"
+                    <Button Command="{Binding ExecuteCurrentCommand}"
                             Content="{DynamicResource Queue.ProcessCurrent}"
                             IsVisible="{Binding IsSourceTabsVisible}"
                             IsEnabled="{Binding CanExecute}"
-                            Height="44" Padding="12,0" />
+                            Height="44" Padding="12,0" Margin="4,4,0,0" />
 
-                    <Button Grid.Column="6" Command="{Binding CancelExecutionCommand}"
+                    <Button Command="{Binding CancelExecutionCommand}"
                             Content="{DynamicResource Queue.Cancel}"
                             IsVisible="{Binding IsProcessing}"
                             IsEnabled="{Binding CanCancel}"
-                            Height="44" Padding="14,0" />
+                            Height="44" Padding="14,0" Margin="4,4,0,0" />
 
-                    <Button Grid.Column="6" Classes="Accent" Command="{Binding ExecuteCommand}"
+                    <Button Classes="Accent" Command="{Binding ExecuteCommand}"
                             IsEnabled="{Binding CanExecute}"
                             IsVisible="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
-                            Height="44" MinWidth="150" Padding="16,0" FontSize="15"
+                            Height="44" Margin="4,4,0,0" MinWidth="150" Padding="16,0" FontSize="15"
                             HorizontalAlignment="Right"
                             HorizontalContentAlignment="Center"
                             VerticalContentAlignment="Center">
@@ -1001,7 +967,8 @@
                             <TextBlock Text="{Binding ExecuteAllText}" />
                         </StackPanel>
                     </Button>
-                </Grid>
+                    </WrapPanel>
+                </StackPanel>
             </Grid>
 
         </Grid>

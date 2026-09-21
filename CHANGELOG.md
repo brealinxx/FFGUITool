@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.10.0
+
+### Added
+
+- Added reusable presets, processing history, saved-queue recovery, and sample image/video comparisons.
+- Added bounded target-size correction, compatible software two-pass encoding, and explicit oversized-output warnings.
+- Added safe temporary-output transactions, media validation, process-tree cancellation, and hardware probe/fallback handling.
+- Added a refreshed bilingual README with a main-window screenshot and a separate development guide.
+
+### Changed
+
+- Removed the duplicate CLI Preview expander while retaining the command panel and copy action.
+- Grouped destination, naming, and subfolder settings; moved tray behavior and image concurrency into application preferences.
+- Made main-window selectors and action groups adapt to narrow layouts, and displayed the current file/shared folder parameter scope.
+- Added localized import counts and skip reasons without changing the separate media-mode workflow.
+- Debounced queue searches by 200 ms and replaced clear/repopulate refreshes with incremental updates that preserve task identity and state.
+- Updated translated labels immediately when switching languages, using cached hardware capabilities instead of probing again.
+
+### Validation
+
+- Added regression tests for import classification, cancellation, and incremental queue updates.
+- Added an opt-in desktop UI runner with isolated configuration, 1,000 synthetic files, response measurements, and bilingual/theme screenshots.
+
 ## v1.9.0
 
 ### Added

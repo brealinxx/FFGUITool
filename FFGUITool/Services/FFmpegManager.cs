@@ -29,12 +29,10 @@ namespace FFGUITool.Services
         /// </summary>
         public bool IsFFmpegAvailable { get; private set; }
 
-        public FFmpegManager()
+        public FFmpegManager(string? appDataPath = null)
         {
             // 创建应用数据目录
-            _appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
-                "FFGUITool");
+            _appDataPath = appDataPath ?? AppConfigService.AppDataPath;
             _embeddedFFmpegPath = Path.Combine(_appDataPath, "ffmpeg");
             
             Directory.CreateDirectory(_appDataPath);
@@ -101,32 +99,10 @@ namespace FFGUITool.Services
         {
             try
             {
-                AppLogger.Info($"Validating FFmpeg path: {path}");
-                var processInfo = new ProcessStartInfo
-                {
-                    FileName = path,
-                    Arguments = "-version",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processInfo };
-                process.Start();
-                
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                var isValid = process.ExitCode == 0 && output.Contains("ffmpeg version");
-                AppLogger.Info($"FFmpeg validation result for '{path}': {(isValid ? "valid" : $"invalid, exit {process.ExitCode}")}");
-                return isValid;
+                var result = await ProcessRunner.RunAsync(path, new[] { "-version" }, timeout: TimeSpan.FromSeconds(8));
+                return result.ExitCode == 0 && result.Output.Contains("ffmpeg version", StringComparison.OrdinalIgnoreCase);
             }
-            catch (Exception ex)
-            {
-                AppLogger.Warn($"FFmpeg validation failed for '{path}': {ex.Message}");
-                return false;
-            }
+            catch (Exception ex) { AppLogger.Warn($"FFmpeg detection: {ex.Message}"); return false; }
         }
 
         /// <summary>
@@ -210,269 +186,33 @@ namespace FFGUITool.Services
         public async Task<string> GetFFmpegVersion()
         {
             if (!IsFFmpegAvailable) return LocalizationService.T("FFmpeg.NotInstalled");
-
             try
             {
-                var processInfo = new ProcessStartInfo
-                {
-                    FileName = _ffmpegPath,
-                    Arguments = "-version",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processInfo };
-                process.Start();
-                
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                if (process.ExitCode == 0)
-                {
-                    var lines = output.Split('\n');
-                    return lines.Length > 0 ? lines[0].Trim() : "未知版本";
-                }
+                var result = await ProcessRunner.RunAsync(_ffmpegPath, new[] { "-version" }, timeout: TimeSpan.FromSeconds(8));
+                return result.ExitCode == 0 ? result.Output.Split('\n')[0].Trim() : LocalizationService.T("FFmpeg.VersionUnavailable");
             }
-            catch { }
-
-            return LocalizationService.T("FFmpeg.VersionUnavailable");
+            catch (Exception ex) { AppLogger.Warn(ex.Message); return LocalizationService.T("FFmpeg.VersionUnavailable"); }
         }
 
-        public async Task<IReadOnlySet<string>> GetAvailableVideoEncoders()
-        {
-            if (!IsFFmpegAvailable)
-            {
-                return new HashSet<string>();
-            }
+        public Task<IReadOnlySet<string>> GetAvailableVideoEncoders() => GetVideoCapabilities("-encoders");
+        public Task<IReadOnlySet<string>> GetAvailableVideoDecoders() => GetVideoCapabilities("-decoders");
 
+        private async Task<IReadOnlySet<string>> GetVideoCapabilities(string option)
+        {
+            var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!IsFFmpegAvailable) return capabilities;
             try
             {
-                var processInfo = new ProcessStartInfo
+                var result = await ProcessRunner.RunAsync(_ffmpegPath, new[] { "-hide_banner", option }, timeout: TimeSpan.FromSeconds(10));
+                foreach (var line in (result.Output + "\n" + result.Error).Split('\n'))
                 {
-                    FileName = _ffmpegPath,
-                    Arguments = "-hide_banner -encoders",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processInfo };
-                process.Start();
-
-                var output = await process.StandardOutput.ReadToEndAsync();
-                var error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                var encoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var line in (output + Environment.NewLine + error).Split('\n'))
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.Length < 8 || !trimmed.StartsWith("V", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 2)
-                    {
-                        encoders.Add(parts[1]);
-                    }
+                    var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2 && parts[0].StartsWith("V", StringComparison.Ordinal) && parts[1] != "=")
+                        capabilities.Add(parts[1]);
                 }
-
-                AppLogger.Info($"FFmpeg encoder probe found {encoders.Count} video encoders.");
-                return encoders;
             }
-            catch (Exception ex)
-            {
-                AppLogger.Warn($"FFmpeg encoder probe failed: {ex.Message}");
-                return new HashSet<string>();
-            }
-        }
-
-        public async Task<IReadOnlySet<string>> GetAvailableVideoDecoders()
-        {
-            if (!IsFFmpegAvailable)
-            {
-                return new HashSet<string>();
-            }
-
-            try
-            {
-                var processInfo = new ProcessStartInfo
-                {
-                    FileName = _ffmpegPath,
-                    Arguments = "-hide_banner -decoders",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processInfo };
-                process.Start();
-
-                var output = await process.StandardOutput.ReadToEndAsync();
-                var error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                var decoders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var line in (output + Environment.NewLine + error).Split('\n'))
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.Length < 8 || !trimmed.StartsWith("V", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 2)
-                    {
-                        decoders.Add(parts[1]);
-                    }
-                }
-
-                AppLogger.Info($"FFmpeg decoder probe found {decoders.Count} video decoders.");
-                return decoders;
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Warn($"FFmpeg decoder probe failed: {ex.Message}");
-                return new HashSet<string>();
-            }
-        }
-
-        /// <summary>
-        /// 执行FFmpeg命令
-        /// </summary>
-        public async Task<(bool Success, string Output, string Error)> ExecuteCommand(string arguments)
-        {
-            if (!IsFFmpegAvailable)
-            {
-                return (false, "", LocalizationService.T("FFmpeg.NotConfigured"));
-            }
-
-            try
-            {
-                var processInfo = new ProcessStartInfo
-                {
-                    FileName = _ffmpegPath,
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processInfo };
-                process.Start();
-
-                var output = await process.StandardOutput.ReadToEndAsync();
-                var error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                return (process.ExitCode == 0, output, error);
-            }
-            catch (Exception ex)
-            {
-                return (false, "", ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// 执行FFmpeg命令并报告进度
-        /// </summary>
-        public async Task<bool> ExecuteCommandWithProgress(
-            string arguments, 
-            IProgress<double>? progress = null,
-            CancellationToken cancellationToken = default)
-        {
-            if (!IsFFmpegAvailable)
-            {
-                throw new InvalidOperationException("FFmpeg未配置或不可用");
-            }
-
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = _ffmpegPath,
-                Arguments = arguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            using var process = new Process { StartInfo = processInfo };
-            
-            // 用于解析进度的变量
-            double totalDuration = 0;
-            var durationParsed = false;
-
-            process.ErrorDataReceived += (sender, e) =>
-            {
-                if (string.IsNullOrEmpty(e.Data)) return;
-
-                // 解析总时长
-                if (!durationParsed && e.Data.Contains("Duration:"))
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(
-                        e.Data, @"Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})");
-                    if (match.Success)
-                    {
-                        var hours = int.Parse(match.Groups[1].Value);
-                        var minutes = int.Parse(match.Groups[2].Value);
-                        var seconds = double.Parse(match.Groups[3].Value, 
-                            System.Globalization.CultureInfo.InvariantCulture);
-                        totalDuration = hours * 3600 + minutes * 60 + seconds;
-                        durationParsed = true;
-                    }
-                }
-
-                // 解析当前进度
-                if (durationParsed && e.Data.Contains("time="))
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(
-                        e.Data, @"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})");
-                    if (match.Success)
-                    {
-                        var hours = int.Parse(match.Groups[1].Value);
-                        var minutes = int.Parse(match.Groups[2].Value);
-                        var seconds = double.Parse(match.Groups[3].Value, 
-                            System.Globalization.CultureInfo.InvariantCulture);
-                        var currentTime = hours * 3600 + minutes * 60 + seconds;
-                        
-                        if (totalDuration > 0)
-                        {
-                            var percentage = (currentTime / totalDuration) * 100;
-                            progress?.Report(Math.Min(percentage, 100));
-                        }
-                    }
-                }
-            };
-
-            process.Start();
-            process.BeginErrorReadLine();
-
-            // 等待进程完成或取消
-            await Task.Run(() =>
-            {
-                while (!process.WaitForExit(100))
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        try
-                        {
-                            process.Kill();
-                        }
-                        catch { }
-                        return;
-                    }
-                }
-            }, cancellationToken);
-
-            return !cancellationToken.IsCancellationRequested && process.ExitCode == 0;
+            catch (Exception ex) { AppLogger.Warn($"Capability detection: {ex.Message}"); }
+            return capabilities;
         }
 
         #region 私有辅助方法

@@ -11,6 +11,7 @@ namespace FFGUITool.ViewModels
 {
     public partial class MainWindowViewModel
     {
+        private bool _isPreparingExecution;
         [RelayCommand]
         private async Task Execute()
         {
@@ -91,20 +92,26 @@ namespace FFGUITool.ViewModels
 
         private async Task RunExecution(ExecutionScope scope, bool failedOnly)
         {
-            if (IsProcessing || !_ffmpegManager.IsFFmpegAvailable)
+            FlushSliderUpdate();
+            if (IsProcessing || _isPreparingExecution || IsScanning || IsPreviewing || !_ffmpegManager.IsFFmpegAvailable)
             {
                 return;
             }
 
-            if (!await ConfirmOutputConflictPolicy(scope, failedOnly))
+            _isPreparingExecution = true;
+            try
             {
-                return;
+                if (!await ConfirmOutputConflictPolicy(scope, failedOnly)) return;
             }
+            catch (Exception ex) { ValidationMessage = ex.Message; return; }
+            finally { _isPreparingExecution = false; }
 
             IsProcessing = true;
             CanExecute = false;
             IsProgressVisible = true;
             ProgressValue = 0;
+            _taskFractions.Clear();
+            PersistWorkspace();
             ProgressText = "";
             CanCancel = true;
             _executionCancellation = new CancellationTokenSource();
@@ -116,9 +123,10 @@ namespace FFGUITool.ViewModels
                 var options = new ProcessingExecutionOptions
                 {
                     OutputConflictPolicy = _outputConflictPolicy,
-                    AvailableVideoDecoders = _availableVideoDecoders
+                    AvailableVideoDecoders = _availableVideoDecoders,
+                    ImageParallelism = ImageParallelism
                 };
-                var progress = new Progress<ProcessingProgress>(ApplyProcessingProgress);
+                var progress = new UiProcessingProgress(ApplyProcessingProgress);
                 var summary = await _processingExecutor.ExecuteAsync(
                     tasks,
                     options,
@@ -133,7 +141,8 @@ namespace FFGUITool.ViewModels
                         ? LocalizationService.T("Queue.Cancelled")
                         : LocalizationService.T("Dialog.Done");
                 SystemNotificationService.Show(title, message, summary.Failures.Count > 0);
-                await _dialogService.ShowScrollableMessage(title, message);
+                RecordResults(summary, tasks);
+                ProgressText = $"{title} · {summary.Results.Count}/{tasks.Count}";
             }
             catch (Exception ex)
             {
@@ -148,8 +157,8 @@ namespace FFGUITool.ViewModels
             finally
             {
                 IsProcessing = false;
-                CanExecute = HasSelectedInput && _ffmpegManager.IsFFmpegAvailable && (!IsBatchMode || BatchFileCount > 0);
-                IsProgressVisible = false;
+                UpdateCommand();
+                IsProgressVisible = true;
                 CanCancel = false;
                 _executionCancellation?.Dispose();
                 _executionCancellation = null;
@@ -177,6 +186,8 @@ namespace FFGUITool.ViewModels
 
         private async Task<bool> ConfirmOutputConflictPolicy(ExecutionScope scope, bool failedOnly)
         {
+            UpdateCommand();
+            if (!CanExecute && !failedOnly) return false;
             SaveSelectedSourceTabSettings();
             var tasks = GetTasksForExecution(scope, failedOnly);
             var outputPaths = _processingExecutor.GetPlannedOutputPaths(
@@ -249,6 +260,8 @@ namespace FFGUITool.ViewModels
         private void ApplyProcessingProgress(ProcessingProgress progress)
         {
             var task = progress.Task;
+            task.State = progress.State;
+            _taskFractions[task] = progress.Fraction;
             switch (progress.State)
             {
                 case ProcessingTaskState.Running:
@@ -256,11 +269,12 @@ namespace FFGUITool.ViewModels
                     task.StatusColor = "Blue";
                     task.Message = "";
                     break;
+                case ProcessingTaskState.Warning:
                 case ProcessingTaskState.Completed:
-                    task.Status = LocalizationService.T("SourceTabs.Completed");
-                    task.StatusColor = "Green";
+                    task.Status = LocalizationService.T(progress.State == ProcessingTaskState.Warning ? "Improve.Warning" : "SourceTabs.Completed");
+                    task.StatusColor = progress.State == ProcessingTaskState.Warning ? "Orange" : "Green";
                     task.OutputPath = progress.OutputPath;
-                    task.Message = "";
+                    task.Message = progress.Message;
                     task.IsFailed = false;
                     break;
                 case ProcessingTaskState.Failed:
@@ -275,7 +289,12 @@ namespace FFGUITool.ViewModels
                     break;
             }
 
-            UpdateExecutionProgress(progress.CompletedCount, progress.TotalCount, task.FileName);
+            var done = _taskFractions.Where(p => p.Key.State is ProcessingTaskState.Completed or ProcessingTaskState.Warning or ProcessingTaskState.Failed).Count();
+            var active = _taskFractions.Where(p => p.Key.State == ProcessingTaskState.Running).Sum(p => p.Value);
+            ProgressValue = progress.TotalCount > 0 ? Math.Clamp((done + active) * 100 / progress.TotalCount, 0, 100) : 0;
+            ProgressText = LocalizationService.Format("Improve.Progress", progress.CompletedCount, progress.TotalCount, task.FileName,
+                progress.Fraction * 100, progress.Speed, TimeSpan.FromSeconds(Math.Clamp(progress.RemainingSeconds, 0, 864000)).ToString(@"hh\:mm\:ss"), progress.Message);
+            if (progress.State != ProcessingTaskState.Running) { RefreshVisibleTasks(); ScheduleWorkspaceSave(); }
         }
 
         private void CaptureExecutionFailures(ProcessingExecutionSummary summary)
@@ -296,7 +315,7 @@ namespace FFGUITool.ViewModels
             }
 
             LastFailureDetails = string.Join(Environment.NewLine, details);
-            LastFailureCommand = CommandText;
+            LastFailureCommand = string.Join(Environment.NewLine, summary.Failures.Select(f => f.Exception).OfType<ProcessingExecutionException>().Select(e => e.CommandText));
             IsFailureActionsVisible = true;
             AppLogger.Error($"Queue completed with {summary.Failures.Count} failure(s).{Environment.NewLine}{LastFailureDetails}");
         }

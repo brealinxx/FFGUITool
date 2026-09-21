@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:FFGUITool.ViewModels" xmlns:services="using:FFGUITool.Services"
+ x:Class="FFGUITool.Views.WorkspaceTools" x:DataType="vm:MainWindowViewModel" x:CompileBindings="True">
+ <StackPanel Spacing="16">
+  <Expander Header="{DynamicResource Improve.EncodingOptions}" HorizontalAlignment="Stretch">
+   <StackPanel Spacing="10" IsEnabled="{Binding !IsProcessing}">
+    <CheckBox Content="{DynamicResource Improve.TwoPass}" IsChecked="{Binding TwoPass}" IsVisible="{Binding !IsImageMode}"/>
+    <CheckBox Content="{DynamicResource Improve.Resize}" IsChecked="{Binding AllowImageResize}" IsVisible="{Binding IsImageMode}"/>
+    <Grid ColumnDefinitions="*,100" IsVisible="{Binding IsPngImage}">
+     <TextBlock Text="{DynamicResource Improve.PngLevel}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+     <NumericUpDown Grid.Column="1" Minimum="0" Maximum="9" Increment="1" Value="{Binding PngCompressionLevel}" Width="100"/>
+    </Grid>
+    <CheckBox Content="{DynamicResource Improve.Copy}" IsChecked="{Binding StreamCopy}" IsVisible="{Binding !IsImageMode}"/>
+
+   </StackPanel>
+  </Expander>
+  <Expander Header="{DynamicResource Improve.Presets}" HorizontalAlignment="Stretch">
+   <StackPanel Spacing="8" IsEnabled="{Binding !IsProcessing}">
+    <ComboBox ItemsSource="{Binding SavedPresets}" SelectedItem="{Binding SelectedSavedPreset}" HorizontalAlignment="Stretch"/>
+    <WrapPanel>
+     <Button Content="{DynamicResource Improve.Apply}" Command="{Binding ApplyPresetCommand}" Margin="8,0"/>
+     <Button Content="{DynamicResource Improve.Delete}" Command="{Binding DeletePresetCommand}"/>
+     <Button Content="{DynamicResource Improve.Recent}" Command="{Binding ApplyRecentSettingsCommand}" Margin="8,0,0,0"/>
+    </WrapPanel>
+    <Grid ColumnDefinitions="*,Auto">
+     <TextBox Text="{Binding PresetName}" Watermark="{DynamicResource Improve.PresetName}"/>
+     <Button Grid.Column="1" Content="{DynamicResource Improve.Save}" Command="{Binding SavePresetCommand}" Margin="8,0,0,0"/>
+    </Grid>
+   </StackPanel>
+  </Expander>
+  <Expander Header="{DynamicResource Improve.Results}" IsExpanded="{Binding HasResults}" HorizontalAlignment="Stretch">
+   <StackPanel Spacing="8">
+    <ScrollViewer MaxHeight="180"><SelectableTextBlock Text="{Binding ResultSummary}" TextWrapping="Wrap"/></ScrollViewer>
+    <ListBox ItemsSource="{Binding History}" SelectedItem="{Binding SelectedHistory}" Height="180">
+     <ListBox.ItemTemplate>
+      <DataTemplate x:DataType="services:HistoryEntry">
+       <StackPanel Spacing="3"><TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Text="{Binding Warning}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding OutputPath}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding OutputPath}"/>
+       </StackPanel>
+      </DataTemplate>
+     </ListBox.ItemTemplate>
+    </ListBox>
+    <WrapPanel>
+     <Button Content="{DynamicResource Improve.OpenResult}" Command="{Binding OpenResultCommand}" Margin="0,0,8,0"/>
+     <Button Content="{DynamicResource Improve.OpenFolder}" Command="{Binding OpenResultFolderCommand}" Margin="0,0,8,0"/>
+     <Button Content="{DynamicResource Improve.Reuse}" Command="{Binding ReuseHistoryCommand}" IsEnabled="{Binding !IsProcessing}"/>
+    </WrapPanel>
+   </StackPanel>
+  </Expander>
+ </StackPanel>
+</UserControl>

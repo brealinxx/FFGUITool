@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -19,11 +20,9 @@ namespace FFGUITool.Services
         public string ExifToolPath => _exifToolPath;
         public bool IsExifToolAvailable { get; private set; }
 
-        public ExifToolManager()
+        public ExifToolManager(string? appDataPath = null)
         {
-            _appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "FFGUITool");
+            _appDataPath = appDataPath ?? AppConfigService.AppDataPath;
             _embeddedExifToolPath = Path.Combine(_appDataPath, "exiftool");
             Directory.CreateDirectory(_appDataPath);
             Directory.CreateDirectory(_embeddedExifToolPath);
@@ -233,7 +232,7 @@ namespace FFGUITool.Services
             }
         }
 
-        public async Task<(bool Success, string Error)> ClearMetadata(string filePath)
+        public async Task<(bool Success, string Error)> ClearMetadata(string filePath, CancellationToken cancellationToken = default)
         {
             if (!IsExifToolAvailable)
             {
@@ -245,7 +244,7 @@ namespace FFGUITool.Services
                 return (false, "Output file does not exist.");
             }
 
-            var result = await RunExifTool(_exifToolPath, $"-overwrite_original -all= \"{filePath}\"");
+            var result = await RunExifTool(_exifToolPath, $"-overwrite_original -all= {CommandArguments.Quote(filePath)}", cancellationToken);
             return (result.ExitCode == 0, result.Error);
         }
 
@@ -277,41 +276,10 @@ namespace FFGUITool.Services
             return LocalizationService.T("ExifTool.VersionUnavailable");
         }
 
-        private static async Task<(int ExitCode, string Output, string Error)> RunExifTool(string fileName, string arguments)
+        private static async Task<(int ExitCode, string Output, string Error)> RunExifTool(string fileName, string arguments, CancellationToken cancellationToken = default)
         {
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            using var process = new Process { StartInfo = processInfo };
-            process.Start();
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-            var waitTask = process.WaitForExitAsync();
-            var completed = await Task.WhenAny(waitTask, Task.Delay(TimeSpan.FromSeconds(10)));
-            if (completed != waitTask)
-            {
-                try
-                {
-                    process.Kill(true);
-                    await process.WaitForExitAsync();
-                }
-                catch
-                {
-                }
-
-                return (-1, "", "ExifTool timed out.");
-            }
-
-            var output = await outputTask;
-            var error = await errorTask;
-            return (process.ExitCode, output, error);
+            var result = await ProcessRunner.RunAsync(fileName, CommandArguments.Parse(arguments), cancellationToken, TimeSpan.FromSeconds(20));
+            return (result.ExitCode, result.Output, result.Error);
         }
 
         private static string NormalizeExifToolKey(string key)

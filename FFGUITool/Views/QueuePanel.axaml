@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:FFGUITool.ViewModels" xmlns:models="using:FFGUITool.Models"
+ x:Class="FFGUITool.Views.QueuePanel" x:DataType="vm:MainWindowViewModel" x:CompileBindings="True" x:Name="QueueRoot">
+ <StackPanel Spacing="8" IsVisible="{Binding IsQueueVisible}">
+  <TextBlock Text="{DynamicResource Improve.Queue}" FontSize="16" FontWeight="SemiBold"/>
+  <StackPanel Spacing="4">
+   <TextBox Text="{Binding QueueSearch}" Watermark="{DynamicResource Improve.Search}"/>
+   <WrapPanel>
+   <CheckBox Content="{DynamicResource Improve.FailedOnly}" IsChecked="{Binding FailedTasksOnly}" Margin="12,0"/>
+   <CheckBox Content="{DynamicResource Improve.Sort}" IsChecked="{Binding SortTasksByName}"/>
+   </WrapPanel>
+  </StackPanel>
+  <ListBox ItemsSource="{Binding VisibleTasks}" Height="220" Background="Transparent" BorderThickness="0"
+           ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="{DynamicResource Improve.Queue}">
+   <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+   <ListBox.ItemTemplate>
+    <DataTemplate x:DataType="models:ProcessingTask" x:CompileBindings="False">
+     <Grid ColumnDefinitions="Auto,*,150" Margin="0,3">
+      <CheckBox IsVisible="{Binding UsesSharedSettings}" IsChecked="{Binding IsIncluded}" Margin="0,0,6,0"
+       Command="{Binding #QueueRoot.DataContext.RefreshBatchTaskSelectionCommand}"
+       IsEnabled="{Binding #QueueRoot.DataContext.IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
+      <Button Grid.Column="1" Command="{Binding #QueueRoot.DataContext.SelectSourceTabCommand}" CommandParameter="{Binding}"
+       IsEnabled="{Binding !UsesSharedSettings}" HorizontalContentAlignment="Left" BorderThickness="0" ToolTip.Tip="{Binding InputPath}">
+       <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+      </Button>
+      <TextBlock Grid.Column="2" Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+       ToolTip.Tip="{Binding Message}" Foreground="{Binding StatusColor, Converter={StaticResource StringToColorConverter}}"/>
+     </Grid>
+    </DataTemplate>
+   </ListBox.ItemTemplate>
+  </ListBox>
+ </StackPanel>
+</UserControl>

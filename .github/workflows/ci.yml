@@ -41,6 +41,15 @@ jobs:
       - name: Restore
         run: dotnet restore ${{ env.SOLUTION_PATH }}
 
+      - name: Install FFmpeg for integration tests
+        shell: pwsh
+        run: |
+          if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { exit 0 }
+          if ($IsWindows) { choco install ffmpeg -y --no-progress }
+          elseif ($IsMacOS) { brew install ffmpeg }
+          else { sudo apt-get update; sudo apt-get install -y ffmpeg }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Check release metadata
         shell: pwsh
         run: ./scripts/release-check.ps1
@@ -49,4 +58,6 @@ jobs:
         run: dotnet build ${{ env.SOLUTION_PATH }} --configuration ${{ matrix.configuration }} --no-restore
 
       - name: Run automated tests
+        env:
+          FFGUITOOL_REQUIRE_FFMPEG: '1'
         run: dotnet test ${{ env.SOLUTION_PATH }} --configuration ${{ matrix.configuration }} --no-build

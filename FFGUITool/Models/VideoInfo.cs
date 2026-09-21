@@ -11,6 +11,13 @@ namespace FFGUITool.Models
         public double Duration { get; set; }
         public string Resolution { get; set; } = "";
         public string VideoCodec { get; set; } = "";
+        public string AudioCodec { get; set; } = "";
+        public int AudioBitrate { get; set; }
+        public bool HasAudio { get; set; }
+        public int Rotation { get; set; }
+        public string PixelFormat { get; set; } = "";
+        public string ColorSpace { get; set; } = "";
+        public bool IsAnimated { get; set; }
         public double Framerate { get; set; }
         public long FileSize { get; set; }
         public string FilePath { get; set; } = "";

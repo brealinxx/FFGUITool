@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FFGUITool.ViewModels" x:Class="FFGUITool.Views.AppPreferencesWindow"
+        x:DataType="vm:MainWindowViewModel" x:CompileBindings="True"
+        Title="{DynamicResource Improve.AppSettings}" Width="500" Height="290" MinWidth="360" MinHeight="240"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource PageBackgroundBrush}">
+    <ScrollViewer Margin="24">
+        <StackPanel Spacing="18">
+            <TextBlock Text="{DynamicResource Improve.AppSettings}" FontSize="20" FontWeight="Bold"
+                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+            <TextBlock Text="{DynamicResource Improve.AppSettingsHint}" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <CheckBox IsChecked="{Binding CloseToTray}">
+                <TextBlock Text="{DynamicResource Improve.Tray}" TextWrapping="Wrap"/>
+            </CheckBox>
+            <Grid ColumnDefinitions="*,100">
+                <TextBlock Text="{DynamicResource Improve.Parallel}" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,12,0"/>
+                <NumericUpDown Grid.Column="1" Minimum="1" Maximum="4" Increment="1"
+                               Value="{Binding ImageParallelism}" IsEnabled="{Binding !IsProcessing}"/>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

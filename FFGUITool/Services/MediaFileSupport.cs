@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace FFGUITool.Services
 {
     public static class MediaFileSupport
     {
+        public static readonly HashSet<string> GeneratedPaths = new(PathIdentity.Comparer);
         public static readonly string[] VideoExtensions =
         {
             ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm"
@@ -59,7 +61,7 @@ namespace FFGUITool.Services
             string inputPath,
             bool imageMode,
             bool enableAudioConversion,
-            bool includeSubfolders = false)
+            bool includeSubfolders = false, CancellationToken cancellationToken = default, MediaImportReport? report = null)
         {
             if (!Directory.Exists(inputPath))
             {
@@ -75,15 +77,10 @@ namespace FFGUITool.Services
             return Directory.EnumerateFiles(inputPath, "*.*", enumerationOptions)
                 .Where(file =>
                 {
-                    var extension = Path.GetExtension(file);
-                    if (imageMode)
-                    {
-                        return IsImageExtension(extension);
-                    }
-
-                    return enableAudioConversion
-                        ? IsVideoExtension(extension) || IsAudioExtension(extension)
-                        : IsVideoExtension(extension);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var reason = MediaImportReport.ClassifyFile(file, imageMode, enableAudioConversion);
+                    if (reason is { } skip) report?.Skip(skip);
+                    return reason == null;
                 })
                 .OrderBy(file => file, StringComparer.OrdinalIgnoreCase);
         }

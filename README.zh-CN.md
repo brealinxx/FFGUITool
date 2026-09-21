@@ -1,117 +1,63 @@
 # FFGUITool
 
-[English README](README.md)
+[English](README.md) · [下载](https://github.com/brealinxx/FFGUITool/releases/latest) · [更新记录](CHANGELOG.md)
 
-FFGUITool 是一个基于 FFmpeg 的轻量跨平台桌面 GUI 工具。它可以压缩和转换视频、音频、图片，支持为多个文件分别配置处理任务、用统一参数批量处理文件夹，还能预览生成的 CLI 命令，让常见 FFmpeg 工作流不再需要手写命令。
+基于 FFmpeg 的跨平台媒体压缩与转换工具，支持视频、音频和图片，无需手写命令。
 
-## 下载
+![FFGUITool 主界面：文件队列、压缩参数与命令预览](Assets/intro.png)
 
-可以从 GitHub Releases 下载最新可直接使用的版本：
+## 下载与安装
 
-[GitHub Releases](https://github.com/brealinxx/FFGUITool/releases/latest)
+前往 [GitHub Releases](https://github.com/brealinxx/FFGUITool/releases/latest)，选择对应系统和架构：
+
+| 系统 | 可选架构 | 安装方式 |
+| --- | --- | --- |
+| Windows | x64、x86、ARM64 | 安装包 `.exe` 或绿色版 `.zip` |
+| macOS | Intel、Apple Silicon | `.dmg` 或绿色版 `.zip` |
+| Linux | x64、ARM64 | 绿色版 `.zip` |
+
+首次启动时配置 **FFmpeg**，可选择已有程序或从压缩包安装。建议同时提供 ffprobe；ExifTool 为可选元数据工具。
 
 ## 主要功能
 
-- 按目标大小、目标码率、预设或 CRF 质量模式压缩视频。
-- 按目标大小或质量压缩图片，支持 KB/MB 目标大小控制。
-- 视频、音频、图片格式转换。
-- 多个视频或图片以类似浏览器的源文件标签显示，每个文件可以保留独立的处理参数。
-- 文件夹批量处理采用统一参数，并提供文件预览、逐项包含/排除、子文件夹扫描和按原始大小比例压缩。
-- 支持处理当前任务或全部任务、显示队列进度、取消执行、失败后继续处理以及重试失败任务。
-- 输出文件冲突时可以选择自动重命名或覆盖已有文件。
-- 支持一次拖拽一个或多个文件，以及拖拽文件夹。
-- 图片输入支持 JPG、JPEG、PNG、WebP、HEIC、HEIF、BMP、GIF、TIFF、ICO、TGA、AVIF。
-- 图片输出支持 JPG、PNG、WebP、ICO 和 ICNS。
-- 视频输出支持 MP4、MKV、WebM、MOV、AVI、GIF。
-- 音频提取和转换支持 MP3、AAC、M4A、WAV、FLAC、OGG。
-- 分辨率预设支持原始尺寸、2160p、1080p、720p、480p、512px、360p。
-- 硬件编码选项，可在可用时使用 NVIDIA、Intel、AMD、Apple VideoToolbox、VAAPI。
-- 可选 ExifTool 集成，用于读取和清除视频/图片隐私元数据。
-- 支持中文和英文界面，支持浅色、深色、跟随系统主题。
-- 支持绿色版压缩包、Windows 安装包和 macOS DMG。
+- **压缩与转换**：按目标大小、画质或码率处理媒体，支持裁剪、缩放、音频提取和兼容格式的无损转封装。
+- **独立与批量任务**：单独导入的文件各自保存参数；文件夹共用参数，支持子目录扫描、搜索、失败筛选和排序。
+- **试压与预设**：对比短样片或图片，保存常用参数，查看处理历史并重新使用参数。
+- **输出保护**：支持命名模板和子目录结构；编码失败或取消时保留旧输出，失败任务可重试。
+- **易用界面**：中英文、浅深主题、可选托盘模式，以及可复制的 CLI 命令预览。
 
-## 基本使用
+常用格式包括 MP4、MKV、WebM、MOV、MP3、WAV、FLAC、JPG、PNG、WebP、ICO 等；实际编码能力取决于 FFmpeg 构建和设备。
 
-1. 启动 FFGUITool。
-2. 首次使用时配置 FFmpeg：
-   - 选择已有的 FFmpeg 可执行文件，或
-   - 从 `.zip` / `.7z` 压缩包安装 FFmpeg。
-3. 选择 **视频处理模式** 或 **图片处理模式**。
-4. 选择或拖入一个或多个文件，或者选择一个文件夹。
-5. 处理多个文件时，可以切换源文件标签并为每个任务分别设置参数；需要统一时可使用 **应用到全部**。
-6. 处理文件夹时，设置整批任务共用的参数，再选择是否扫描子文件夹，并在批量预览中包含或排除文件。
-7. 调整目标大小、预设、输出格式、质量、分辨率或高级选项，并按需查看 CLI 命令预览。
-8. 执行当前标签或全部队列；执行中可以取消，完成后可以重试失败任务。
+## 快速上手
 
-后续可以在设置菜单中重新修改 FFmpeg、ExifTool、语言、主题和本地数据配置。
+1. 选择“视频处理模式”（含音频）或“图片处理模式”。
+2. 拖入文件，或选择一个文件夹；导入后查看数量及跳过原因。
+3. 设置处理目标、大小/画质和输出格式。参数区会标明“仅当前文件”或“整批文件共享”。
+4. 在“输出设置”中选择保存位置和命名规则；需要时先“试压与画面对比”。
+5. 点击处理当前文件或全部任务，完成后在“处理结果”中打开输出。
 
-## 可选隐私清理
+多个独立文件需要统一参数时，使用“应用当前设置到全部”。“偏好设置 → 应用设置”管理托盘行为和图片并发数，自动保存且不随预设切换。
 
-ExifTool 是可选组件。配置后，FFGUITool 可以读取并清除输出文件中的 GPS 位置、设备型号、作者、创建时间、软件、镜头、媒体处理器等元数据。
+快捷键：`Ctrl+O` 导入 · `Ctrl+Enter` 执行 · `Escape` 取消。
 
-不配置 ExifTool 也可以正常压缩和转换。
+## 使用前了解
 
-## 本地编译运行
+- 图片和视频/音频按当前模式筛选，尚不支持混合类型统一队列；文件夹需单独导入。
+- 目标大小不一定能达到；超限会明确警告。图片只有在启用“允许降低图片尺寸”后才会为达标缩小尺寸。
+- 视频试压最多取 10 秒，不能准确预测完整文件大小；恢复队列会重新执行未完成任务，不是断点续传。
+- 硬件编码依赖设备及驱动；两遍编码仅适用于兼容的软件 H.264/VP9 码率模式。
+- 动图按静态图片处理时仅导出第一帧；HDR 转 SDR 不会自动进行，建议先检查试压效果。
 
-需要：
+## 本地开发
 
-- .NET 8 SDK
-- Git
-
-克隆并编译：
+需要 .NET 8 SDK；媒体处理和集成测试还需要 FFmpeg。
 
 ```bash
-git clone https://github.com/brealinxx/FFGUITool.git
-cd FFGUITool
 dotnet restore FFGUIToolAvalonia.sln
-dotnet build FFGUIToolAvalonia.sln
-```
-
-本地运行：
-
-```bash
 dotnet run --project FFGUITool/FFGUITool.csproj
 ```
 
-## 发布
-
-项目提供 PowerShell 和 Bash 发布脚本。包版本会自动从 `FFGUITool.csproj` 读取，因此发布文件会命名为类似 `FFGUITool-v1.9.0-<platform>-Portable.zip` 的格式。
-
-常用命令：
-
-```powershell
-.\publish.ps1 -Windows -Installer
-.\publish.ps1 -MacOS
-.\publish.ps1 -Linux
-.\publish.ps1 -All
-```
-
-```bash
-chmod +x publish.sh
-./publish.sh -macos --dmg
-./publish.sh -linux
-./publish.sh -all
-```
-
-构建目标与包名标识：
-
-| 平台 | Runtime | 包名标识 |
-|---|---|---|
-| Windows | `win-x64` | `windows-x64` |
-| Windows | `win-x86` | `windows-x86` |
-| Windows | `win-arm64` | `windows-arm64` |
-| macOS | `osx-x64` | `macos-intel` |
-| macOS | `osx-arm64` | `macos-arm64` |
-
-包名格式：
-
-- 绿色版：`FFGUITool-vx.x.x-<platform>-Portable.zip`
-- Windows 安装版：`FFGUITool-vx.x.x-<platform>-Installer.exe`
-- macOS 安装版：`FFGUITool-vx.x.x-<platform>-Installer.dmg`
-
-构建输出位于 `FFGUITool/bin/publish/`，绿色版压缩包位于 `archives/`，Windows 安装包位于 `installer/`，macOS DMG 位于 `dmg/`。
-
-> DMG 依赖 macOS 的 `hdiutil`，建议在 macOS 系统上构建 macOS 安装包。macOS app bundle 使用 `FFGUITool/Resources/AppIcon.icns`，Windows 构建使用 `FFGUITool/Resources/icon.ico`。
+测试、千文件界面验证和打包方法见 [开发与发布指南](docs/DEVELOPMENT.md)。当前绿色版命名示例：`FFGUITool-v1.10.0-<platform>-Portable.zip`。
 
 ## 许可证
 

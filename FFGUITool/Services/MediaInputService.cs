@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.IO;
 using System.Threading.Tasks;
 using FFGUITool.Models;
@@ -14,9 +15,9 @@ namespace FFGUITool.Services
             _videoAnalyzer = videoAnalyzer;
         }
 
-        public async Task<VideoInfo?> AnalyzeAsync(string inputPath, bool fallbackToFileInfo = false)
+        public async Task<VideoInfo?> AnalyzeAsync(string inputPath, bool fallbackToFileInfo = false, CancellationToken cancellationToken = default)
         {
-            var info = await _videoAnalyzer.AnalyzeVideo(inputPath);
+            var info = await _videoAnalyzer.AnalyzeVideo(inputPath, cancellationToken);
             if (info == null && fallbackToFileInfo && File.Exists(inputPath))
             {
                 info = new VideoInfo
@@ -33,13 +34,13 @@ namespace FFGUITool.Services
             string inputPath,
             bool imageMode,
             bool enableAudioConversion,
-            bool includeSubfolders)
+            bool includeSubfolders, CancellationToken cancellationToken = default, MediaImportReport? report = null)
         {
             return MediaFileSupport.GetBatchInputFiles(
                 inputPath,
                 imageMode,
                 enableAudioConversion,
-                includeSubfolders);
+                includeSubfolders, cancellationToken, report);
         }
     }
 }

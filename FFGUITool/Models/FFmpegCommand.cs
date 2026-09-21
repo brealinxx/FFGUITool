@@ -35,6 +35,17 @@ namespace FFGUITool.Models
         public string ImageFormat { get; set; } = "jpg";
         public List<int> IconSizes { get; set; } = new();
         public bool ClearMetadata { get; set; }
+        public bool StreamCopy { get; set; }
+        public bool TwoPass { get; set; }
+        public bool AllowImageResize { get; set; }
+        public int PngCompressionLevel { get; set; } = 6;
+        public bool AllowHardwareFallback { get; set; }
+        public bool UsedHardwareFallback { get; set; }
+        public long TargetBytes { get; set; }
+        public double Duration { get; set; }
+        public int Pass { get; set; }
+        public string PassLog { get; set; } = "";
+        public bool NullOutput { get; set; }
         public string AdditionalParameters { get; set; } = "";
 
         public string BuildCommand()
@@ -46,18 +57,28 @@ namespace FFGUITool.Models
 
             var command = new StringBuilder();
             command.Append("ffmpeg ");
+            if (HardwareEncoder.EndsWith("_vaapi", System.StringComparison.Ordinal))
+                command.Append("-vaapi_device /dev/dri/renderD128 ");
             AppendTrimInputOptions(command);
             AppendDecoderOptions(command);
 
             if (System.IO.File.Exists(InputPath))
             {
-                command.Append($"-i \"{InputPath}\" ");
+                command.Append($"-i {CommandArguments.Quote(InputPath)} ");
             }
             else if (System.IO.Directory.Exists(InputPath))
             {
                 command.Append($"-i \"{InputPath}/*.mp4\" ");
             }
 
+            if (StreamCopy)
+            {
+                command.Append("-map 0:v:0? -c:v copy ");
+                if (AudioTrackMode == "remove") command.Append("-an ");
+                else command.Append("-map 0:a:0? -c:a copy ");
+                AppendOutputPath(command);
+                return command.ToString();
+            }
             if (ImageOutput)
             {
                 if (MaxHeight > 0)
@@ -99,6 +120,10 @@ namespace FFGUITool.Models
                 filters.Add($"fps={MaxFramerate}");
             }
 
+            if (HardwareEncoder.EndsWith("_vaapi", System.StringComparison.Ordinal))
+            {
+                filters.Add("format=nv12"); filters.Add("hwupload");
+            }
             if (filters.Count > 0)
             {
                 command.Append($"-vf \"{string.Join(",", filters)}\" ");
@@ -116,13 +141,14 @@ namespace FFGUITool.Models
 
             if (UseCrf)
             {
-                command.Append($"-crf {Crf} ");
+                command.Append(EncodingPolicy.QualityArguments(GetEffectiveVideoCodec(), Crf) + " ");
             }
             else
             {
                 command.Append($"-b:v {Bitrate}k ");
             }
 
+            if (Pass > 0) command.Append($"-pass {Pass} -passlogfile {CommandArguments.Quote(PassLog)} ");
             AppendAudioParameters(command);
             AppendAdditionalParameters(command);
             AppendOutputPath(command);
@@ -207,7 +233,7 @@ namespace FFGUITool.Models
                     command.Append($"-quality {quality} ");
                     break;
                 case "png":
-                    var compression = System.Math.Clamp(10 - (int)System.Math.Ceiling(quality / 10.0), 0, 9);
+                    var compression = System.Math.Clamp(PngCompressionLevel, 0, 9);
                     command.Append("-frames:v 1 ");
                     command.Append($"-compression_level {compression} ");
                     break;
@@ -261,9 +287,10 @@ namespace FFGUITool.Models
 
         private void AppendOutputPath(StringBuilder command)
         {
+            if (NullOutput) { command.Append("-f null -"); return; }
             if (!string.IsNullOrEmpty(OutputPath))
             {
-                command.Append($"\"{OutputPath}\"");
+                command.Append(CommandArguments.Quote(OutputPath));
             }
             else
             {

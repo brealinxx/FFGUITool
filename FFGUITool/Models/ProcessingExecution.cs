@@ -9,7 +9,8 @@ namespace FFGUITool.Models
         Running,
         Completed,
         Failed,
-        Cancelled
+        Cancelled,
+        Warning
     }
 
     public enum OutputConflictPolicy
@@ -24,14 +25,18 @@ namespace FFGUITool.Models
         int CompletedCount,
         int TotalCount,
         string OutputPath = "",
-        string Message = "");
+        string Message = "",
+        double Fraction = 0,
+        double Speed = 0,
+        double RemainingSeconds = 0);
 
     public sealed record ProcessingResult(
         string InputPath,
         string OutputPath,
         FFmpegCommand Command,
         VideoInfo? InputInfo,
-        VideoInfo? OutputInfo);
+        VideoInfo? OutputInfo,
+        string Warning = "");
 
     public sealed record ProcessingFailure(
         ProcessingTask Task,
@@ -47,6 +52,7 @@ namespace FFGUITool.Models
     {
         public OutputConflictPolicy OutputConflictPolicy { get; init; } = OutputConflictPolicy.AutoRename;
         public IReadOnlySet<string> AvailableVideoDecoders { get; init; } = new HashSet<string>();
+        public int ImageParallelism { get; init; } = 1;
     }
 
     public sealed class ProcessingExecutionException : Exception

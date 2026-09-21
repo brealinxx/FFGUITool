@@ -24,6 +24,7 @@ namespace FFGUITool.Services
             {
                 lines.Add("");
                 lines.Add(Path.GetFileName(result.InputPath));
+                if (!string.IsNullOrEmpty(result.Warning)) lines.Add("⚠ " + result.Warning);
                 lines.Add(LocalizationService.Format("Result.Output", result.OutputPath));
 
                 if (result.InputInfo != null && result.OutputInfo != null)

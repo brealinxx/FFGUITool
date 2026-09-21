@@ -36,6 +36,15 @@ namespace FFGUITool.Models
         public double ImageTargetSizeKB { get; set; }
         public string ImageOutputFormat { get; set; } = "jpg";
         public string IconSizesCsv { get; set; } = "16,32,48,256";
+        public bool LimitFileSize { get; set; } = true;
+        public bool TwoPass { get; set; }
+        public bool AllowImageResize { get; set; }
+        public int PngCompressionLevel { get; set; } = 6;
+        public bool StreamCopy { get; set; }
+        public bool AllowHardwareFallback { get; set; }
+        public string OutputNamePattern { get; set; } = "{name}_FFGUIToolOutPut_{label}";
+        public bool PreserveFolderStructure { get; set; } = true;
+        public string InputRoot { get; set; } = "";
         
         /// <summary>
         /// 验证设置是否有效

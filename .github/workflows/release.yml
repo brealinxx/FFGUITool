@@ -48,7 +48,12 @@ jobs:
       - name: Build
         run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
 
+      - name: Install FFmpeg for integration tests
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Run automated tests
+        env:
+          FFGUITOOL_REQUIRE_FFMPEG: '1'
         run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build
 
   package-windows:

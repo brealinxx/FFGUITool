@@ -14,6 +14,14 @@ namespace FFGUITool.Converters
         {
             if (value is string colorName)
             {
+                var key = colorName.ToLowerInvariant() switch
+                {
+                    "green" => "SuccessBrush", "red" => "ErrorBrush", "orange" or "yellow" => "WarningBrush",
+                    "blue" => "AccentBrush", _ => "SecondaryTextBrush"
+                };
+                var app = Avalonia.Application.Current;
+                if (app != null && app.TryGetResource(key, app.ActualThemeVariant, out var resource) && resource is IBrush brush)
+                    return brush;
                 return colorName.ToLower() switch
                 {
                     "green" => Brushes.Green,

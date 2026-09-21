@@ -23,6 +23,17 @@ namespace FFGUITool.Views
         public MainWindow()
         {
             InitializeComponent();
+            SizeChanged += (_, _) =>
+            {
+                // Re-arrange the workspace when shrinking a window with scrollable content.
+                WorkspaceRoot.InvalidateMeasure();
+                WorkspaceRoot.InvalidateArrange();
+                if (Content is Control content)
+                {
+                    content.InvalidateMeasure();
+                    content.InvalidateArrange();
+                }
+            };
 
             _viewModel = new MainWindowViewModel();
             DataContext = _viewModel;
@@ -33,6 +44,11 @@ namespace FFGUITool.Views
             }
             _viewModel.IsThemeDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
             UpdateTheme(_viewModel.CurrentTheme);
+            PropertyChanged += (_, e) =>
+            {
+                if (e.Property == ActualThemeVariantProperty && _viewModel != null)
+                    _viewModel.IsThemeDark = ActualThemeVariant == ThemeVariant.Dark;
+            };
 
             DragDrop.SetAllowDrop(this, true);
             AddHandler(DragDrop.DragOverEvent, OnDragOver);
@@ -59,17 +75,14 @@ namespace FFGUITool.Views
         private void OnDragOver(object? sender, DragEventArgs e)
         {
             var files = e.Data.GetFiles()?.ToList();
-            var imageMode = _viewModel?.IsImageMode == true;
-            e.DragEffects = files?.Count > 0 && files.All(file => MediaFileSupport.IsSupportedDroppedPath(file.Path.LocalPath, imageMode))
-                ? DragDropEffects.Copy
-                : DragDropEffects.None;
+            e.DragEffects = files?.Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         }
 
         private async void OnDrop(object? sender, DragEventArgs e)
         {
             var paths = e.Data.GetFiles()?.Select(file => file.Path.LocalPath).ToList() ?? [];
-            if (_viewModel != null && paths.Count > 0 && paths.All(path => MediaFileSupport.IsSupportedDroppedPath(path, _viewModel.IsImageMode)))
+            if (_viewModel != null && paths.Count > 0)
             {
                 await _viewModel.ProcessSelectedInputs(paths);
             }
@@ -114,15 +127,37 @@ namespace FFGUITool.Views
             WorkspaceRoot.RenderTransform = new TranslateTransform(0, 0);
         }
 
+        private bool _exitPending;
+        public async Task RequestExitAsync()
+        {
+            if (_exitPending) return;
+            _exitPending = true;
+            try
+            {
+                if (_viewModel == null || await _viewModel.PrepareForExitAsync())
+                { AllowClose = true; Close(); }
+            }
+            finally { _exitPending = false; }
+        }
+
         protected override void OnClosing(WindowClosingEventArgs e)
         {
             if (!AllowClose)
             {
                 e.Cancel = true;
-                Hide();
+                if (_viewModel?.CloseToTray == true)
+                {
+                    Hide();
+                    var config = AppConfigService.Load();
+                    if (!config.TrayHintShown)
+                    {
+                        SystemNotificationService.Show("FFGUITool", LocalizationService.T("Improve.TrayHint"));
+                        config.TrayHintShown = true; AppConfigService.Save(config);
+                    }
+                }
+                else _ = RequestExitAsync();
                 return;
             }
-
             base.OnClosing(e);
         }
 

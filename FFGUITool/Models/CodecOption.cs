@@ -18,6 +18,6 @@ namespace FFGUITool.Models
             Description = description;
         }
 
-        public override string ToString() => $"{Name} - {Description}";
+        public override string ToString() => string.IsNullOrWhiteSpace(Description) ? Name : $"{Name} - {Description}";
     }
 }

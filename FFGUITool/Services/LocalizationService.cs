@@ -690,6 +690,11 @@ namespace FFGUITool.Services
 
         static LocalizationService()
         {
+            foreach (var pair in ImprovementResources.Values)
+            {
+                Resources["zh-CN"][pair.Key] = pair.Value.Chinese;
+                Resources["en-US"][pair.Key] = pair.Value.English;
+            }
             LoadExternalResources();
         }
 

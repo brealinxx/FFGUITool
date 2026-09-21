@@ -27,6 +27,9 @@ namespace FFGUITool.Models
 
         public string InputPath { get; }
         public string FileName { get; }
+        public long SourceBytes { get; set; }
+        public ProcessingTaskState State { get; set; }
+        public void RefreshStatusBrush() => OnPropertyChanged(nameof(StatusColor));
         public ProcessingSettingsScope SettingsScope { get; }
         public bool UsesSharedSettings => SettingsScope == ProcessingSettingsScope.Shared;
         public CompressionSettings Settings { get; set; }

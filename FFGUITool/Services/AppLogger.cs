@@ -9,8 +9,7 @@ namespace FFGUITool.Services
         private static readonly object LockObject = new();
 
         public static string LogDirectory { get; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "FFGUITool",
+            AppConfigService.AppDataPath,
             "logs");
 
         public static string CurrentLogPath => Path.Combine(LogDirectory, $"{DateTime.Now:yyyyMMdd}.log");

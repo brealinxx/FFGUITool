@@ -42,11 +42,12 @@ namespace FFGUITool
             imageItem.Click += (_, _) => OpenMode(selectImageMode: true);
 
             var exitItem = new NativeMenuItem(LocalizationService.T("Menu.Exit"));
-            exitItem.Click += (_, _) =>
+            exitItem.Click += async (_, _) =>
             {
                 if (_mainWindow != null)
                 {
-                    _mainWindow.AllowClose = true;
+                    await _mainWindow.RequestExitAsync();
+                    if (!_mainWindow.AllowClose) return;
                 }
 
                 _trayIcon?.Dispose();
