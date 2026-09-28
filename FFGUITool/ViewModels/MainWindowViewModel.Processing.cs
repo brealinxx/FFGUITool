@@ -41,6 +41,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private void ApplyCurrentSettingsToAll()
         {
+            FlushSliderUpdate();
             SaveSelectedSourceTabSettings();
             var source = _processingWorkspace.SelectedIndependentTask;
             if (source == null || SourceTabs.Count < 2)
@@ -83,7 +84,7 @@ namespace FFGUITool.ViewModels
         [RelayCommand]
         private void RefreshBatchTaskSelection()
         {
-            BatchFileCount = BatchTasks.Count(task => task.IsIncluded);
+            BatchFileCount = _batchSummary.IncludedCount;
             CanExecute = HasSelectedInput && _ffmpegManager.IsFFmpegAvailable && BatchFileCount > 0 && !IsProcessing;
             UpdateExecuteAllText();
             RefreshBatchModeSummary();
@@ -110,7 +111,7 @@ namespace FFGUITool.ViewModels
             CanExecute = false;
             IsProgressVisible = true;
             ProgressValue = 0;
-            _taskFractions.Clear();
+            _progressTotals.Clear();
             PersistWorkspace();
             ProgressText = "";
             CanCancel = true;
@@ -126,12 +127,18 @@ namespace FFGUITool.ViewModels
                     AvailableVideoDecoders = _availableVideoDecoders,
                     ImageParallelism = ImageParallelism
                 };
-                var progress = new UiProcessingProgress(ApplyProcessingProgress);
-                var summary = await _processingExecutor.ExecuteAsync(
-                    tasks,
-                    options,
-                    progress,
-                    _executionCancellation.Token);
+                // Freeze on the UI thread before starting any background work.
+                var frozen = tasks.Select(task => task.CreateSnapshot()).ToArray();
+                var originals = frozen.Select((task, index) => (task, original: tasks[index]))
+                    .ToDictionary(pair => pair.task, pair => pair.original);
+                using var progress = new UiProcessingProgress(value =>
+                    ApplyProcessingProgress(value with { Task = originals[value.Task] }));
+                var token = _executionCancellation.Token;
+                var summary = await Task.Run(() => _processingExecutor.ExecuteAsync(frozen, options, progress, token));
+                summary = summary with
+                {
+                    Failures = summary.Failures.Select(failure => failure with { Task = originals[failure.Task] }).ToArray()
+                };
                 var message = ProcessingResultFormatter.FormatSummary(summary);
                 CanRetryFailed = summary.Failures.Count > 0;
                 CaptureExecutionFailures(summary);
@@ -141,7 +148,7 @@ namespace FFGUITool.ViewModels
                         ? LocalizationService.T("Queue.Cancelled")
                         : LocalizationService.T("Dialog.Done");
                 SystemNotificationService.Show(title, message, summary.Failures.Count > 0);
-                RecordResults(summary, tasks);
+                RecordResults(summary, frozen);
                 ProgressText = $"{title} · {summary.Results.Count}/{tasks.Count}";
             }
             catch (Exception ex)
@@ -175,7 +182,7 @@ namespace FFGUITool.ViewModels
         private void UpdateExecuteAllText()
         {
             var count = IsBatchMode
-                ? BatchTasks.Count(task => task.IsIncluded)
+                ? _batchSummary.IncludedCount
                 : SourceTabs.Count > 0
                     ? SourceTabs.Count
                     : HasSelectedInput ? 1 : 0;
@@ -249,19 +256,25 @@ namespace FFGUITool.ViewModels
         {
             foreach (var task in BatchTasks)
             {
-                task.Settings = CompressionSettings;
-                task.UsesRelativeTarget = true;
-                task.RelativeTargetPercentage = TargetSizeMB;
-                task.MinimumVideoBitrateKbps = SelectedCompressionPresetOption?.MinVideoBitrateKbps ?? 0;
-                task.MaximumVideoBitrateKbps = SelectedCompressionPresetOption?.MaxVideoBitrateKbps ?? 0;
+                ApplySharedTaskPolicy(task);
             }
+        }
+
+        private void ApplySharedTaskPolicy(ProcessingTask task)
+        {
+            task.Settings = CompressionSettings;
+            task.EditorState = Editor.CaptureState();
+            task.HasSettings = true;
+            task.UsesRelativeTarget = true;
+            task.RelativeTargetPercentage = TargetSizeMB;
+            task.MinimumVideoBitrateKbps = SelectedCompressionPresetOption?.MinVideoBitrateKbps ?? 0;
+            task.MaximumVideoBitrateKbps = SelectedCompressionPresetOption?.MaxVideoBitrateKbps ?? 0;
         }
 
         private void ApplyProcessingProgress(ProcessingProgress progress)
         {
             var task = progress.Task;
             task.State = progress.State;
-            _taskFractions[task] = progress.Fraction;
             switch (progress.State)
             {
                 case ProcessingTaskState.Running:
@@ -289,12 +302,10 @@ namespace FFGUITool.ViewModels
                     break;
             }
 
-            var done = _taskFractions.Where(p => p.Key.State is ProcessingTaskState.Completed or ProcessingTaskState.Warning or ProcessingTaskState.Failed).Count();
-            var active = _taskFractions.Where(p => p.Key.State == ProcessingTaskState.Running).Sum(p => p.Value);
-            ProgressValue = progress.TotalCount > 0 ? Math.Clamp((done + active) * 100 / progress.TotalCount, 0, 100) : 0;
+            ProgressValue = _progressTotals.Apply(progress);
             ProgressText = LocalizationService.Format("Improve.Progress", progress.CompletedCount, progress.TotalCount, task.FileName,
                 progress.Fraction * 100, progress.Speed, TimeSpan.FromSeconds(Math.Clamp(progress.RemainingSeconds, 0, 864000)).ToString(@"hh\:mm\:ss"), progress.Message);
-            if (progress.State != ProcessingTaskState.Running) { RefreshVisibleTasks(); ScheduleWorkspaceSave(); }
+            if (progress.State != ProcessingTaskState.Running) ScheduleWorkspaceSave();
         }
 
         private void CaptureExecutionFailures(ProcessingExecutionSummary summary)

@@ -27,31 +27,56 @@ namespace FFGUITool.Models
 
         public string InputPath { get; }
         public string FileName { get; }
-        public long SourceBytes { get; set; }
+        [ObservableProperty] private long _sourceBytes;
         public ProcessingTaskState State { get; set; }
         public void RefreshStatusBrush() => OnPropertyChanged(nameof(StatusColor));
         public ProcessingSettingsScope SettingsScope { get; }
         public bool UsesSharedSettings => SettingsScope == ProcessingSettingsScope.Shared;
         public CompressionSettings Settings { get; set; }
 
-        // Editor state used only by independent file tabs.
+        // Detached data only: never copy ObservableObject event subscriptions.
+        public ProcessingTask CreateSnapshot() => new(InputPath, Settings.Clone(), SettingsScope)
+        {
+            EditorState = EditorState.Clone(),
+            SourceBytes = SourceBytes,
+            State = State,
+            HasSettings = HasSettings,
+            UsesRelativeTarget = UsesRelativeTarget,
+            RelativeTargetPercentage = RelativeTargetPercentage,
+            MinimumVideoBitrateKbps = MinimumVideoBitrateKbps,
+            MaximumVideoBitrateKbps = MaximumVideoBitrateKbps,
+            IsSelected = IsSelected,
+            IsIncluded = IsIncluded,
+            SettingsSummary = SettingsSummary,
+            Status = Status,
+            StatusColor = StatusColor,
+            OutputPath = OutputPath,
+            Message = Message,
+            IsFailed = IsFailed,
+        };
+
+        // Editor state retained by independent tasks and the shared folder policy.
         public bool HasSettings { get; set; }
-        public bool IsAdvancedMode { get; set; }
-        public int CompressionPercentage { get; set; } = 70;
-        public double TargetSizeMB { get; set; }
-        public int Bitrate { get; set; }
-        public bool UseCrf { get; set; }
-        public int Crf { get; set; }
-        public string SelectedPresetValue { get; set; } = "none";
-        public string SelectedVideoFormatValue { get; set; } = "mp4";
-        public string SelectedAudioFormatValue { get; set; } = "mp3";
-        public string SelectedAudioBitrateValue { get; set; } = "96";
-        public string SelectedAudioTrackModeValue { get; set; } = "transcode";
-        public string SelectedResolutionValue { get; set; } = "720";
-        public string SelectedImageFormatValue { get; set; } = "jpg";
-        public string SelectedCodecValue { get; set; } = "libx264";
-        public string SelectedHardwareEncoderValue { get; set; } = "";
-        public string SelectedImageTargetSizeUnit { get; set; } = "KB";
+        [System.Text.Json.Serialization.JsonIgnore]
+        public TaskEditorState EditorState { get; set; } = new();
+
+        // Compatibility properties keep version 1 workspace documents readable.
+        public bool IsAdvancedMode { get => EditorState.IsAdvancedMode; set => EditorState.IsAdvancedMode = value; }
+        public int CompressionPercentage { get => EditorState.CompressionPercentage; set => EditorState.CompressionPercentage = value; }
+        public double TargetSizeMB { get => EditorState.TargetSizeMB; set => EditorState.TargetSizeMB = value; }
+        public int Bitrate { get => EditorState.Bitrate; set => EditorState.Bitrate = value; }
+        public bool UseCrf { get => EditorState.UseCrf; set => EditorState.UseCrf = value; }
+        public int Crf { get => EditorState.Crf; set => EditorState.Crf = value; }
+        public string SelectedPresetValue { get => EditorState.SelectedPresetValue; set => EditorState.SelectedPresetValue = value; }
+        public string SelectedVideoFormatValue { get => EditorState.SelectedVideoFormatValue; set => EditorState.SelectedVideoFormatValue = value; }
+        public string SelectedAudioFormatValue { get => EditorState.SelectedAudioFormatValue; set => EditorState.SelectedAudioFormatValue = value; }
+        public string SelectedAudioBitrateValue { get => EditorState.SelectedAudioBitrateValue; set => EditorState.SelectedAudioBitrateValue = value; }
+        public string SelectedAudioTrackModeValue { get => EditorState.SelectedAudioTrackModeValue; set => EditorState.SelectedAudioTrackModeValue = value; }
+        public string SelectedResolutionValue { get => EditorState.SelectedResolutionValue; set => EditorState.SelectedResolutionValue = value; }
+        public string SelectedImageFormatValue { get => EditorState.SelectedImageFormatValue; set => EditorState.SelectedImageFormatValue = value; }
+        public string SelectedCodecValue { get => EditorState.SelectedCodecValue; set => EditorState.SelectedCodecValue = value; }
+        public string SelectedHardwareEncoderValue { get => EditorState.SelectedHardwareEncoderValue; set => EditorState.SelectedHardwareEncoderValue = value; }
+        public string SelectedImageTargetSizeUnit { get => EditorState.SelectedImageTargetSizeUnit; set => EditorState.SelectedImageTargetSizeUnit = value; }
 
         // Folder tasks share settings but carry the same execution policy.
         public bool UsesRelativeTarget { get; set; }

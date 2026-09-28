@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param([string]$Tag = $env:RELEASE_TAG)
+
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -27,7 +30,7 @@ function Assert-FileExists {
 function Assert-Equal {
     param([string]$Name, [string]$Expected, [string]$Actual)
 
-    if ($Expected -ne $Actual) {
+    if ($Expected -cne $Actual) {
         throw "$Name mismatch. Expected '$Expected', got '$Actual'."
     }
 }
@@ -73,6 +76,10 @@ if ([string]::IsNullOrWhiteSpace($version)) {
 }
 
 Assert-Matches "Project Version" $version '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$'
+# Local checks may omit a tag; release jobs must pass one explicitly.
+if ($PSBoundParameters.ContainsKey('Tag') -or -not [string]::IsNullOrEmpty($Tag)) {
+    Assert-Equal "Release tag" "v$version" $Tag
+}
 Assert-Equal "AssemblyVersion" "$version.0" $assemblyVersion
 Assert-Equal "FileVersion" "$version.0" $fileVersion
 Assert-Equal "InformationalVersion" $version $informationalVersion

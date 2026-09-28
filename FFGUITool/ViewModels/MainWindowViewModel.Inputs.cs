@@ -232,7 +232,7 @@ public partial class MainWindowViewModel
             }
 
             var tab = SourceTabs.FirstOrDefault(item => item.IsSelected);
-            if (tab == null)
+            if (tab == null || !tab.IsIncluded)
             {
                 return;
             }

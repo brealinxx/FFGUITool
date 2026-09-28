@@ -6,6 +6,16 @@ A cross-platform FFmpeg desktop app for compressing and converting video, audio,
 
 ![FFGUITool interface showing the file queue, compression settings, and command preview](Assets/intro.png)
 
+## Unreleased improvements
+
+- Workspace saves use detached snapshots and a background writer; exit waits for the final save.
+- Running progress is coalesced, large queue reorders use range updates, and the 512-entry media cache retains recently used files.
+- Wide windows show tasks beside settings; narrow windows keep one column. Lists support editing selection and per-file removal; presets and advanced encoding options sit near the parameters.
+- Queue restoration retains per-file settings and folder ratios; applying to all files includes the latest slider value, and language changes preserve parameters and task states.
+- Release automation checks tag/version agreement; dev and main CI include Windows workspace recovery checks.
+- See the [release readiness review](docs/RELEASE_REVIEW.md) for the latest checks and remaining release steps.
+- See the [measured performance and verification report](docs/PERFORMANCE.md) for results and remaining work.
+
 ## Download and install
 
 Choose your system and architecture from [GitHub Releases](https://github.com/brealinxx/FFGUITool/releases/latest):

@@ -43,7 +43,7 @@ jobs:
 
       - name: Check release metadata
         shell: pwsh
-        run: ./scripts/release-check.ps1
+        run: ./scripts/release-check.ps1 -Tag $env:RELEASE_TAG
 
       - name: Build
         run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore

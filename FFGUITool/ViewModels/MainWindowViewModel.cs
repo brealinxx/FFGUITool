@@ -26,6 +26,10 @@ namespace FFGUITool.ViewModels
     /// </summary>
     public partial class MainWindowViewModel : ViewModelBase
     {
+        public ParameterEditorViewModel Editor { get; } = new();
+        public QueuePanelViewModel Queue { get; }
+        public OutputSettingsViewModel Output { get; }
+
         private readonly FFmpegManager _ffmpegManager;
         private readonly ExifToolManager _exifToolManager;
         private readonly VideoAnalyzer _videoAnalyzer;
@@ -33,6 +37,7 @@ namespace FFGUITool.ViewModels
         private readonly ProcessingExecutor _processingExecutor;
         private readonly ProcessingWorkspace _processingWorkspace = new();
         private readonly MediaInputService _mediaInputService;
+        private readonly BatchQueueSummary _batchSummary;
         private readonly IDialogService _dialogService;
         private readonly AppConfig _appConfig;
         private const string ReleasesUrl = "https://github.com/brealinxx/FFGUITool/releases";
@@ -101,8 +106,7 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private List<string> _imageTargetSizeUnitOptions = new() { "KB", "MB" };
 
-        [ObservableProperty]
-        private string _selectedImageTargetSizeUnit = "KB";
+        public string SelectedImageTargetSizeUnit { get => Editor.SelectedImageTargetSizeUnit; set => Editor.SelectedImageTargetSizeUnit = value; }
 
         [ObservableProperty]
         private string _advancedBitrateLabel = LocalizationService.T("Main.TargetBitrate");
@@ -158,8 +162,7 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private string _metadataClearHint = "";
 
-        [ObservableProperty]
-        private CompressionSettings _compressionSettings = new();
+        public CompressionSettings CompressionSettings { get => Editor.CompressionSettings; set => Editor.CompressionSettings = value; }
 
         [ObservableProperty]
         private string _commandText = LocalizationService.T("Command.SelectInput");
@@ -213,14 +216,11 @@ namespace FFGUITool.ViewModels
 
         public ObservableCollection<ProcessingTask> BatchTasks => _processingWorkspace.SharedTasks;
 
-        [ObservableProperty]
-        private string _outputPathText = "";
+        public string OutputPathText { get => Output.OutputPathText; set => Output.OutputPathText = value; }
 
-        [ObservableProperty]
-        private int _compressionPercentage = 70;
+        public int CompressionPercentage { get => Editor.CompressionPercentage; set => Editor.CompressionPercentage = value; }
 
-        [ObservableProperty]
-        private double _targetSizeMB;
+        public double TargetSizeMB { get => Editor.TargetSizeMB; set => Editor.TargetSizeMB = value; }
 
         [ObservableProperty]
         private double _targetSizeSliderValue;
@@ -237,11 +237,9 @@ namespace FFGUITool.ViewModels
         [ObservableProperty]
         private string _targetSizeSelectionText = "";
 
-        [ObservableProperty]
-        private bool _isAdvancedMode;
+        public bool IsAdvancedMode { get => Editor.IsAdvancedMode; set => Editor.IsAdvancedMode = value; }
 
-        [ObservableProperty]
-        private int _bitrate = 2000;
+        public int Bitrate { get => Editor.Bitrate; set => Editor.Bitrate = value; }
 
         [ObservableProperty]
         private string _selectedCodec = "libx264";
@@ -264,14 +262,11 @@ namespace FFGUITool.ViewModels
             new CodecOption("关闭", "", "使用软件编码")
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedHardwareEncoderOption;
+        public CodecOption? SelectedHardwareEncoderOption { get => Editor.SelectedHardwareEncoderOption; set => Editor.SelectedHardwareEncoderOption = value; }
 
-        [ObservableProperty]
-        private bool _useCrf;
+        public bool UseCrf { get => Editor.UseCrf; set => Editor.UseCrf = value; }
 
-        [ObservableProperty]
-        private int _crf = 23;
+        public int Crf { get => Editor.Crf; set => Editor.Crf = value; }
 
         [ObservableProperty]
         private double _crfSliderValue = 23;
@@ -345,8 +340,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("AV1 (libaom-av1)", "libaom-av1", LocalizationService.T("Codec.AV1.Desc"))
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedCodecOption;
+        public CodecOption? SelectedCodecOption { get => Editor.SelectedCodecOption; set => Editor.SelectedCodecOption = value; }
 
         [ObservableProperty]
         private List<CompressionPresetOption> _compressionPresetOptions = new()
@@ -358,8 +352,7 @@ namespace FFGUITool.ViewModels
             new CompressionPresetOption("极限压缩", "extreme", 0, "最大限度压缩体积，画质较低")
         };
 
-        [ObservableProperty]
-        private CompressionPresetOption? _selectedCompressionPresetOption;
+        public CompressionPresetOption? SelectedCompressionPresetOption { get => Editor.SelectedCompressionPresetOption; set => Editor.SelectedCompressionPresetOption = value; }
 
         [ObservableProperty]
         private bool _hasSelectedInput;
@@ -438,8 +431,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("GIF", "gif", "视频转动图")
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedVideoFormatOption;
+        public CodecOption? SelectedVideoFormatOption { get => Editor.SelectedVideoFormatOption; set => Editor.SelectedVideoFormatOption = value; }
 
         [ObservableProperty]
         private List<CodecOption> _audioFormatOptions = new()
@@ -452,8 +444,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("OGG", "ogg", "开源音频")
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedAudioFormatOption;
+        public CodecOption? SelectedAudioFormatOption { get => Editor.SelectedAudioFormatOption; set => Editor.SelectedAudioFormatOption = value; }
 
         [ObservableProperty]
         private List<CodecOption> _audioBitrateOptions = new()
@@ -466,8 +457,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("8 kb/s", "8", LocalizationService.T("AudioBitrate.8.Desc"))
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedAudioBitrateOption;
+        public CodecOption? SelectedAudioBitrateOption { get => Editor.SelectedAudioBitrateOption; set => Editor.SelectedAudioBitrateOption = value; }
 
         [ObservableProperty]
         private List<CodecOption> _audioTrackModeOptions = new()
@@ -477,8 +467,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("移除音轨", "remove", "输出静音视频")
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedAudioTrackModeOption;
+        public CodecOption? SelectedAudioTrackModeOption { get => Editor.SelectedAudioTrackModeOption; set => Editor.SelectedAudioTrackModeOption = value; }
 
         [ObservableProperty]
         private List<CodecOption> _resolutionOptions = new()
@@ -492,8 +481,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("360p", "360", "极小体积")
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedResolutionOption;
+        public CodecOption? SelectedResolutionOption { get => Editor.SelectedResolutionOption; set => Editor.SelectedResolutionOption = value; }
 
         [ObservableProperty]
         private List<CodecOption> _imageFormatOptions = new()
@@ -503,8 +491,7 @@ namespace FFGUITool.ViewModels
             new CodecOption("WebP", "webp", "网页体积更小")
         };
 
-        [ObservableProperty]
-        private CodecOption? _selectedImageFormatOption;
+        public CodecOption? SelectedImageFormatOption { get => Editor.SelectedImageFormatOption; set => Editor.SelectedImageFormatOption = value; }
 
         [ObservableProperty]
         private bool _isIconOptionsVisible;
@@ -649,15 +636,27 @@ namespace FFGUITool.ViewModels
 
         public MainWindowViewModel(
             FFmpegManager ffmpegManager,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            WorkspaceStore? workspaceStore = null,
+            ExifToolManager? exifToolManager = null,
+            VideoAnalyzer? videoAnalyzer = null,
+            CommandBuilder? commandBuilder = null,
+            ProcessingExecutor? processingExecutor = null)
         {
+            Output = new OutputSettingsViewModel(SelectOutputFolderCommand);
+            Output.PropertyChanged += OnOutputPropertyChanged;
+            Queue = new QueuePanelViewModel(_processingWorkspace, task => SelectSourceTabCore(task, false), CloseSourceTabCommand, RefreshBatchTaskSelectionCommand);
+            _batchSummary = new BatchQueueSummary(BatchTasks);
             _ffmpegManager = ffmpegManager;
             _dialogService = dialogService;
-            _exifToolManager = new ExifToolManager();
-            _videoAnalyzer = new VideoAnalyzer(_ffmpegManager);
+            _workspaceStore = workspaceStore ?? new WorkspaceStore();
+            _workspacePersistence = new WorkspacePersistence(_workspaceStore.Save);
+            _workspacePersistence.SaveFailed += OnWorkspaceSaveFailed;
+            _exifToolManager = exifToolManager ?? new ExifToolManager();
+            _videoAnalyzer = videoAnalyzer ?? new VideoAnalyzer(_ffmpegManager);
             _mediaInputService = new MediaInputService(_videoAnalyzer);
-            _commandBuilder = new CommandBuilder();
-            _processingExecutor = new ProcessingExecutor(
+            _commandBuilder = commandBuilder ?? new CommandBuilder();
+            _processingExecutor = processingExecutor ?? new ProcessingExecutor(
                 _ffmpegManager,
                 _exifToolManager,
                 _videoAnalyzer,
@@ -683,6 +682,7 @@ namespace FFGUITool.ViewModels
             UpdateCrfText();
 
             // 监听属性变化
+            Editor.PropertyChanged += OnEditorPropertyChanged;
             PropertyChanged += OnPropertyChanged;
             LocalizationService.LanguageChanged += OnLanguageChanged;
             InitializeFeatures();
@@ -751,6 +751,13 @@ namespace FFGUITool.ViewModels
 
 
 
+        private void OnOutputPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(OutputPathText) or nameof(OutputNamePattern) or nameof(PreserveFolderStructure)) OnPropertyChanged(e.PropertyName);
+        }
+
+        private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => OnPropertyChanged(e.PropertyName);
+
         private void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (_isRestoringSourceTab)
@@ -758,6 +765,9 @@ namespace FFGUITool.ViewModels
                 return;
             }
 
+            if (e.PropertyName is nameof(IsProcessing) or nameof(IsScanning)) Queue.IsBusy = IsProcessing || IsScanning;
+            if (e.PropertyName == nameof(IsBatchMode)) Output.IsBatchMode = IsBatchMode;
+            if (e.PropertyName == nameof(IsProcessing)) Output.IsProcessing = IsProcessing;
             MarkSelectedSourceTabPending(e.PropertyName);
             if (HandleFeatureChange(e.PropertyName)) return;
 
@@ -911,8 +921,8 @@ namespace FFGUITool.ViewModels
             if (IsBatchMode)
             {
                 RefreshBatchModeSummary();
-                RefreshSharedTaskPolicy();
-                var firstTask = BatchTasks.FirstOrDefault(task => task.IsIncluded);
+                var firstTask = _batchSummary.FirstIncluded;
+                if (firstTask != null) ApplySharedTaskPolicy(firstTask);
                 var previewInfo = firstTask != null && string.Equals(firstTask.InputPath, _batchPreviewInfoPath, StringComparison.OrdinalIgnoreCase)
                     ? _batchPreviewInfo
                     : null;
@@ -1093,7 +1103,7 @@ namespace FFGUITool.ViewModels
                 return;
             }
 
-            BatchFileCount = GetBatchInputFiles().Count();
+            BatchFileCount = _batchSummary.IncludedCount;
             var isEnglish = LocalizationService.CurrentLanguage == "en-US";
             BatchModeText = BatchFileCount == 0
                 ? LocalizationService.T(IsImageMode ? "Image.NoSupportedFiles" : "Batch.Empty")
@@ -1109,7 +1119,7 @@ namespace FFGUITool.ViewModels
                     ? LocalizationService.T("Estimate.NonVideo")
                     : LocalizationService.Format("Batch.Found", BatchFileCount);
             EstimatedBitrateColor = BatchFileCount == 0 ? "Gray" : "Green";
-            CanRetryFailed = BatchTasks.Any(task => task.IsIncluded && task.IsFailed);
+            CanRetryFailed = _batchSummary.HasFailures;
             UpdateExecuteAllText();
         }
 
@@ -1174,50 +1184,48 @@ namespace FFGUITool.ViewModels
 
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
-            _appConfig.Language = LocalizationService.CurrentLanguage;
-            IsChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
-            IsEnglishLanguage = LocalizationService.CurrentLanguage == "en-US";
-            RefreshModeText();
-            RefreshAdvancedVideoLabels();
-            UpdateThemeStateTexts();
-            UpdateCodecOptions();
-            UpdateConversionOptionLists();
-            UpdateAudioBitrateOptions();
-            UpdateCompressionPresetOptions();
-            var hardware = SelectedHardwareEncoderOption?.Value ?? "";
-            HardwareEncoderOptions = CreateHardwareEncoderOptions(_availableVideoEncoders);
-            SelectedHardwareEncoderOption = HardwareEncoderOptions.Find(option => option.Value == hardware) ?? HardwareEncoderOptions[0];
-            RefreshGoalOptions();
-            UpdateBitrateTexts();
-            UpdateCrfText();
-            UpdateTargetSizeTexts();
-            UpdateSourceInfoTexts();
-            UpdateFFmpegStatus();
-            UpdateConversionHint();
-            UpdateConversionOptionVisibility();
-            UpdateExifToolStatus();
-
-            foreach (var tab in SourceTabs)
+            FlushSliderUpdate();
+            // Rebuilding localized option objects must not reapply presets or reset task state.
+            var wasRestoring = _isRestoringSourceTab;
+            _isRestoringSourceTab = true;
+            try
             {
-                tab.Status = tab.StatusColor switch
-                {
-                    "Blue" => LocalizationService.T("SourceTabs.Processing"),
-                    "Green" => LocalizationService.T("SourceTabs.Completed"),
-                    "Red" => LocalizationService.T("SourceTabs.Failed"),
-                    "Orange" => LocalizationService.T("Improve.Warning"),
-                    _ => LocalizationService.T("SourceTabs.Pending")
-                };
+                _appConfig.Language = LocalizationService.CurrentLanguage;
+                IsChineseLanguage = LocalizationService.CurrentLanguage == "zh-CN";
+                IsEnglishLanguage = LocalizationService.CurrentLanguage == "en-US";
+                RefreshModeText();
+                RefreshAdvancedVideoLabels();
+                UpdateThemeStateTexts();
+                UpdateCodecOptions();
+                UpdateConversionOptionLists();
+                UpdateAudioBitrateOptions();
+                UpdateCompressionPresetOptions();
+                var hardware = SelectedHardwareEncoderOption?.Value ?? "";
+                HardwareEncoderOptions = CreateHardwareEncoderOptions(_availableVideoEncoders);
+                SelectedHardwareEncoderOption = HardwareEncoderOptions.Find(option => option.Value == hardware) ?? HardwareEncoderOptions[0];
+                RefreshGoalOptions();
+                UpdateBitrateTexts();
+                UpdateCrfText();
+                UpdateTargetSizeTexts();
+                UpdateSourceInfoTexts();
+                UpdateFFmpegStatus();
+                UpdateConversionHint();
+                UpdateConversionOptionVisibility();
+                UpdateExifToolStatus();
             }
+            finally { _isRestoringSourceTab = wasRestoring; }
 
-            foreach (var task in BatchTasks)
+            foreach (var task in SourceTabs.Concat(BatchTasks))
             {
-                task.Status = task.StatusColor switch
+                task.Status = LocalizationService.T(task.State switch
                 {
-                    "Blue" => LocalizationService.T("SourceTabs.Processing"),
-                    "Green" => LocalizationService.T("SourceTabs.Completed"),
-                    "Red" => LocalizationService.T("SourceTabs.Failed"),
-                    _ => LocalizationService.T("SourceTabs.Pending")
-                };
+                    ProcessingTaskState.Running => "SourceTabs.Processing",
+                    ProcessingTaskState.Completed => "SourceTabs.Completed",
+                    ProcessingTaskState.Warning => "Improve.Warning",
+                    ProcessingTaskState.Failed => "SourceTabs.Failed",
+                    ProcessingTaskState.Cancelled => "Queue.Cancelled",
+                    _ => "SourceTabs.Pending"
+                });
             }
 
             if (SourceTabs.Count > 0)
@@ -1482,7 +1490,7 @@ namespace FFGUITool.ViewModels
             if (IsBatchMode)
             {
                 var ratio = ClampImageRatioPercent(TargetSizeMB) / 100.0;
-                return BatchTasks.Where(task => task.IsIncluded).Sum(task => (long)Math.Max(1, Math.Round(task.SourceBytes * ratio)));
+                return _batchSummary.EstimateBytes(ratio);
             }
 
             var targetKB = CompressionSettings.ImageTargetSizeKB > 0
@@ -1675,17 +1683,25 @@ namespace FFGUITool.ViewModels
 
         public override void Dispose()
         {
-            PersistWorkspace();
+            if (!_exitSaved)
+            {
+                FlushSliderUpdate();
+                PersistWorkspace();
+                // Fallback for hosts disposing without the asynchronous close flow.
+                _workspacePersistence.FlushAsync().GetAwaiter().GetResult();
+            }
+            _workspacePersistence.SaveFailed -= OnWorkspaceSaveFailed;
             _saveTimer.Stop();
             _queueTimer.Stop();
             _sliderTimer.Stop();
-            _searchTimer.Stop();
-            foreach (var task in _observedQueueTasks) task.PropertyChanged -= OnQueueTaskChanged;
-            _observedQueueTasks.Clear();
+            Queue.Dispose();
+            _batchSummary.Dispose();
             _scanCancellation?.Cancel();
             _inputCancellation?.Cancel();
             _previewCancellation?.Cancel();
             _executionCancellation?.Cancel();
+            Editor.PropertyChanged -= OnEditorPropertyChanged;
+            Output.PropertyChanged -= OnOutputPropertyChanged;
             LocalizationService.LanguageChanged -= OnLanguageChanged;
             base.Dispose();
         }

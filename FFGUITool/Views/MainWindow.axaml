@@ -18,131 +18,7 @@
         <KeyBinding Gesture="Ctrl+Enter" Command="{Binding ExecuteCommand}"/>
         <KeyBinding Gesture="Escape" Command="{Binding CancelExecutionCommand}"/>
     </Window.KeyBindings>
-    <Window.Styles>
-        <Style Selector="Border.Card">
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-            <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}" />
-            <Setter Property="Padding" Value="20" />
-            <Setter Property="Margin" Value="0,0,0,16" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.2" />
-                </Transitions>
-            </Setter>
-        </Style>
 
-        <Style Selector="TextBlock.H1">
-            <Setter Property="FontSize" Value="18" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="Margin" Value="0,0,0,12" />
-        </Style>
-
-        <Style Selector="TextBlock.Label">
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-
-        <Style Selector="Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-
-        <Style Selector="Button /template/ ContentPresenter">
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="RecognizesAccessKey" Value="False" />
-        </Style>
-
-        <Style Selector="Button:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        </Style>
-
-        <Style Selector="Button.Accent">
-            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-
-        <Style Selector="Button.Accent:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="Opacity" Value="0.9" />
-        </Style>
-
-        <Style Selector="Button.Accent:disabled /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
-        </Style>
-
-        <Style Selector="Border.SourceTab">
-            <Setter Property="Background" Value="{DynamicResource PageBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8,8,0,0" />
-            <Setter Property="Margin" Value="0,0,6,0" />
-            <Setter Property="MinWidth" Value="180" />
-            <Setter Property="MaxWidth" Value="240" />
-        </Style>
-
-        <Style Selector="Border.SourceTab.Selected">
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="BorderThickness" Value="1,1,1,3" />
-        </Style>
-
-        <Style Selector="Button.SourceTabMain">
-            <Setter Property="Padding" Value="10,7,6,6" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="8,0,0,0" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        </Style>
-
-        <Style Selector="Button.SourceTabClose">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
-            <Setter Property="MinWidth" Value="26" />
-            <Setter Property="MinHeight" Value="26" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="13" />
-            <Setter Property="FontSize" Value="16" />
-        </Style>
-
-        <Style Selector="CheckBox.VideoTool">
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-        </Style>
-
-        <Style Selector="CheckBox.VideoTool:disabled">
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
-        </Style>
-
-        <Style Selector="TextBox">
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-        </Style>
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-
-    </Window.Styles>
 
     <Grid RowDefinitions="Auto, *">
         <Menu Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}">
@@ -294,8 +170,11 @@
                 </Button>
             </Grid>
 
-            <ScrollViewer x:Name="WorkspaceScroll" Grid.Row="1" Padding="0,0,16,0">
-                <StackPanel>
+            <Grid x:Name="WorkspaceColumns" Grid.Row="1" ColumnDefinitions="0,0,*">
+            <ScrollViewer x:Name="TaskScroll" Grid.Column="0" IsVisible="False"/>
+            <ScrollViewer x:Name="WorkspaceScroll" Grid.Column="2" Padding="0,0,16,0">
+                <StackPanel x:Name="EditorStack">
+                <StackPanel x:Name="TaskColumn">
 
                     <Border Classes="Card">
                         <StackPanel Spacing="12">
@@ -355,13 +234,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
-                            <Button Content="{DynamicResource SourceTabs.ApplyToAll}"
-                                    Command="{Binding ApplyCurrentSettingsToAllCommand}"
-                                    IsVisible="{Binding IsSourceTabsVisible}"
-                                    IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
-                                    HorizontalAlignment="Left"
-                                    Height="30"
-                                    Padding="10,0" />
+
                             <Grid ColumnDefinitions="*, 10, Auto, 10, Auto" IsEnabled="{Binding !IsProcessing}">
                                 <TextBox Grid.Column="0" Text="{Binding InputPathText, Mode=TwoWay}"
                                          Watermark="{DynamicResource Main.InputWatermark}" Height="38"
@@ -401,7 +274,7 @@
                             </StackPanel>
                             <TextBlock Text="{Binding ImportSummary}" IsVisible="{Binding HasImportSummary}" TextWrapping="Wrap"
                                        Foreground="{DynamicResource SecondaryTextBrush}"/>
-                            <views:QueuePanel/>
+                            <views:QueuePanel DataContext="{Binding Queue}"/>
                         </StackPanel>
                     </Border>
 
@@ -450,24 +323,27 @@
                         </StackPanel>
                     </Border>
 
+                </StackPanel>
                     <Border x:Name="ParametersCard" Classes="Card">
-                        <StackPanel Spacing="20" IsEnabled="{Binding !IsProcessing}">
+                        <StackPanel Spacing="12" IsEnabled="{Binding !IsProcessing}">
                             <TextBlock Classes="H1" Text="{Binding CompressionParamsTitle}" />
                             <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="6" Padding="10" IsVisible="{Binding HasSelectedInput}">
-                                <TextBlock Text="{Binding SettingsScopeText}" TextWrapping="Wrap" FontWeight="SemiBold"
+                                <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding SettingsScopeText}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,12,0"
                                            Foreground="{DynamicResource AccentBrush}"/>
+                            <Button Grid.Column="1" Content="{Binding ApplyToAllText}"
+                                    Command="{Binding ApplyCurrentSettingsToAllCommand}"
+                                    IsVisible="{Binding IsSourceTabsVisible}"
+                                    IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBoolConverter}}"
+                                    HorizontalAlignment="Right"
+                                    Height="30"
+                                    Padding="10,0" />
+                                </Grid>
                             </Border>
-                            <Grid ColumnDefinitions="100,*">
-                                <TextBlock Text="{DynamicResource Improve.Mode}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0"/>
-                                <ComboBox Grid.Column="1" ItemsSource="{Binding GoalOptions}" SelectedItem="{Binding SelectedGoal}" HorizontalAlignment="Stretch"/>
-                            </Grid>
-                            <TextBlock Text="{Binding QualityHelp}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                            <TextBlock Text="{Binding MediaNotice}" IsVisible="{Binding HasMediaNotice}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="{DynamicResource Improve.Preview}" Command="{Binding PreviewSampleCommand}" IsEnabled="{Binding !IsPreviewing}"/>
-                                <Button Content="{DynamicResource Improve.CancelPreview}" Command="{Binding CancelPreviewCommand}" IsVisible="{Binding IsPreviewing}"/>
-                            </StackPanel>
 
+
+
+                            <views:ProcessingGoalPanel DataContext="{Binding Editor}"/>
                             <Grid ColumnDefinitions="100, *" Margin="0,0,0,16" IsVisible="{Binding LimitFileSize}">
                                 <TextBlock Grid.Column="0" Text="{Binding TargetSizeLabel}" Classes="Label" VerticalAlignment="Center"/>
     
@@ -512,6 +388,83 @@
                                                Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Grid>
+<Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16" IsVisible="{Binding IsAdvancedQualityControlsVisible}">
+                                <TextBlock Grid.Column="0" Text="{Binding AdvancedBitrateLabel}" Classes="Label" VerticalAlignment="Top"
+                                           Margin="0,6,0,0" />
+
+                                <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Slider Grid.Column="0" Value="{Binding BitrateSliderValue}"
+                                                Minimum="{Binding BitrateSliderMinimum}"
+                                                Maximum="{Binding BitrateSliderMaximum}"
+                                                IsEnabled="{Binding CanEditBitrate}"
+                                                VerticalAlignment="Center" Margin="0,0,12,0" />
+
+                                        <TextBox Grid.Column="1" Text="{Binding Bitrate}" Width="80"
+                                                 IsEnabled="{Binding CanEditBitrate}"
+                                                 VerticalContentAlignment="Center"
+                                                 HorizontalContentAlignment="Center"/>
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding BitrateSelectionText}"
+                                               FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Margin="0,4,0,0" />
+
+                                    <Border Background="{DynamicResource WarningBackgroundBrush}" CornerRadius="4" Padding="8"
+                                            IsVisible="{Binding IsBitrateWarningVisible}" Margin="0,8,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="⚠" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{DynamicResource Main.BitrateWarning}" Foreground="{DynamicResource WarningBrush}" FontSize="12"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+<Grid ColumnDefinitions="100, *" IsVisible="{Binding IsCrfControlsVisible}">
+                                <TextBlock Text="{Binding CrfQualityLabel}" Classes="Label" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <Grid ColumnDefinitions="*, 12, 80" IsVisible="{Binding IsCrfControlsVisible}">
+                                        <Slider Grid.Column="0"
+                                                Value="{Binding CrfSliderValue}"
+                                                Minimum="0"
+                                                Maximum="51"
+                                                VerticalAlignment="Center"
+                                                Height="34" />
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding Crf}"
+                                                 Width="80"
+                                                 Height="34"
+                                                 VerticalContentAlignment="Center"
+                                                 HorizontalContentAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding CrfSelectionText}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+<Expander Header="{DynamicResource Improve.Presets}" HorizontalAlignment="Stretch">
+   <StackPanel Spacing="8" IsEnabled="{Binding !IsProcessing}">
+    <ComboBox ItemsSource="{Binding SavedPresets}" SelectedItem="{Binding SelectedSavedPreset}" HorizontalAlignment="Stretch"/>
+    <WrapPanel>
+     <Button Content="{DynamicResource Improve.Apply}" Command="{Binding ApplyPresetCommand}" Margin="8,0"/>
+     <Button Content="{DynamicResource Improve.Delete}" Command="{Binding DeletePresetCommand}"/>
+     <Button Content="{DynamicResource Improve.Recent}" Command="{Binding ApplyRecentSettingsCommand}" Margin="8,0,0,0"/>
+    </WrapPanel>
+    <Grid ColumnDefinitions="*,Auto">
+     <TextBox Text="{Binding PresetName}" Watermark="{DynamicResource Improve.PresetName}"/>
+     <Button Grid.Column="1" Content="{DynamicResource Improve.Save}" Command="{Binding SavePresetCommand}" Margin="8,0,0,0"/>
+    </Grid>
+   </StackPanel>
+  </Expander>
+                            <TextBlock Text="{Binding QualityHelp}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <TextBlock Text="{Binding MediaNotice}" IsVisible="{Binding HasMediaNotice}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="{DynamicResource Improve.Preview}" Command="{Binding PreviewSampleCommand}" IsEnabled="{Binding !IsPreviewing}"/>
+                                <Button Content="{DynamicResource Improve.CancelPreview}" Command="{Binding CancelPreviewCommand}" IsVisible="{Binding IsPreviewing}"/>
+                            </StackPanel>
+
+
 
                             <Grid ColumnDefinitions="100, *" IsVisible="{Binding !IsImageMode}">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -745,38 +698,7 @@
                                        Margin="0,0,0,16"
                                        IsVisible="{Binding IsAdvancedMode}" />
 
-                            <Grid ColumnDefinitions="100, *, Auto" Margin="0,0,0,16" IsVisible="{Binding IsAdvancedQualityControlsVisible}">
-                                <TextBlock Grid.Column="0" Text="{Binding AdvancedBitrateLabel}" Classes="Label" VerticalAlignment="Top"
-                                           Margin="0,6,0,0" />
 
-                                <StackPanel Grid.Column="1" Grid.ColumnSpan="2">
-                                    <Grid ColumnDefinitions="*, Auto">
-                                        <Slider Grid.Column="0" Value="{Binding BitrateSliderValue}"
-                                                Minimum="{Binding BitrateSliderMinimum}"
-                                                Maximum="{Binding BitrateSliderMaximum}"
-                                                IsEnabled="{Binding CanEditBitrate}"
-                                                VerticalAlignment="Center" Margin="0,0,12,0" />
-
-                                        <TextBox Grid.Column="1" Text="{Binding Bitrate}" Width="80"
-                                                 IsEnabled="{Binding CanEditBitrate}"
-                                                 VerticalContentAlignment="Center" 
-                                                 HorizontalContentAlignment="Center"/>
-                                    </Grid>
-
-                                    <TextBlock Text="{Binding BitrateSelectionText}"
-                                               FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
-                                               Margin="0,4,0,0" />
-
-                                    <Border Background="#33FF9800" CornerRadius="4" Padding="8"
-                                            IsVisible="{Binding IsBitrateWarningVisible}" Margin="0,8,0,0">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="⚠" Foreground="#F59E0B" VerticalAlignment="Center" />
-                                            <TextBlock Text="{DynamicResource Main.BitrateWarning}" Foreground="#D97706" FontSize="12"
-                                                       VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
-                            </Grid>
 
                             <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
                                 <TextBlock Text="{DynamicResource Main.Codec}" Classes="Label" VerticalAlignment="Center"/>
@@ -815,32 +737,20 @@
                                 </ComboBox>
                             </Grid>
 
-                            <Grid ColumnDefinitions="100, *" IsVisible="{Binding IsAdvancedVideoControlsVisible}">
-                                <TextBlock Text="{Binding CrfQualityLabel}" Classes="Label" VerticalAlignment="Top" Margin="0,6,0,0"/>
-                                <StackPanel Grid.Column="1" Spacing="6">
-                                    <CheckBox Content="{Binding EnableCrfLabel}"
-                                              IsChecked="{Binding UseCrf}"
-                                              Foreground="{DynamicResource PrimaryTextBrush}" />
-                                    <Grid ColumnDefinitions="*, 12, 80" IsVisible="{Binding IsCrfControlsVisible}">
-                                        <Slider Grid.Column="0"
-                                                Value="{Binding CrfSliderValue}"
-                                                Minimum="0"
-                                                Maximum="51"
-                                                VerticalAlignment="Center"
-                                                Height="34" />
-                                        <TextBox Grid.Column="2"
-                                                 Text="{Binding Crf}"
-                                                 Width="80"
-                                                 Height="34"
-                                                 VerticalContentAlignment="Center"
-                                                 HorizontalContentAlignment="Center" />
-                                    </Grid>
-                                    <TextBlock Text="{Binding CrfSelectionText}"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource SecondaryTextBrush}"
-                                               TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Grid>
+
+
+  <Expander Header="{DynamicResource Improve.EncodingOptions}" HorizontalAlignment="Stretch" IsVisible="{Binding IsAdvancedMode}">
+   <StackPanel Spacing="10" IsEnabled="{Binding !IsProcessing}">
+    <CheckBox Content="{DynamicResource Improve.TwoPass}" IsChecked="{Binding TwoPass}" IsVisible="{Binding !IsImageMode}"/>
+    <CheckBox Content="{DynamicResource Improve.Resize}" IsChecked="{Binding AllowImageResize}" IsVisible="{Binding IsImageMode}"/>
+    <Grid ColumnDefinitions="*,100" IsVisible="{Binding IsPngImage}">
+     <TextBlock Text="{DynamicResource Improve.PngLevel}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+     <NumericUpDown Grid.Column="1" Minimum="0" Maximum="9" Increment="1" Value="{Binding PngCompressionLevel}" Width="100"/>
+    </Grid>
+    <CheckBox Content="{DynamicResource Improve.Copy}" IsChecked="{Binding StreamCopy}" IsVisible="{Binding !IsImageMode}"/>
+
+   </StackPanel>
+  </Expander>
 
                             <Grid ColumnDefinitions="100, *">
                                 <TextBlock Text="{DynamicResource Main.EstimatedResult}" Classes="Label" />
@@ -852,35 +762,20 @@
                     </Border>
 
                     <Border x:Name="OutputSettingsCard" Classes="Card">
-                        <StackPanel Spacing="12">
-                            <TextBlock Classes="H1" Text="{DynamicResource Main.OutputSettings}" />
-                            <TextBlock Text="{Binding SettingsScopeText}" IsVisible="{Binding HasSelectedInput}" TextWrapping="Wrap"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
-                            <Grid ColumnDefinitions="*, 10, Auto">
-                                <TextBox Grid.Column="0" Text="{Binding OutputPathText}"
-                                         Watermark="{DynamicResource Main.OutputWatermark}" IsReadOnly="True" Height="38"
-                                         VerticalContentAlignment="Center" />
-                                <Button Grid.Column="2" Content="{DynamicResource Main.ChangeOutput}" Command="{Binding SelectOutputFolderCommand}" IsEnabled="{Binding !IsProcessing}"
-                                        Height="38" />
-                            </Grid>
-                            <StackPanel Spacing="8" IsEnabled="{Binding !IsProcessing}">
-                                <TextBlock Text="{DynamicResource Improve.Pattern}" TextWrapping="Wrap"/>
-                                <TextBox Text="{Binding OutputNamePattern}"/>
-                                <CheckBox Content="{DynamicResource Improve.Folders}" IsChecked="{Binding PreserveFolderStructure}" IsVisible="{Binding IsBatchMode}"/>
-                            </StackPanel>
-                        </StackPanel>
+                        <views:OutputSettingsPanel DataContext="{Binding Output}"/>
                     </Border>
-                    <Border Classes="Card"><views:WorkspaceTools/></Border>
+                    <Border x:Name="ResultsCard" Classes="Card"><views:WorkspaceTools/></Border>
                 </StackPanel>
             </ScrollViewer>
+            </Grid>
 
             <Grid Grid.Row="2" Margin="0,10,0,0" RowDefinitions="Auto, Auto, Auto">
 
                 <Border Grid.Row="0" CornerRadius="8" Background="{DynamicResource ConsoleBackgroundBrush}"
-                        Padding="12" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        Padding="8" Margin="0,0,0,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <Grid RowDefinitions="Auto, *">
                         <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,6">
-                            <TextBlock Text="{DynamicResource Main.CliPreview}" Foreground="#6B7280" FontSize="10" FontWeight="Bold"
+                            <TextBlock Text="{DynamicResource Main.CliPreview}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10" FontWeight="Bold"
                                        VerticalAlignment="Center" />
                             <Button Grid.Column="1"
                                     Command="{Binding CopyCommandTextCommand}"
@@ -888,12 +783,12 @@
                                     Height="26"
                                     Padding="10,0"
                                     FontSize="12"
-                                    Foreground="#D1D5DB"
-                                    BorderBrush="#374151"
-                                    Background="#1F2937"
+                                    Foreground="{DynamicResource PrimaryTextBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    Background="{DynamicResource CardBackgroundBrush}"
                                     ToolTip.Tip="{DynamicResource Main.CopyCommand}"/>
                         </Grid>
-                        <ScrollViewer Grid.Row="1" MaxHeight="100">
+                        <ScrollViewer Grid.Row="1" MaxHeight="64">
                             <SelectableTextBlock Text="{Binding CommandText}"
                                                  FontFamily="Consolas, Cascadia Code, Monospace" FontSize="12"
                                                  Foreground="{DynamicResource ConsoleForegroundBrush}" TextWrapping="Wrap" />
@@ -924,12 +819,12 @@
 
                 <StackPanel Grid.Row="2" Spacing="8" HorizontalAlignment="Stretch">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="5">
-                        <TextBlock Text="{Binding ValidationMessage}" IsVisible="{Binding HasValidationMessage}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
+                        <TextBlock Text="{Binding ValidationMessage}" MaxHeight="48" ToolTip.Tip="{Binding ValidationMessage}" IsVisible="{Binding HasValidationMessage}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
                         <ProgressBar Height="6" IsVisible="{Binding IsProgressVisible}"
                                      Minimum="0" Maximum="100" Value="{Binding ProgressValue}"
                                      Foreground="{DynamicResource AccentBrush}"
                                      Background="{DynamicResource BorderBrush}" CornerRadius="3" />
-                        <TextBlock Text="{Binding ProgressText}" IsVisible="{Binding IsProgressVisible}" TextWrapping="Wrap"
+                        <TextBlock Text="{Binding ProgressText}" MaxHeight="32" ToolTip.Tip="{Binding ProgressText}" IsVisible="{Binding IsProgressVisible}" TextWrapping="Wrap"
                                    FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
                                    HorizontalAlignment="Center" />
                     </StackPanel>

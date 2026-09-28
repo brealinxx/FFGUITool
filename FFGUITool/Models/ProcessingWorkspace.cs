@@ -89,8 +89,8 @@ namespace FFGUITool.Models
             }
 
             var tasks = selection == ProcessingTaskSelection.Current
-                ? IndependentTasks.Where(task => task.IsSelected)
-                : IndependentTasks.Where(task => !failedOnly || task.IsFailed);
+                ? IndependentTasks.Where(task => task.IsIncluded && task.IsSelected)
+                : IndependentTasks.Where(task => task.IsIncluded && (!failedOnly || task.IsFailed));
             return tasks.ToList();
         }
 

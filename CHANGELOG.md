@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Capture detached workspace snapshots on the UI thread and serialize/commit through one background writer, coalescing pending saves and awaiting the final save on exit.
+- Coalesce running progress at 100 ms, retain synchronous terminal ordering, and calculate totals incrementally. Freeze execution inputs before background process startup; launch desktop notifications off the UI thread.
+- Cache batch collection facts independently of parameter changes; synchronize shared execution policy for preview, saving and execution. Replace the media cache's full clear with bounded LRU eviction.
+- Use one range notification for large queue permutations while preserving task identity, no-op containers and small incremental updates.
+- Introduce parameter, queue and output view models, explicit task editor state with version 1 workspace compatibility, and injectable processing/persistence dependencies.
+- Add responsive task/settings columns from 1180 DIP, one list/editor selection, per-file list removal, counted apply-to-all, parameter-adjacent presets/encoding controls, semantic warning colors, a compact CLI panel, and result counts with collapsed details/history.
+
+### Fixed
+
+- Preserve saved task parameters and the active file when restoring a queue; retain shared-folder editor state, legacy relative targets and percentage controls.
+- Restore image quality goals consistently, flush pending slider changes before applying settings to all files, and retain missing-input failure states.
+- Keep language changes from reapplying encoding presets or resetting task states.
+- Keep image quality estimates from displaying a video bitrate warning.
+- Exclude missing independent inputs from execution and retries after workspace restoration.
+- Prevent collection reordering from launching unintended task-editor restores.
+
+### Validation
+
+- Validate release tags against the project version before packaging, with regression checks for explicit tags, environment defaults and mismatches.
+- Run CI for dev and main; add Windows Release workspace recovery checks with bounded startup waits, failure diagnostics and artifact retention.
+
+- Added snapshot isolation, save coalescing/failure recovery, incremental progress, LRU, collection-summary, range-reorder and editor-compatibility regression coverage.
+- Extended real-window checks with continuous editing/autosave, progress storms, actual short image batches, restart recovery, selection checks and three window sizes. See [measurements and limitations](docs/PERFORMANCE.md).
+
 ## v1.10.0
 
 ### Added

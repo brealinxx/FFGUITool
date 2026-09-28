@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Threading;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
@@ -26,15 +25,15 @@ namespace FFGUITool.Services
         /// <summary>
         /// 分析视频文件
         /// </summary>
-        private readonly ConcurrentDictionary<string, (long Size, long Modified, VideoInfo Info)> _cache = new(PathIdentity.Comparer);
+        private readonly MediaInfoCache _cache = new();
 
         public async Task<VideoInfo?> AnalyzeVideo(string videoPath, CancellationToken cancellationToken = default)
         {
             if (!_ffmpegManager.IsFFmpegAvailable || !File.Exists(videoPath)) return null;
             var file = new FileInfo(videoPath);
             var key = Path.GetFullPath(videoPath);
-            if (_cache.TryGetValue(key, out var cached) && cached.Size == file.Length && cached.Modified == file.LastWriteTimeUtc.Ticks)
-                return cached.Info;
+            if (_cache.Get(key, file.Length, file.LastWriteTimeUtc.Ticks) is { } cached)
+                return cached;
             var directory = Path.GetDirectoryName(_ffmpegManager.FFmpegPath);
             var probe = string.IsNullOrWhiteSpace(directory) ? "ffprobe" :
                 Path.Combine(directory, OperatingSystem.IsWindows() ? "ffprobe.exe" : "ffprobe");
@@ -58,8 +57,7 @@ namespace FFGUITool.Services
             catch (Exception ex) { AppLogger.Warn($"Media analysis failed: {ex.Message}"); return null; }
             if (info != null)
             {
-                if (_cache.Count >= 512) _cache.Clear();
-                _cache[key] = (file.Length, file.LastWriteTimeUtc.Ticks, info);
+                _cache.Put(key, file.Length, file.LastWriteTimeUtc.Ticks, info);
             }
             return info;
         }

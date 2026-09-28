@@ -400,7 +400,7 @@ public partial class MainWindowViewModel
                 try
                 {
                     if (UseCrf) LimitFileSize = false;
-                    SelectedGoal = GoalOptions.Find(option => option.Value == (UseCrf ? "quality" : LimitFileSize ? "size" : "bitrate"));
+                    SelectedGoal = GoalOptions.Find(option => option.Value == (UseCrf ? "quality" : LimitFileSize ? "size" : IsImageMode ? "quality" : "bitrate"));
                 }
                 finally { _syncingGoal = false; }
             }

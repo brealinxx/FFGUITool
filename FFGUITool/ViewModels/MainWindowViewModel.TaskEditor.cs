@@ -66,6 +66,7 @@ public partial class MainWindowViewModel
         private void MarkSelectedSourceTab(string path)
         {
             _processingWorkspace.SelectIndependentTask(path);
+            Queue.NotifySelectionChanged();
         }
 
         private void PreserveCurrentFileAsSourceTab()
@@ -134,7 +135,8 @@ public partial class MainWindowViewModel
 
         private void SaveSelectedSourceTabSettings()
         {
-            if (_isLoadingSourceTab)
+            // Restored selection flags do not yet represent the live editor.
+            if (_isLoadingSourceTab || _restoringWorkspace)
             {
                 return;
             }
@@ -145,28 +147,12 @@ public partial class MainWindowViewModel
                 return;
             }
 
-            tab.Settings = CompressionSettings.Clone();
-            tab.IsAdvancedMode = IsAdvancedMode;
-            tab.CompressionPercentage = CompressionPercentage;
-            tab.TargetSizeMB = TargetSizeMB;
-            tab.Bitrate = Bitrate;
-            tab.UseCrf = UseCrf;
-            tab.Crf = Crf;
-            tab.SelectedPresetValue = SelectedCompressionPresetOption?.Value ?? "none";
-            tab.SelectedVideoFormatValue = SelectedVideoFormatOption?.Value ?? "mp4";
-            tab.SelectedAudioFormatValue = SelectedAudioFormatOption?.Value ?? "mp3";
-            tab.SelectedAudioBitrateValue = SelectedAudioBitrateOption?.Value ?? "96";
-            tab.SelectedAudioTrackModeValue = SelectedAudioTrackModeOption?.Value ?? "transcode";
-            tab.SelectedResolutionValue = SelectedResolutionOption?.Value ?? "720";
-            tab.SelectedImageFormatValue = SelectedImageFormatOption?.Value ?? "jpg";
-            tab.SelectedCodecValue = SelectedCodecOption?.Value ?? SelectedCodec;
-            tab.SelectedHardwareEncoderValue = SelectedHardwareEncoderOption?.Value ?? "";
-            tab.SelectedImageTargetSizeUnit = SelectedImageTargetSizeUnit;
+            Editor.SaveTo(tab);
             tab.SettingsSummary = BuildSourceTabSettingsSummary(tab.Settings);
             if (string.IsNullOrWhiteSpace(tab.Status))
             {
                 tab.State = ProcessingTaskState.Pending;
-            tab.Status = LocalizationService.T("SourceTabs.Pending");
+                tab.Status = LocalizationService.T("SourceTabs.Pending");
                 tab.StatusColor = "Gray";
             }
             tab.HasSettings = true;
@@ -220,6 +206,7 @@ public partial class MainWindowViewModel
                 _isRestoringSourceTab = false;
             }
 
+            if (IsBatchMode) RefreshSharedTaskPolicy();
             UpdateTargetSizeTexts();
             UpdateBitrateTexts();
             UpdateCrfText();
@@ -264,31 +251,18 @@ public partial class MainWindowViewModel
 
         private void CopySourceTabSettings(ProcessingTask source, ProcessingTask target)
         {
-            target.Settings = source.Settings.Clone();
-            target.Settings.InputPath = target.InputPath;
-            target.IsAdvancedMode = source.IsAdvancedMode;
-            target.CompressionPercentage = source.CompressionPercentage;
-            target.TargetSizeMB = source.TargetSizeMB;
-            target.Bitrate = source.Bitrate;
-            target.UseCrf = source.UseCrf;
-            target.Crf = source.Crf;
-            target.SelectedPresetValue = source.SelectedPresetValue;
-            target.SelectedVideoFormatValue = source.SelectedVideoFormatValue;
-            target.SelectedAudioFormatValue = source.SelectedAudioFormatValue;
-            target.SelectedAudioBitrateValue = source.SelectedAudioBitrateValue;
-            target.SelectedAudioTrackModeValue = source.SelectedAudioTrackModeValue;
-            target.SelectedResolutionValue = source.SelectedResolutionValue;
-            target.SelectedImageFormatValue = source.SelectedImageFormatValue;
-            target.SelectedCodecValue = source.SelectedCodecValue;
-            target.SelectedHardwareEncoderValue = source.SelectedHardwareEncoderValue;
-            target.SelectedImageTargetSizeUnit = source.SelectedImageTargetSizeUnit;
+            ParameterEditorViewModel.CopyTo(source, target);
             target.SettingsSummary = BuildSourceTabSettingsSummary(target.Settings);
-            target.State = ProcessingTaskState.Pending;
-            target.Status = LocalizationService.T("SourceTabs.Pending");
-            target.StatusColor = "Gray";
-            target.OutputPath = "";
-            target.Message = "";
-            target.IsFailed = false;
+            // An excluded missing input remains failed even when its parameters change.
+            if (target.IsIncluded)
+            {
+                target.State = ProcessingTaskState.Pending;
+                target.Status = LocalizationService.T("SourceTabs.Pending");
+                target.StatusColor = "Gray";
+                target.OutputPath = "";
+                target.Message = "";
+                target.IsFailed = false;
+            }
             target.HasSettings = true;
         }
 

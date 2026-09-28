@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
   workflow_dispatch:
 
 env:
@@ -54,6 +56,10 @@ jobs:
         shell: pwsh
         run: ./scripts/release-check.ps1
 
+      - name: Test release tag validation
+        shell: pwsh
+        run: ./scripts/test-release-check.ps1
+
       - name: Build
         run: dotnet build ${{ env.SOLUTION_PATH }} --configuration ${{ matrix.configuration }} --no-restore
 
@@ -61,3 +67,26 @@ jobs:
         env:
           FFGUITOOL_REQUIRE_FFMPEG: '1'
         run: dotnet test ${{ env.SOLUTION_PATH }} --configuration ${{ matrix.configuration }} --no-build
+
+      - name: Run Windows workspace recovery checks
+        if: runner.os == 'Windows' && matrix.configuration == 'Release'
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $artifacts = Join-Path $env:GITHUB_WORKSPACE 'TestResults/ui-recovery'
+          dotnet run --project scripts/UiChecks/UiChecks.csproj --configuration Release -p:OutputPath=bin/Release/ui-check/ -- $artifacts --recovery-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $metrics = Get-Content (Join-Path $artifacts 'metrics.json') -Raw | ConvertFrom-Json
+          if ($metrics.passed -ne $true) { throw 'Workspace recovery checks did not pass.' }
+
+      - name: Upload workspace recovery diagnostics
+        if: always() && runner.os == 'Windows' && matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-workspace-recovery
+          path: |
+            TestResults/ui-recovery/metrics.json
+            TestResults/ui-recovery/*.png
+            TestResults/ui-recovery/config/logs/*.log
+          if-no-files-found: warn
+          retention-days: 14

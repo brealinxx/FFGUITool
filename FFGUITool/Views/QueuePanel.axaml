@@ -1,28 +1,29 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:vm="using:FFGUITool.ViewModels" xmlns:models="using:FFGUITool.Models"
- x:Class="FFGUITool.Views.QueuePanel" x:DataType="vm:MainWindowViewModel" x:CompileBindings="True" x:Name="QueueRoot">
- <StackPanel Spacing="8" IsVisible="{Binding IsQueueVisible}">
+ x:Class="FFGUITool.Views.QueuePanel" x:DataType="vm:QueuePanelViewModel" x:CompileBindings="True" x:Name="QueueRoot">
+ <StackPanel Spacing="8" IsVisible="{Binding IsVisible}">
   <TextBlock Text="{DynamicResource Improve.Queue}" FontSize="16" FontWeight="SemiBold"/>
   <StackPanel Spacing="4">
-   <TextBox Text="{Binding QueueSearch}" Watermark="{DynamicResource Improve.Search}"/>
+   <TextBox Text="{Binding Search}" Watermark="{DynamicResource Improve.Search}"/>
    <WrapPanel>
-   <CheckBox Content="{DynamicResource Improve.FailedOnly}" IsChecked="{Binding FailedTasksOnly}" Margin="12,0"/>
-   <CheckBox Content="{DynamicResource Improve.Sort}" IsChecked="{Binding SortTasksByName}"/>
+   <CheckBox Content="{DynamicResource Improve.FailedOnly}" IsChecked="{Binding FailedOnly}" Margin="12,0"/>
+   <CheckBox Content="{DynamicResource Improve.Sort}" IsChecked="{Binding SortByName}"/>
    </WrapPanel>
   </StackPanel>
-  <ListBox ItemsSource="{Binding VisibleTasks}" Height="220" Background="Transparent" BorderThickness="0"
+  <ListBox ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" Height="220" Background="Transparent" BorderThickness="0"
            ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="{DynamicResource Improve.Queue}">
    <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
    <ListBox.ItemTemplate>
     <DataTemplate x:DataType="models:ProcessingTask" x:CompileBindings="False">
-     <Grid ColumnDefinitions="Auto,*,150" Margin="0,3">
+     <Grid ColumnDefinitions="Auto,*,130,Auto" Margin="0,3">
       <CheckBox IsVisible="{Binding UsesSharedSettings}" IsChecked="{Binding IsIncluded}" Margin="0,0,6,0"
-       Command="{Binding #QueueRoot.DataContext.RefreshBatchTaskSelectionCommand}"
-       IsEnabled="{Binding #QueueRoot.DataContext.IsProcessing, Converter={StaticResource InverseBoolConverter}}"/>
-      <Button Grid.Column="1" Command="{Binding #QueueRoot.DataContext.SelectSourceTabCommand}" CommandParameter="{Binding}"
-       IsEnabled="{Binding !UsesSharedSettings}" HorizontalContentAlignment="Left" BorderThickness="0" ToolTip.Tip="{Binding InputPath}">
-       <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
-      </Button>
+       Command="{Binding #QueueRoot.DataContext.RefreshInclusionCommand}"
+       IsEnabled="{Binding #QueueRoot.DataContext.IsBusy, Converter={StaticResource InverseBoolConverter}}"/>
+      <TextBlock Grid.Column="1" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+       ToolTip.Tip="{Binding InputPath}" Margin="4,0,8,0"/>
+      <Button Grid.Column="3" Content="×" Command="{Binding #QueueRoot.DataContext.RemoveCommand}" CommandParameter="{Binding}"
+       IsVisible="{Binding !UsesSharedSettings}" IsEnabled="{Binding !#QueueRoot.DataContext.IsBusy}"
+       ToolTip.Tip="{DynamicResource SourceTabs.Remove}" Padding="6,0" MinWidth="28"/>
       <TextBlock Grid.Column="2" Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
        ToolTip.Tip="{Binding Message}" Foreground="{Binding StatusColor, Converter={StaticResource StringToColorConverter}}"/>
      </Grid>

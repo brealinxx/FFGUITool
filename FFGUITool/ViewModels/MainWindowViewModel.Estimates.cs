@@ -196,6 +196,12 @@ public partial class MainWindowViewModel
 
         private void UpdateBitrateWarningAndEstimation()
         {
+            if (IsImageMode)
+            {
+                IsBitrateWarningVisible = false;
+                UpdateImageEstimation();
+                return;
+            }
             if (CurrentVideoInfo == null) return;
 
             if (CompressionSettings.UseCrf)

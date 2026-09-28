@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:FFGUITool.ViewModels" x:Class="FFGUITool.Views.ProcessingGoalPanel"
+ x:DataType="vm:ParameterEditorViewModel" x:CompileBindings="True">
+ <Grid ColumnDefinitions="100,*">
+  <TextBlock Text="{DynamicResource Improve.Mode}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0"/>
+  <ComboBox Grid.Column="1" ItemsSource="{Binding GoalOptions}" SelectedItem="{Binding SelectedGoal}" HorizontalAlignment="Stretch"/>
+ </Grid>
+</UserControl>

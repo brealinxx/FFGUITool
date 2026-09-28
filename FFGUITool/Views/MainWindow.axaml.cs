@@ -25,6 +25,7 @@ namespace FFGUITool.Views
             InitializeComponent();
             SizeChanged += (_, _) =>
             {
+                UpdateWorkspaceColumns();
                 // Re-arrange the workspace when shrinking a window with scrollable content.
                 WorkspaceRoot.InvalidateMeasure();
                 WorkspaceRoot.InvalidateArrange();
@@ -70,6 +71,28 @@ namespace FFGUITool.Views
             {
                 await _viewModel.InitializeAsync();
             };
+        }
+
+        private bool _wideLayout;
+        private void UpdateWorkspaceColumns()
+        {
+            // 360 DIP for tasks and at least 700 DIP for the English parameter editor.
+            var wide = ClientSize.Width >= 1180;
+            if (_wideLayout == wide) return;
+            _wideLayout = wide;
+            if (wide)
+            {
+                EditorStack.Children.Remove(TaskColumn);
+                TaskScroll.Content = TaskColumn;
+            }
+            else
+            {
+                TaskScroll.Content = null;
+                EditorStack.Children.Insert(0, TaskColumn);
+            }
+            WorkspaceColumns.ColumnDefinitions[0].Width = new GridLength(wide ? 360 : 0);
+            WorkspaceColumns.ColumnDefinitions[1].Width = new GridLength(wide ? 16 : 0);
+            TaskScroll.IsVisible = wide;
         }
 
         private void OnDragOver(object? sender, DragEventArgs e)

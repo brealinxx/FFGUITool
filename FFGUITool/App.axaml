@@ -25,6 +25,7 @@
                     <Color x:Key="SecondaryTextColor">#6B7280</Color>
                     <Color x:Key="AccentColor">#2563EB</Color>
                     <SolidColorBrush x:Key="WarningBrush">#92400E</SolidColorBrush>
+                    <SolidColorBrush x:Key="WarningBackgroundBrush">#FEF3C7</SolidColorBrush>
                     <SolidColorBrush x:Key="SuccessBrush">#166534</SolidColorBrush>
                     <SolidColorBrush x:Key="ErrorBrush">#B91C1C</SolidColorBrush>
                     <Color x:Key="BorderColor">#E5E7EB</Color>
@@ -40,6 +41,7 @@
                     <Color x:Key="SecondaryTextColor">#9CA3AF</Color>
                     <Color x:Key="AccentColor">#60A5FA</Color>
                     <SolidColorBrush x:Key="WarningBrush">#FBBF24</SolidColorBrush>
+                    <SolidColorBrush x:Key="WarningBackgroundBrush">#45351C</SolidColorBrush>
                     <SolidColorBrush x:Key="SuccessBrush">#4ADE80</SolidColorBrush>
                     <SolidColorBrush x:Key="ErrorBrush">#FCA5A5</SolidColorBrush>
                     <Color x:Key="BorderColor">#374151</Color>
@@ -63,5 +65,6 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="/Views/WorkspaceStyles.axaml"/>
         </Application.Styles>
 </Application>

@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:FFGUITool.ViewModels" x:Class="FFGUITool.Views.OutputSettingsPanel"
+ x:DataType="vm:OutputSettingsViewModel" x:CompileBindings="True">
+ <StackPanel Spacing="10" IsEnabled="{Binding !IsProcessing}">
+  <TextBlock Classes="H1" Text="{DynamicResource Main.OutputSettings}"/>
+  <Grid ColumnDefinitions="*,10,Auto">
+   <TextBox Text="{Binding OutputPathText}" Watermark="{DynamicResource Main.OutputWatermark}" IsReadOnly="True"
+    ToolTip.Tip="{Binding OutputPathText}" Height="38" VerticalContentAlignment="Center"/>
+   <Button Grid.Column="2" Content="{DynamicResource Main.ChangeOutput}" Command="{Binding SelectFolderCommand}"/>
+  </Grid>
+  <TextBlock Text="{DynamicResource Improve.Pattern}" TextWrapping="Wrap"/>
+  <TextBox Text="{Binding OutputNamePattern}"/>
+  <CheckBox Content="{DynamicResource Improve.Folders}" IsChecked="{Binding PreserveFolderStructure}" IsVisible="{Binding IsBatchMode}"/>
+ </StackPanel>
+</UserControl>

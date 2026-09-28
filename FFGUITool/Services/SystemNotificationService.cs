@@ -2,12 +2,16 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace FFGUITool.Services
 {
     public static class SystemNotificationService
     {
-        public static void Show(string title, string message, bool isError = false)
+        public static void Show(string title, string message, bool isError = false) =>
+            _ = Task.Run(() => ShowCore(title, message, isError));
+
+        private static void ShowCore(string title, string message, bool isError)
         {
             try
             {

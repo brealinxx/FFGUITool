@@ -15,13 +15,12 @@ namespace FFGUITool.ViewModels;
 
 public partial class MainWindowViewModel
 {
-    private readonly WorkspaceStore _workspaceStore = new();
+    private readonly WorkspaceStore _workspaceStore;
+    private readonly WorkspacePersistence _workspacePersistence;
+    private bool _exitSaved;
     private WorkspaceDocument _savedWorkspace = new();
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly DispatcherTimer _queueTimer = new() { Interval = TimeSpan.FromMilliseconds(80) };
-    private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
-    private string _appliedQueueSearch = "";
-    private readonly HashSet<ProcessingTask> _observedQueueTasks = new();
     private readonly DispatcherTimer _sliderTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private Action? _pendingSliderUpdate;
     private bool _featuresReady;
@@ -31,16 +30,16 @@ public partial class MainWindowViewModel
     private CancellationTokenSource? _scanCancellation;
     private CancellationTokenSource? _inputCancellation;
     private readonly SemaphoreSlim _inputGate = new(1, 1);
-    private readonly Dictionary<ProcessingTask, double> _taskFractions = new();
+    private readonly ProcessingProgressTotals _progressTotals = new();
 
-    [ObservableProperty] private bool _limitFileSize = true;
-    [ObservableProperty] private bool _twoPass;
-    [ObservableProperty] private bool _allowImageResize;
-    [ObservableProperty] private int _pngCompressionLevel = 6;
+    public bool LimitFileSize { get => Editor.LimitFileSize; set => Editor.LimitFileSize = value; }
+    public bool TwoPass { get => Editor.TwoPass; set => Editor.TwoPass = value; }
+    public bool AllowImageResize { get => Editor.AllowImageResize; set => Editor.AllowImageResize = value; }
+    public int PngCompressionLevel { get => Editor.PngCompressionLevel; set => Editor.PngCompressionLevel = value; }
     public bool IsPngImage => IsImageMode && (EnableFormatConversion ? SelectedImageFormatOption?.Value == "png" : Path.GetExtension(CompressionSettings.InputPath).ToLowerInvariant() is ".png" or ".bmp");
-    [ObservableProperty] private bool _streamCopy;
-    [ObservableProperty] private string _outputNamePattern = "{name}_FFGUIToolOutPut_{label}";
-    [ObservableProperty] private bool _preserveFolderStructure = true;
+    public bool StreamCopy { get => Editor.StreamCopy; set => Editor.StreamCopy = value; }
+    public string OutputNamePattern { get => Output.OutputNamePattern; set => Output.OutputNamePattern = value; }
+    public bool PreserveFolderStructure { get => Output.PreserveFolderStructure; set => Output.PreserveFolderStructure = value; }
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasValidationMessage))] private string _validationMessage = "";
     public bool HasValidationMessage => !string.IsNullOrWhiteSpace(ValidationMessage);
     [ObservableProperty] private bool _isScanning;
@@ -50,22 +49,25 @@ public partial class MainWindowViewModel
     [ObservableProperty] private string _presetName = "";
     [ObservableProperty] private SavedPreset? _selectedSavedPreset;
     [ObservableProperty] private HistoryEntry? _selectedHistory;
-    [ObservableProperty] private string _queueSearch = "";
-    [ObservableProperty] private bool _failedTasksOnly;
-    [ObservableProperty] private bool _sortTasksByName;
+    public string QueueSearch { get => Queue.Search; set => Queue.Search = value; }
+    public bool FailedTasksOnly { get => Queue.FailedOnly; set => Queue.FailedOnly = value; }
+    public bool SortTasksByName { get => Queue.SortByName; set => Queue.SortByName = value; }
     [ObservableProperty] private string _resultSummary = "";
     [ObservableProperty] private bool _hasResults;
+    private (int Success, int Warning, int Failed, int Cancelled) _resultCounts;
+    public string ResultCountsText => LocalizationService.Format("Improve.ResultCounts", _resultCounts.Success, _resultCounts.Warning, _resultCounts.Failed, _resultCounts.Cancelled);
     [ObservableProperty] private bool _isPreviewing;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasMediaNotice))] private string _mediaNotice = "";
     public bool HasMediaNotice => !string.IsNullOrWhiteSpace(MediaNotice);
-    [ObservableProperty] private CodecOption? _selectedGoal;
-    public List<CodecOption> GoalOptions { get; private set; } = new();
+    public CodecOption? SelectedGoal { get => Editor.SelectedGoal; set => Editor.SelectedGoal = value; }
+    public List<CodecOption> GoalOptions { get => Editor.GoalOptions; private set => Editor.GoalOptions = value; }
     public ObservableCollection<SavedPreset> SavedPresets { get; } = new();
     public ObservableCollection<HistoryEntry> History { get; } = new();
-    public ObservableCollection<ProcessingTask> VisibleTasks { get; } = new();
+    public ObservableCollection<ProcessingTask> VisibleTasks => Queue.Tasks;
     public bool HasQueue => SourceTabs.Count > 0 || BatchTasks.Count > 0;
     public bool IsQueueVisible => IsBatchMode ? BatchTasks.Count > 0 : SourceTabs.Count > 5;
     public bool UseSourceTabs => !IsBatchMode && SourceTabs.Count is > 0 and <= 5;
+    public string ApplyToAllText => LocalizationService.Format("Improve.ApplyAllCount", Math.Max(0, SourceTabs.Count - 1));
     public string SettingsScopeText => LocalizationService.Format(IsBatchMode ? "Improve.ScopeShared" : "Improve.ScopeIndependent",
         Path.GetFileName(CompressionSettings.InputPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)));
     private MediaImportReport? _lastImportReport;
@@ -99,7 +101,6 @@ public partial class MainWindowViewModel
         _saveTimer.Tick += (_, _) => { _saveTimer.Stop(); PersistWorkspace(); };
         _sliderTimer.Tick += (_, _) => FlushSliderUpdate();
         _queueTimer.Tick += (_, _) => { _queueTimer.Stop(); RefreshVisibleTasks(); };
-        _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); _appliedQueueSearch = QueueSearch; RefreshVisibleTasks(); };
         SourceTabs.CollectionChanged += (_, _) => { _queueTimer.Stop(); _queueTimer.Start(); ScheduleWorkspaceSave(); };
         BatchTasks.CollectionChanged += (_, _) => { if (!IsScanning) { _queueTimer.Stop(); _queueTimer.Start(); } };
         _featuresReady = true;
@@ -128,10 +129,6 @@ public partial class MainWindowViewModel
                 var config = AppConfigService.Load();
                 config.CloseToTray = CloseToTray; config.ImageParallelism = Math.Clamp(ImageParallelism, 1, 4);
                 AppConfigService.Save(config); return true;
-            case nameof(QueueSearch):
-                _searchTimer.Stop(); _searchTimer.Start(); return true;
-            case nameof(FailedTasksOnly): case nameof(SortTasksByName):
-                RefreshVisibleTasks(); return true;
             case nameof(IsBatchMode): case nameof(InputPathText):
                 OnPropertyChanged(nameof(SettingsScopeText)); break;
         }
@@ -166,6 +163,8 @@ public partial class MainWindowViewModel
         UpdateMediaNotice();
         OnPropertyChanged(nameof(SettingsScopeText));
         OnPropertyChanged(nameof(ImportSummary));
+        OnPropertyChanged(nameof(ApplyToAllText));
+        OnPropertyChanged(nameof(ResultCountsText));
     }
 
     private void ApplyFeatureSettings()
@@ -190,7 +189,7 @@ public partial class MainWindowViewModel
         StreamCopy = CompressionSettings.StreamCopy;
         OutputNamePattern = CompressionSettings.OutputNamePattern;
         PreserveFolderStructure = CompressionSettings.PreserveFolderStructure;
-        SelectedGoal = GoalOptions.Find(option => option.Value == (CompressionSettings.UseCrf ? "quality" : CompressionSettings.LimitFileSize ? "size" : "bitrate"));
+        SelectedGoal = GoalOptions.Find(option => option.Value == (CompressionSettings.UseCrf ? "quality" : CompressionSettings.LimitFileSize ? "size" : IsImageMode ? "quality" : "bitrate"));
     }
 
     private void ScheduleWorkspaceSave()
@@ -199,14 +198,21 @@ public partial class MainWindowViewModel
         _saveTimer.Stop(); _saveTimer.Start();
     }
 
-    private void PersistWorkspace()
+    private void OnWorkspaceSaveFailed(Exception error)
     {
-        if (!_featuresReady || _restoringWorkspace || _isLoadingSourceTab) return;
+        AppLogger.Error("Workspace save failed.", error);
+        Dispatcher.UIThread.Post(() => ValidationMessage = LocalizationService.T("Improve.SaveFailed"));
+    }
+
+    private bool PersistWorkspace()
+    {
+        if (!_featuresReady || _restoringWorkspace || _isLoadingSourceTab) return false;
         try
         {
             if (_workspaceActivated || HasSelectedInput || HasQueue)
             {
                 SaveSelectedSourceTabSettings();
+                if (IsBatchMode) RefreshSharedTaskPolicy();
                 _savedWorkspace.ImageMode = IsImageMode;
                 _savedWorkspace.FolderMode = IsBatchMode;
                 _savedWorkspace.FolderPath = IsBatchMode ? CompressionSettings.InputPath : "";
@@ -217,34 +223,21 @@ public partial class MainWindowViewModel
             _savedWorkspace.Presets = SavedPresets.ToList();
             _savedWorkspace.History = History.Take(100).ToList();
             _savedWorkspace.GeneratedPaths = MediaFileSupport.GeneratedPaths.ToList();
-            _workspaceStore.Save(_savedWorkspace);
+            _workspacePersistence.Enqueue(WorkspacePersistence.Capture(_savedWorkspace));
+            return true;
         }
-        catch (Exception ex) { AppLogger.Error("Workspace save failed.", ex); ValidationMessage = LocalizationService.T("Improve.SaveFailed"); }
+        catch (Exception ex) { AppLogger.Error("Workspace save failed.", ex); ValidationMessage = LocalizationService.T("Improve.SaveFailed"); return false; }
     }
 
     private void RefreshVisibleTasks()
     {
         _queueTimer.Stop();
-        var source = IsBatchMode ? BatchTasks : SourceTabs;
-        var current = source.ToHashSet();
-        foreach (var removed in _observedQueueTasks.Where(task => !current.Contains(task)).ToArray())
-        { removed.PropertyChanged -= OnQueueTaskChanged; _observedQueueTasks.Remove(removed); }
-        foreach (var task in source)
-            if (_observedQueueTasks.Add(task)) task.PropertyChanged += OnQueueTaskChanged;
-        IEnumerable<ProcessingTask> tasks = source;
-        tasks = tasks.Where(t => (!FailedTasksOnly || t.IsFailed) &&
-            (string.IsNullOrWhiteSpace(_appliedQueueSearch) || t.InputPath.Contains(_appliedQueueSearch, StringComparison.OrdinalIgnoreCase)));
-        if (SortTasksByName) tasks = tasks.OrderBy(t => t.FileName, StringComparer.CurrentCultureIgnoreCase);
-        QueueViewUpdater.Update(VisibleTasks, tasks.ToList());
+        Queue.Refresh(IsBatchMode);
         OnPropertyChanged(nameof(HasQueue));
         OnPropertyChanged(nameof(IsQueueVisible));
         OnPropertyChanged(nameof(UseSourceTabs));
-    }
-
-    private void OnQueueTaskChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (FailedTasksOnly && e.PropertyName == nameof(ProcessingTask.IsFailed))
-        { _queueTimer.Stop(); _queueTimer.Start(); }
+        OnPropertyChanged(nameof(ApplyToAllText));
+        OnPropertyChanged(nameof(ResultCountsText));
     }
 
     [RelayCommand]
@@ -278,8 +271,19 @@ public partial class MainWindowViewModel
         if (IsProcessing && !await _dialogService.ShowConfirmation(LocalizationService.T("Improve.Exit"), LocalizationService.T("Improve.ExitRunning"))) return false;
         _executionCancellation?.Cancel(); _scanCancellation?.Cancel(); _inputCancellation?.Cancel(); _previewCancellation?.Cancel();
         _previewWindow?.Close();
-        while (IsProcessing || IsScanning || IsPreviewing) await Task.Delay(50);
-        PersistWorkspace();
+        while (IsProcessing || IsScanning || IsPreviewing || _isLoadingSourceTab) await Task.Delay(50);
+        await _inputGate.WaitAsync();
+        _inputGate.Release();
+        FlushSliderUpdate();
+        _saveTimer.Stop();
+        if (!PersistWorkspace()) return false;
+        if (await _workspacePersistence.FlushAsync() is { } error)
+        {
+            AppLogger.Error("Final workspace save failed.", error);
+            ValidationMessage = LocalizationService.T("Improve.SaveFailed");
+            return false;
+        }
+        _exitSaved = true;
         return true;
     }
 
@@ -324,12 +328,7 @@ public partial class MainWindowViewModel
         { ValidationMessage = LocalizationService.T("Improve.PresetModeMismatch"); return; }
         var task = new ProcessingTask(CompressionSettings.InputPath, settings.Clone(), ProcessingSettingsScope.Independent)
         {
-            HasSettings = true, IsAdvancedMode = true, TargetSizeMB = settings.IsImageProcessing ? settings.ImageTargetSizeKB : settings.TargetSizeMB,
-            Bitrate = settings.IsImageProcessing ? settings.ImageQuality : settings.Bitrate, UseCrf = settings.UseCrf, Crf = settings.Crf,
-            SelectedVideoFormatValue = settings.OutputFormat, SelectedAudioFormatValue = settings.AudioOutputFormat,
-            SelectedImageFormatValue = settings.ImageOutputFormat, SelectedAudioBitrateValue = settings.AudioBitrate.ToString(),
-            SelectedAudioTrackModeValue = settings.AudioTrackMode, SelectedResolutionValue = settings.ResolutionHeight.ToString(),
-            SelectedCodecValue = settings.Codec, SelectedHardwareEncoderValue = settings.AllowHardwareFallback ? "auto" : settings.HardwareEncoder
+            HasSettings = true, EditorState = TaskEditorState.FromSettings(settings)
         };
         RestoreSourceTabSettings(task);
     }
@@ -356,7 +355,7 @@ public partial class MainWindowViewModel
                 task.StatusColor = "Gray";
                 task.IsFailed = !File.Exists(task.InputPath);
                 task.IsIncluded = task.IsIncluded && !task.IsFailed;
-                if (task.IsFailed) { task.Status = LocalizationService.T("SourceTabs.Failed"); task.Message = LocalizationService.T("Improve.MissingInput"); }
+                if (task.IsFailed) { task.State = ProcessingTaskState.Failed; task.Status = LocalizationService.T("SourceTabs.Failed"); task.StatusColor = "Red"; task.Message = LocalizationService.T("Improve.MissingInput"); }
                 if (folder) BatchTasks.Add(task); else SourceTabs.Add(task);
             }
             if (folder)
@@ -364,12 +363,25 @@ public partial class MainWindowViewModel
                 CompressionSettings.InputPath = folderPath;
                 SetInputPathText(folderPath);
                 HasSelectedInput = Directory.Exists(folderPath);
-                if (saved.Count > 0) ApplySavedSettings(saved[0].Settings);
+                TargetSizeSliderMinimum = 1;
+                TargetSizeSliderMaximum = 100;
+                if (saved.Count > 0)
+                {
+                    var first = saved[0];
+                    var sharedEditor = new ProcessingTask(folderPath, first.Settings.Clone(), ProcessingSettingsScope.Shared)
+                    {
+                        HasSettings = true,
+                        EditorState = first.HasSettings ? first.EditorState.Clone() : TaskEditorState.FromSettings(first.Settings)
+                    };
+                    // Older workspaces stored the folder ratio only in the execution policy.
+                    sharedEditor.TargetSizeMB = Math.Clamp(first.UsesRelativeTarget ? first.RelativeTargetPercentage : first.Settings.CompressionPercentage, 1, 100);
+                    RestoreSourceTabSettings(sharedEditor);
+                }
                 CompressionSettings.InputPath = folderPath;
                 IsBatchTaskListVisible = true;
                 RefreshBatchTaskSelection();
             }
-            else if (SourceTabs.FirstOrDefault(t => !t.IsFailed) is { } selected)
+            else if ((SourceTabs.FirstOrDefault(t => t.IsSelected && !t.IsFailed) ?? SourceTabs.FirstOrDefault(t => !t.IsFailed)) is { } selected)
             {
                 IsSourceTabsVisible = true;
                 await SelectSourceTabCore(selected, true);
@@ -385,7 +397,7 @@ public partial class MainWindowViewModel
     private void DiscardSavedQueue()
     {
         _savedWorkspace.Tasks.Clear(); HasSavedQueue = false;
-        _workspaceStore.Save(_savedWorkspace);
+        _workspacePersistence.Enqueue(WorkspacePersistence.Capture(_savedWorkspace));
     }
 
     [RelayCommand]
@@ -418,8 +430,13 @@ public partial class MainWindowViewModel
 
     private void RecordResults(ProcessingExecutionSummary summary, IReadOnlyList<ProcessingTask> tasks)
     {
+        var warnings = summary.Results.Count(result => !string.IsNullOrEmpty(result.Warning));
+        _resultCounts = (summary.Results.Count - warnings, warnings, summary.Failures.Count,
+            summary.WasCancelled ? Math.Max(0, tasks.Count - summary.Results.Count - summary.Failures.Count) : 0);
+        OnPropertyChanged(nameof(ResultCountsText));
         ResultSummary = ProcessingResultFormatter.FormatSummary(summary);
         HasResults = true;
+        var settingsByPath = tasks.ToDictionary(task => task.InputPath, task => task.Settings, PathIdentity.Comparer);
         foreach (var result in summary.Results)
         {
             MediaFileSupport.GeneratedPaths.Add(Path.GetFullPath(result.OutputPath));
@@ -427,7 +444,7 @@ public partial class MainWindowViewModel
             {
                 InputPath = result.InputPath, OutputPath = result.OutputPath, FinishedAt = DateTime.Now,
                 BeforeBytes = result.InputInfo?.FileSize ?? 0, AfterBytes = result.OutputInfo?.FileSize ?? 0,
-                Warning = result.Warning, Settings = tasks.First(t => t.InputPath == result.InputPath).Settings.Clone()
+                Warning = result.Warning, Settings = settingsByPath[result.InputPath].Clone()
             });
         }
         while (History.Count > 100) History.RemoveAt(History.Count - 1);
