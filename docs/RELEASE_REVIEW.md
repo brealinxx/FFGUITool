@@ -1,6 +1,6 @@
 # 发布前审查 / Release readiness review
 
-日期：2026-09-28。范围：相对 `468b36f`（v1.10.0）的本地未提交改动及新增文件。本轮保留原有改动，版本维持 `1.10.0`，新增说明仍归入 Unreleased。
+日期：2026-09-28。范围：相对 `468b36f`（v1.10.0）的工作区改进，已在 `ab662f6` 提交。按用户发布要求，项目、程序集、manifest、安装器与中英文说明现同步为 **v1.11.0**；以下性能记录保留测量时的原版本信息。发布内容见 [v1.11.0 说明](releases/v1.11.0.md)。
 
 ## 新增功能核对
 
@@ -27,7 +27,7 @@
 
 - 使用 WSL 调用本机 Windows .NET SDK 10.0.400，项目目标仍为 .NET 8；执行前已重新 restore。
 - 修复后 `FFGUITOOL_REQUIRE_FFMPEG=1`：Debug、Release 各 **62 通过、0 失败、0 跳过**。
-- `scripts/release-check.ps1` 通过，验证的是现有 **1.10.0** 元数据一致性，不代表下一版本已准备好。
+- v1.11.0 发布准备重新通过 `scripts/release-check.ps1 -Tag v1.11.0`、标签正反例回归及 Debug/Release 各 62 项测试（0 跳过）；新版本恢复检查也通过，产物为 `TestResults/v1.11.0-recovery-20260928/metrics.json`。
 - 针对恢复的真实 Avalonia 检查通过，包含参数、目标、立即复制滑块、语言切换及共享比例；最终完整界面复跑结果见下方记录。
 - 普通 `git diff --check` 仍会报告工作区既有 CRLF/LF 差异；`git -c core.autocrlf=true diff --check` 通过。未批量改写行尾。
 - 全部合成媒体、配置、日志、输出和截图位于忽略的 `TestResults` 内；未使用或删除真实用户媒体及配置。
@@ -44,9 +44,9 @@
 
 截图：[英文宽窗口深色](../TestResults/release-review-final-20260928/en-US-dark-1360x900.png)、[中文小窗口浅色](../TestResults/release-review-final-20260928/zh-CN-light-760x560-settings.png)、[结果区](../TestResults/release-review-final-20260928/results-en-US-dark-760x560.png)、[视频编码器](../TestResults/release-review-final-20260928/video-codec-en-US-dark-760x560.png)。这些产物仅保留在本地忽略目录。
 
-## 发布前剩余事项
+## 发布安排与未验证范围
 
-- 确定下一版本号后，同步项目/程序集、manifest、安装器默认值、README 示例、CHANGELOG 和标签；初次审查未创建提交、标签、安装包或线上 Release；后续按用户要求在 dev 开发并同步分支，版本号与发布标签仍单独处理。
+- 本次版本定为 v1.11.0；在 dev 提交版本与说明，同步 main 后推送同名标签，由 Release 工作流校验、构建各平台包并附带中英文说明发布。以 GitHub 对应工作流结果和 Release 附件为最终发布依据。
 - 本轮实际桌面为 Windows、125% 缩放。macOS/Linux 桌面、100%/150%/200% 与跨屏缩放、真实 GPU 编码、各架构安装包安装/启动仍需对应环境验收；不能以 Windows 回归代替。
 - 千文件测量使用合成小图片。大型媒体、真实万文件窗口、长时间内存稳定性、整个进程崩溃/断电恢复未在本轮验证。
 
@@ -56,8 +56,8 @@
 2. **已接入恢复场景 CI**：CI 覆盖 dev/main，Windows Release 增加 `--recovery-only`，10 分钟超时，并核验退出码和指标文件。runner 改为有界等待实际初始化，仅生成两张恢复测试图片；失败时保存诊断截图，CI 保留指标和日志 14 天。常规 `dotnet test` 仍不包含这些桌面断言。
 3. **更大范围重构后置**：继续拆分主 ViewModel、固定参数作用范围提示、工具配置与预览缩放，可在发布后逐步推进；本次发布前优先收敛状态正确性和平台验收。
 
-优先增强本地验证：标签校验回归通过（正确标签和 9 个拒绝场景）；Debug/Release 各 62 项通过、无跳过；更新后的恢复 runner 通过（`TestResults/dev-ci-recovery-20260928/metrics.json`，Windows 125%）。CI YAML 解析与行尾归一化差异检查通过。远程 Actions 结果应按对应提交单独核验。
+优先增强本地验证：标签校验回归通过（正确标签和 9 个拒绝场景）；Debug/Release 各 62 项通过、无跳过；更新后的恢复 runner 通过（`TestResults/dev-ci-recovery-20260928/metrics.json`，Windows 125%）。CI YAML 解析与行尾归一化差异检查通过。功能提交 `ab662f6` 的 [dev CI](https://github.com/brealinxx/FFGUITool/actions/runs/36427042460) 与 [main CI](https://github.com/brealinxx/FFGUITool/actions/runs/36427042779) 均已通过全部六个跨平台任务；版本提交及标签发布结果仍按对应运行单独核验。
 
 ## English summary
 
-The review found and fixed queue-restoration data loss, shared-folder ratio restoration, image-goal mismatches, stale slider values during apply-to-all, language-change side effects, and missing-input status inconsistencies. Both FFmpeg-required test configurations pass (62 each, no skips). Version metadata remains at 1.10.0; selecting and publishing the next version and additional platform/device verification are separate remaining steps.
+The review found and fixed queue-restoration data loss, shared-folder ratio restoration, image-goal mismatches, stale slider values during apply-to-all, language-change side effects, and missing-input status inconsistencies. Both FFmpeg-required test configurations pass (62 each, no skips). The release version is now 1.11.0, with bilingual release notes and synchronized version metadata. Earlier measurements retain their original build information. Release artifacts and remaining device/platform coverage must be assessed separately.

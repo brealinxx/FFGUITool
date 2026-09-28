@@ -102,6 +102,6 @@ Windows 安装包需要 Inno Setup；DMG 依赖 macOS 的 `hdiutil`。/ Windows 
 
 发布前可执行 `./scripts/release-check.ps1 -Tag v<version>`（替换为实际版本）。发布工作流显式传入 `RELEASE_TAG`；必须与 `v<Version>` 大小写一致，空标签、分支名及错配版本均失败。未指定标签的本地运行仅检查元数据；也可通过 `RELEASE_TAG` 环境变量检查。 / Release jobs explicitly validate the tag against the project version; local metadata-only checks may omit the tag.
 
-同步项目版本、程序集版本、`app.manifest`、安装器默认版本、中英文 README 示例及 CHANGELOG。通过测试和元数据检查后，将发布提交合入 main，再推送对应的 `v<version>` 标签。标签会触发 GitHub Actions 构建、打包并上传 Release 附件；推送成功不代表构建已完成。
+同步项目版本、程序集版本、`app.manifest`、安装器默认版本、中英文 README 示例及 CHANGELOG，并创建 `docs/releases/v<version>.md` 中英文发布说明。发布工作流从同一标签检出说明文件，上传附件时作为 GitHub Release 正文。通过测试和元数据检查后，将发布提交合入 main，再推送对应的 `v<version>` 标签。标签会触发 GitHub Actions 构建、打包并上传 Release 附件；推送成功不代表构建已完成。
 
-Update the project/assembly versions, manifest, installer fallback version, README examples, and changelog together. After validation, merge into main and push the matching `v<version>` tag. The tag triggers package builds and Release asset uploads; a successful push does not mean those jobs have finished.
+Update the project/assembly versions, manifest, installer fallback version, README examples, and changelog together, and add bilingual notes at `docs/releases/v<version>.md`. The release job reads those notes from the same tag and publishes them alongside the assets. After validation, merge into main and push the matching `v<version>` tag. The tag triggers package builds and Release asset uploads; a successful push does not mean those jobs have finished.

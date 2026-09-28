@@ -87,7 +87,7 @@ try {
 git diff --check
 ```
 
-- 发布工作流必须显式传入 `-Tag $env:RELEASE_TAG`，要求标签严格等于 `v<Version>`；本地未提供标签时只检查文件元数据。Windows Release CI 还须执行 `UiChecks --recovery-only`，检查非零退出码与 `metrics.json`，保留失败诊断，不将超时或缺少 FFmpeg 视为跳过。
+- 发布工作流必须显式传入 `-Tag $env:RELEASE_TAG`，要求标签严格等于 `v<Version>`；本地未提供标签时只检查文件元数据。发布须提供 `docs/releases/v<Version>.md` 中英文说明，上传阶段检出同一标签并将说明作为 Release 正文，缺少说明或附件须失败。Windows Release CI 还须执行 `UiChecks --recovery-only`，检查非零退出码与 `metrics.json`，保留失败诊断，不将超时或缺少 FFmpeg 视为跳过。
 - `dotnet test` 包含构建；仅编译可用 `dotnet build FFGUIToolAvalonia.sln --configuration Debug --no-restore`，Release 同理。
 - FFmpeg 测试跳过不能算完整回归通过；区分依赖、权限和代码问题，不降低测试要求。CI 配置存在不代表已经运行成功。
 - 回归重点：旧输出保护、取消清理、失败继续、输出冲突、参数快照、两遍编码、图片超限警告、流复制、缓存、试压清理和路径转义。

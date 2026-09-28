@@ -6,14 +6,14 @@
 
 ![FFGUITool 主界面：文件队列、压缩参数与命令预览](Assets/intro.png)
 
-## 未发布改进（Unreleased）
+## v1.11.0 更新
 
 - 工作区以独立快照交给后台单写入者保存，退出等待最终保存。
 - 合并运行进度，大幅队列重排使用范围更新；512 条媒体缓存逐条淘汰并保留热点文件。
 - 宽窗口并排显示任务和参数，窄窗口保留单列；列表支持直接选择编辑任务和逐个移除，预设及高级编码选项靠近参数区。
 - 恢复队列保留独立参数与文件夹比例；应用到全部包含滑块最新值，切换语言保留参数和任务状态。
 - 发布流程校验标签与版本一致性；dev 与 main 的 CI 纳入 Windows 工作区恢复检查。
-- 本轮检查结论与发布前剩余事项见[发布前审查](docs/RELEASE_REVIEW.md)。
+- 版本变化见 [v1.11.0 发布说明](docs/releases/v1.11.0.md)，验证范围见[发布审查](docs/RELEASE_REVIEW.md)。
 - 实测数据、验证范围与后续事项见[性能与验收记录](docs/PERFORMANCE.md)。
 
 ## 下载与安装
@@ -67,7 +67,7 @@ dotnet restore FFGUIToolAvalonia.sln
 dotnet run --project FFGUITool/FFGUITool.csproj
 ```
 
-测试、千文件界面验证和打包方法见 [开发与发布指南](docs/DEVELOPMENT.md)。当前绿色版命名示例：`FFGUITool-v1.10.0-<platform>-Portable.zip`。
+测试、千文件界面验证和打包方法见 [开发与发布指南](docs/DEVELOPMENT.md)。当前绿色版命名示例：`FFGUITool-v1.11.0-<platform>-Portable.zip`。
 
 ## 许可证
 

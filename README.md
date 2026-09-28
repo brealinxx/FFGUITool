@@ -6,14 +6,14 @@ A cross-platform FFmpeg desktop app for compressing and converting video, audio,
 
 ![FFGUITool interface showing the file queue, compression settings, and command preview](Assets/intro.png)
 
-## Unreleased improvements
+## What’s new in v1.11.0
 
 - Workspace saves use detached snapshots and a background writer; exit waits for the final save.
 - Running progress is coalesced, large queue reorders use range updates, and the 512-entry media cache retains recently used files.
 - Wide windows show tasks beside settings; narrow windows keep one column. Lists support editing selection and per-file removal; presets and advanced encoding options sit near the parameters.
 - Queue restoration retains per-file settings and folder ratios; applying to all files includes the latest slider value, and language changes preserve parameters and task states.
 - Release automation checks tag/version agreement; dev and main CI include Windows workspace recovery checks.
-- See the [release readiness review](docs/RELEASE_REVIEW.md) for the latest checks and remaining release steps.
+- See the [v1.11.0 release notes](docs/releases/v1.11.0.md) and [verification review](docs/RELEASE_REVIEW.md) for changes and validation scope.
 - See the [measured performance and verification report](docs/PERFORMANCE.md) for results and remaining work.
 
 ## Download and install
@@ -67,7 +67,7 @@ dotnet restore FFGUIToolAvalonia.sln
 dotnet run --project FFGUITool/FFGUITool.csproj
 ```
 
-See the [development and release guide](docs/DEVELOPMENT.md) for tests, the 1,000-file UI check, and packaging. Current portable naming example: `FFGUITool-v1.10.0-<platform>-Portable.zip`.
+See the [development and release guide](docs/DEVELOPMENT.md) for tests, the 1,000-file UI check, and packaging. Current portable naming example: `FFGUITool-v1.11.0-<platform>-Portable.zip`.
 
 ## License
 

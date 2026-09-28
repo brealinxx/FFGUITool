@@ -83,6 +83,9 @@ if ($PSBoundParameters.ContainsKey('Tag') -or -not [string]::IsNullOrEmpty($Tag)
 Assert-Equal "AssemblyVersion" "$version.0" $assemblyVersion
 Assert-Equal "FileVersion" "$version.0" $fileVersion
 Assert-Equal "InformationalVersion" $version $informationalVersion
+$releaseNotesPath = Join-Path $root "docs/releases/v$version.md"
+Assert-FileExists "Release notes" $releaseNotesPath
+Assert-Contains "Release notes version" (Get-Content -LiteralPath $releaseNotesPath -Raw) "# FFGUITool v$version"
 
 $manifestText = Get-Content -LiteralPath $manifestPath -Raw
 $installerText = Get-Content -LiteralPath $installerPath -Raw
